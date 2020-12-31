@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <title>Kubernetes 架构浅析</title>
+  <meta name="author" content="YINGCHI_Joey" />
+  <meta name="description"
+        content="前言
+Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发..."/>
+
+
+  <meta name="generator" content="Hugo 0.71.1" />
+
+  
+  <meta itemprop="name" content="Kubernetes 架构浅析"/>
+  <meta itemprop="description"
+        content="前言
+Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发..."/>
+  <meta itemprop="image"
+        content=""/>
+
+  
+  <meta property="og:title" content="Kubernetes 架构浅析"/>
+  <meta property="og:type"
+        content="article"/>
+  <meta property="og:url" content="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html"/>
+  <meta property="og:image"
+        content=""/>
+  <meta property="og:description"
+        content="前言
+Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发..."/>
+  <meta property="og:site_name" content="Yingchi Blog"/>
+  <meta property="article:published_time"
+        content="2020-04-05T21:03:12&#43;08:00"/>
+  <meta property="article:section" content="posts"/>
+  <meta property="article:tag" content="kubernetes"/>
+
+  
+  
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:site"
+        content=""/>
+  <meta name="twitter:title" content="Kubernetes 架构浅析"/>
+  <meta name="twitter:description"
+        content="前言
+Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发..."/>
+  <meta name="twitter:creator"
+        content=""/>
+  <meta name="twitter:image:src"
+        content=""/>
+
+  
+
+  
+  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
+  
+  
+
+  
+  
+  
+  
+  <script>
+  	var _mtac = {};
+  	(function() {
+  		var mta = document.createElement("script");
+  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
+  		mta.setAttribute("name", "MTAH5");
+  		mta.setAttribute("sid", "500724862");
+
+  		var s = document.getElementsByTagName("script")[0];
+  		s.parentNode.insertBefore(mta, s);
+  	})();
+</script>
+</head>
+
+
+  <body style="min-height:100vh;display:flex;flex-direction:column">
+
+    <section>
+  <nav style="text-align: center; margin-top: 30px;">
+    <div>
+        <a class="custom-title" href="/">
+          
+          <img class="logo" src="/logo.png"/>
+        </a>
+    </div>
+  </nav>
+
+</section>
+
+<style>
+  .custom-title{
+    color: rgb(87, 87, 87);
+    font-size: 25px;
+    font-weight: bold;
+    text-decoration: none;
+  }
+
+  .logo{
+    width: 190px;
+  }
+</style>
+
+    <section class="section" style="flex:1">
+
+      
+      <div class="container">
+        
+        <p class="title-custom">Kubernetes 架构浅析</p>
+        <p class="subtitle-custom">Apr 5, 2020</p>
+
+        
+
+        
+        
+        <div class="content-custom">
+          <h2 id="前言">前言</h2>
+<p>Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发布了 Kubernetes，这是振奋人心的，随后巨硬、IBM、RedHat 一些大佬企业也加入 Kubernetes 社区添砖加瓦，项目日益成熟，社区非常活跃，如今的 Kubernetes 项目也已经成为了开源项目中最耀眼的其中之一。</p>
+<p>Kubernetes 的成功在于它填补了大规模容器集群的编排调度管理平台的空白，在此之前，大家都仿佛在云时代中做着石器时代的活，费时费力地部署管理自己的应用，虽然容器概念已经流行，但是还是用着最原始的方式去使用它们，虽然有一些技术框架，如 Docker Swarm 尝试改变这一现状，但是反响并不好，直到 Kubernetes 的出现，人们都惊呆了，原来 Kubernetes 与 Docker 与 微服务可以这么有机地结合？难以置信，它们虽然是不同的项目不同的设计思想，但是当融合在一起的时候是如此的完美。</p>
+<p>因此，我们的确有必要去学习去了解优秀的 Kubernetes，当然，学习它的架构实现，从宏观角度理解它的运转机制就是必不可少的环节。</p>
+<h2 id="架构概述">架构概述</h2>
+<p>Kubernetes 系统架构整体采用的是 C/S 的架构，即 Master 作为 Server，各个 Worker 节点作为 Client，在一个面向生产环境的集群中，通常可以采用多个 Master 节点实现 HA。</p>
+<p>然后从 Master 与 Worker 两种不同的节点类型来概述一下它们的「职责」</p>
+<h3 id="master-node">Master Node</h3>
+<h4 id="主要职责">主要职责：</h4>
+<ol>
+<li>管理集群所有的 Node；</li>
+<li>调度集群的 Pod；</li>
+<li>管理集群的运行状态；</li>
+</ol>
+<h4 id="主要组件">主要组件：</h4>
+<ul>
+<li><strong>kube-apiserver</strong>: 负责处理资源的 CRUD 请求，提供 REST API 接口；</li>
+<li><strong>kube-scheduler</strong>: 负责集群中 Pod 资源的调度（哪个 Pod 运行在 哪个 Node 上）；</li>
+<li><strong>kube-controller-manager</strong>: 控制器管理器，自动化地管理集群状态（如自动扩容、滚动更新）；</li>
+</ul>
+<h3 id="worker-node">Worker Node</h3>
+<h4 id="主要职责-1">主要职责：</h4>
+<ol>
+<li>管理容器的生命周期，网络，存储等；</li>
+<li>监控上报 Pod 的运行状态；</li>
+</ol>
+<h4 id="主要组件-1">主要组件：</h4>
+<ul>
+<li><strong>kubelet</strong>: 管理容器的生命周期，与 Master 节点进行通信，可理解为 Kubernetes 在 Worker 节点的 Agent；</li>
+<li><strong>kube-proxy</strong>: 负责 Kubernetes Service 组件的通信，原理是为当前节点 Pod 动态地生成 iptables 或 ipvs 规则，并且与 kube-apiserver 保持通信，一旦发现某一个 Service 的后端 Pod 改变，需要将改变保存在 kube-apiserver 中；</li>
+<li><strong>container engine</strong>: 负责接收 kubelet 指令，对容器进行基础地管理；</li>
+</ul>
+<h2 id="组件浅析">组件浅析</h2>
+<h3 id="master-kube-apiserver">[Master] kube-apiserver</h3>
+<p>顾名思义，「apiserver」即本质是提供 API，而且是 REST API，我们提到 REST API 总是会想到「资源」这个概念，没错，这里的 kube-apiserver 就是为 Kubernetes 集群中的各种资源提供 CRUD 的 REST API。</p>
+<p>值得注意的是，kube-apiserver 是集群中唯一与 Etcd 集群交互的核心组件，原因很简单，集群的状态信息、元数据，包括集群资源对象的信息都是存放在 Etcd 存储集群的 /registry 目录下，kube-apiserver 涉及到这些资源的 CRUD，肯定会频繁的与 Etcd 打交道。</p>
+<p>然后还要了解的是，作为集群的运维管理或开发人员，如何与 kube-apiserver 进行交互呢？常见的与 kube-apiserver 的交互方式分为以下两种：</p>
+<ul>
+<li><strong>kubectl 命令行工具</strong>: 其与 kube-apiserver 通过 HTTP/JSON 协议进行交互。一次  kubectl 命令的执行流程是这样的：用户编写 kubectl 命令并执行，命令转换成相应的 HTTP 请求，然后将请求发送给 kube-apiserver，kube-apiserver 接收到请求后进行相应的处理，将结果返回给 kubectl，kubectl 接收到响应然后回显结果。</li>
+<li><strong>client-go</strong>: 对于 kubenetes 的二次开发而言，我们更期望通过代码的方式去管理 kubernetes 资源，如你所想，官方提供了 Go 语言的客户端来满足二次开发需求，client-go 针对 Kubernetes 做了非常多的优化，并且很多 Kubernetes 的核心组件，包括 kube-scheduler、kube-controller-manager 等内部都是通过 client-go 实现与 kube-apiserver 交互，因此<strong>对于想基于 kubernetes 做二次开发的云计算开发/运维开发相关的朋友，掌握 client-go 的使用是很有必要的</strong>，笔者这段时间也是在这方面进行了一定的实践，发现 client-go 的确是一个易用、高效的工具包，有时间可能会单独针对 client-go 写一篇文章。</li>
+</ul>
+<h3 id="master-kube-scheduler">[Master] kube-scheduler</h3>
+<p>Kubernetes 集群默认的调度器。我们知道 Kubernetes 中基本的调度单位就是 Pod，那么 kube-scheduler 的职责从宏观上将其实就是为集群中每一个 Pod 资源对象寻找一个合适的 Worker Node 去运行，如果从微观上讲呢？仅仅是在 Pod 的 <code>spec.nodeName</code> 字段上填上一个 Worker Node 的名称，当然，为了填上这么一个名称，kube-scheduler 内部进行的算法计算还是非常复杂的。</p>
+<p>调度算法分为两种：<strong>预选调度算法</strong>和<strong>优选调度算法</strong>，前者是一票否决的方式，满足所有的才可以调度，后者是计算评分，评分高的调度，相同的随机：</p>
+<ul>
+<li><strong>预选调度算法</strong>：从所有的节点当中，去排除那些完全不能符合对应pod的基本运行要求的节点；
+<ul>
+<li><strong>CheckNodeCondition</strong>： 检查节点是否正常</li>
+<li><strong>HostName</strong>： 检查Pod对象是否定义了 pod.spec.hostname</li>
+<li><strong>MatchNodeSelector</strong>：pods.spec.nodeSelector</li>
+<li><strong>PodFitsResources</strong>：检查Pod的资源需求是否能被节点所满足；</li>
+<li><strong>NoDiskConflict</strong>: 检查Pod依赖的存储卷是否能满足需求；</li>
+<li><strong>NoExecute</strong>：污点，pod如果无法容忍会被驱离</li>
+<li><strong>CheckNodePIDPressure</strong>：检查节点pid数量资源压力过大</li>
+<li><strong>CheckNodeDiskPressure</strong>：检查节点磁盘IO是否过高</li>
+<li><strong>MatchInterPodAffinity</strong>：检查节点是否满足POD是否满足亲和或者反亲和（需要自己定义）</li>
+<li>&hellip; （不再一一列举）</li>
+</ul>
+</li>
+<li><strong>优选调度算法</strong> : 计算基于一系列的算法函数，把每一个节点的数据输入进去计算优先级，计算完以后，在排序，取得分最高的，就是我们最佳匹配的节点；优选函数的话简单列举一下：
+<ul>
+<li><strong>LeastRequested</strong>： 由节点的空闲资源与节点的总容量来比较一个比值，根据空闲比例来评估</li>
+<li><strong>BalancedResourceAllocation</strong>：CPU和内存资源被占用率相近的胜出</li>
+<li><strong>NodePreferAvoidPods</strong>: 优先级较高，根据节点是否由注解信息来判定节点注解信息“scheduler.alpha.kubernetes.io/preferAvoidPods”</li>
+<li><strong>TaintToleration</strong>：将Pod对象的spec.tolerations列表项与节点的taints列表项进行匹配度检查，匹配条目越多，得分越低；</li>
+<li><strong>SeletorSpreading</strong>： 把同一个标签选择器的pod散开至多个节点</li>
+<li><strong>InterPodAffinity</strong>： 匹配项越多得分越高</li>
+<li><strong>NodeAffinity</strong>： 节点亲和型</li>
+<li><strong>MostRequested</strong>： 跟LeastRequested相反，空闲越小分越高，尽可能把一个节点资源用完（默认关闭）</li>
+<li><strong>NodeLabel</strong>： 根据节点是否有标签（默认关闭）</li>
+<li><strong>ImageLocality</strong>：根据满足当前Pod对象需求的已有镜像的体积大小之和 （默认关闭）</li>
+</ul>
+</li>
+</ul>
+<p>kube-scheduler 支持 HA，通过基于 Etcd 集群的分布式锁实现 Leader 选举机制，通过 Kube-apiserver 的资源所进行选举竞争，获得锁的实例成为 Leader 节点，执行调度主逻辑，其它 Candidate 节点处于阻塞状态。</p>
+<h3 id="master-kube-controller-manager">[Master] kube-controller-manager</h3>
+<p>kube-controller-manager 管理的是集群状态，包括了资源状态，节点状态等，而且是自动化的控制，即，它的核心关键就是<strong>确保集群始终处于预期状态</strong>，对于一些资源而言，就是控制它们向 <code>spec</code> 里配置的期望状态收敛。</p>
+<p>kube-controller-manager 称为“控制器管理器”，是因为他提供了一些 Controllers，例如 DeploymentControllers、NamespaceControllers、PsersistentVolumeControllers，控制器通过 kube-apiserver 组件提供的接口对资源对象的 status 进行监控，一旦资源 status 偏离 spec 预期状态时，就会尝试将资源修复到 spec 预期的状态。</p>
+<p>同样，kube-controller-manager 也支持 HA，通过基于 Etcd 集群的分布式锁实现 Leader 选举机制，通过 Kube-apiserver 的资源所进行选举竞争，获得锁的实例成为 Leader 节点，执行 controller-manager主逻辑，其它 Candidate 节点处于阻塞状态。</p>
+<h3 id="worker-kubelet">[Worker] kubelet</h3>
+<p>kubelet 是 Worker Node 上的核心组件之一，他的<strong>核心职责就是对 Worker Node 上的 Pod 资源对象的生命周期进行一个管理</strong>。kubelet 与 Master Node 上的 kube-apiserver 进行交互，得到下发的任务，然后去执行对 Pod 的管理逻辑，也就是起到一个代理的作用；同时，kubelet 也会定期监控节点的资源使用状态并且上报 kube-apiserver，这些反馈来的数据会辅助 kube-scheduler 执行相关的调度逻辑。kubelet 也会对 Worker Node 上的镜像和容器做一个清理工作，充当着一个 Worker Node 资源管家的角色。</p>
+<p>kubelet 另一块儿比较核心的概念是，它定义了三种接口：</p>
+<ul>
+<li><strong>CRI（Container Runtime Interface）</strong>：容器运行时接口，提供计算资源</li>
+<li><strong>CNI（Container Network Interface）</strong>：容器网络接口，提供网络资源</li>
+<li><strong>CSI（Container Storage Interface</strong>）：容器存储接口，提供存储资源</li>
+</ul>
+<p>对于接口这个概念，大家一定不陌生，某种程度上接口也可以理解为「协议」，通过接口，可以将某些逻辑的具体实现解耦，不同的组件，只要实现这个接口，就可以拿来使用，Kubernetes 引入了 CRI、CNI、CSI 这三个高度开放的接口，分别从容器的运行时、网络、存储三个层面提高了其<strong>可扩展性</strong>.</p>
+<p>简单来说，以 CRI 为例，虽然当前默认的容器运行时还是 Docker，但是有了 CRI 之后，我们就可以引入其它优秀的容器运行时作为我们的 Pod 后端，就比如 kata，比如 rkt&hellip;；以 CNI 为例，不用多说，Calico / Flannel 这种大家都是耳熟能详了，各有各的优点，百花齐放。</p>
+<h3 id="master-kube-proxy">[Master] kube-proxy</h3>
+<p>说白了 kube-proxy 作用主要是负责 Kubernetes 中 Service 资源功能的实现，即实现了内部从 Pod -&gt; Service 和外部 NodePort -&gt; Service 的访问。Service 是一组 Pod 的服务抽象，相当于对于 Pod 的一个&quot;LB&rdquo;，负责将请求分发给对应的 Pod。Service 会为这个 &ldquo;LB&quot;提供一个 IP，一般称为 cluster IP。</p>
+<blockquote>
+<p>Cluster IP 是一个虚拟的 IP，但更像是一个伪造的 IP 网络，原因有以下几点:</p>
+<ul>
+<li>Cluster IP 仅仅作用于 Kubernetes Service 这个对象，并由 Kubernetes 管理和分配P地址</li>
+<li>Cluster IP 无法被 ping，他没有一个“实体网络对象”来响应</li>
+<li>Cluster IP 只能结合 Service Port 组成一个具体的通信端口，单独的Cluster IP不具备通信的基础，并且他们属于Kubernetes集群这样一个封闭的空间。</li>
+<li>在不同Service下的pod节点在集群间相互访问可以通过 Cluster IP</li>
+</ul>
+</blockquote>
+<p>kube-proxy 的工作原理就是通过监控 kube-apiserver 的 Service 与 Endpoint 资源变化，通过 iptables / ipvs 的动态配置，从而实现 Service 后端 Pod 的负载均衡；</p>
+<p>需要注意的是，kube-proxy 仅仅是面向 Service 通信以及 Pod 请求，并不适用于其它场景。</p>
+<h2 id="参考">参考</h2>
+<ul>
+<li>
+<p>《Kubernetes 源码剖析》郑东旭</p>
+</li>
+<li>
+<p><a href="https://kubernetes.io/zh/docs/concepts/architecture/">https://kubernetes.io/zh/docs/concepts/architecture/</a></p>
+</li>
+<li>
+<p><a href="https://blog.csdn.net/zisefeizhu/article/details/85702327">https://blog.csdn.net/zisefeizhu/article/details/85702327</a></p>
+</li>
+<li>
+<p><a href="https://zhuanlan.zhihu.com/p/33390023">https://zhuanlan.zhihu.com/p/33390023</a></p>
+</li>
+<li>
+<p><a href="https://blog.csdn.net/weixin_45413603/article/details/103194387">https://blog.csdn.net/weixin_45413603/article/details/103194387</a></p>
+</li>
+<li>
+<p><a href="https://my.oschina.net/u/1000241/blog/3022714">https://my.oschina.net/u/1000241/blog/3022714</a></p>
+</li>
+</ul>
+
+        </div>
+
+        
+
+        
+<br>
+<div class="heading">Tags:</div>
+<div class="field is-grouped is-grouped-multiline">
+  <div class="control">
+    <a href="/tags/kubernetes">
+      <span class="tag">Kubernetes</span>
+    </a>
+  </div>
+</div>
+
+      </div>
+
+    </section>
+
+    <section class="section">
+
+      
+      <script src="https://utteranc.es/client.js"
+        repo = "yingchi1994/HugoComments"
+        issue-term = "pathname"
+        theme = "github-light"
+        crossorigin="anonymous"
+        async>
+      </script>
+      <br>
+      
+      
+      <div class="container">
+  <div class="level">
+
+    <div class="level-left">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html">
+            <span class="icon is-small"><i class="fa fa-chevron-left"></i></span>
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Kubernetes Rolling Update 滚动升级
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Kubernetes Rolling Update 滚动升级
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Kubernetes Rolling Update 滚动升级
+            </span>
+            <span class="is-hidden-tablet">
+              Kubernetes Rolling Update 滚动升级
+            </span>
+            
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <div class="level-right">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html">
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              记一次 Kubeadm 部署 k8s + Flannel
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              记一次 Kubeadm 部署 k8s + Flannel
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              记一次 Kubeadm 部署 k8s + Flannel
+            </span>
+            <span class="is-hidden-tablet">
+              记一次 Kubeadm 部署 k8s + Flannel
+            </span>
+            
+            <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+          </a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+      <br>
+
+      
+      
+
+      <br>
+      
+      
+      
+<div class="container">
+  <nav class="panel">
+    <p class="panel-heading">Related</p>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes Rolling Update 滚动升级&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>记一次 Kubeadm 部署 k8s &#43; Flannel&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2019/10/network-devices.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>网络模型学习基础：各层网络设备概念&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+  </nav>
+</div>
+
+    </section>
+
+    <footer class="footer" 
+style="text-align: center; background-color: #ffffff;">
+  <div class="container">
+    <span style="font-size: small;">
+      <a href="https://yingchi.io/">yingchi.io</a>
+       © 2018-2020</span>
+    <span style="font-size: small;"> Joey.Jiang | 
+      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
+  </div>
+</footer>
+
+  </body>
+
+</html>
+<style>
+
+body {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.container{
+  width: 800px;
+}
+
+.title-custom {
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.subtitle-custom {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.content-custom {
+    color: #000;
+    font-size: 16px;
+}
+
+.content-custom blockquote {
+    margin-bottom: 15px;
+    padding: 15px 0 15px 25px;
+    background: rgb(245, 246, 247);
+    border-left: 10px solid rgb(229, 232, 236);
+    border-radius: 5px;
+}
+
+.content-custom strong {
+    color: rgb(91, 127, 194);
+}
+
+.content-custom em {
+    font-style: normal;
+    font-weight: bold;
+}
+
+.content-custom p {
+    margin: 0 10px;
+}
+
+.content-custom ul{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+    list-style-type: square;
+}
+
+.content-custom ul ul{
+    margin: 0px;
+    list-style-type: circle;
+    padding: 0;
+}
+
+.content-custom ol{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+}
+
+.content-custom li {
+    margin: 5px 40px;
+}
+
+.content-custom img {
+    margin: 20px auto !important;
+    text-align: center;
+    clear: both;
+    display: block;
+    margin: auto;
+    width: 80%;
+}
+
+
+
+.content-custom pre{
+    color: rgb(224, 235, 247);
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgb(85, 94, 104);
+    background-color: rgb(85, 94, 104) !important;
+}
+
+.content-custom h1 {
+    font-size: 25px;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+    padding: 15px;
+     
+    border-bottom: 3px solid #555;
+}
+.content-custom h2 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 40px 0 20px 0;
+    padding: 10px;
+     
+    border-bottom: 2px solid #555;
+}
+.content-custom h3 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 16px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+.content-custom h4 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 10px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+
+ 
+@media screen and (max-width: 960px){
+
+  body{
+    overflow-x: hidden;
+  }
+
+  .container{
+    width: 100%;
+  }
+
+  .content-custom img {
+    width: 100%;
+  }
+
+  .title-custom {
+    font-size: 22px;
+  }
+}
+
+
+</style>

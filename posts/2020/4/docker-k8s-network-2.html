@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <title>Kubernetes &amp; Docker 网络原理（二）</title>
+  <meta name="author" content="YINGCHI_Joey" />
+  <meta name="description"
+        content="Kubernetes Pod 间通信
+之前的文章中主要关于 Docker 的网络实现进行了介绍和探讨，对于 Docker 网络而言，其最大的局限性在于跨主机的容器通信方案上存在空白，而 Kubernetes 作为适合大规模分布式集群的容器编排平台，其在网络实现层面上主要解决的问题就包括了如下几点：
+
+容器间通信；
+Pod 间通信；
+Pod 与 Service 通信；
+集群内外通信；
+
+这篇博文主要..."/>
+
+
+  <meta name="generator" content="Hugo 0.71.1" />
+
+  
+  <meta itemprop="name" content="Kubernetes &amp; Docker 网络原理（二）"/>
+  <meta itemprop="description"
+        content="Kubernetes Pod 间通信
+之前的文章中主要关于 Docker 的网络实现进行了介绍和探讨，对于 Docker 网络而言，其最大的局限性在于跨主机的容器通信方案上存在空白，而 Kubernetes 作为适合大规模分布式集群的容器编排平台，其在网络实现层面上主要解决的问题就包括了如下几点：
+
+容器间通信；
+Pod 间通信；
+Pod 与 Service 通信；
+集群内外通信；
+
+这篇博文主要..."/>
+  <meta itemprop="image"
+        content=""/>
+
+  
+  <meta property="og:title" content="Kubernetes &amp; Docker 网络原理（二）"/>
+  <meta property="og:type"
+        content="article"/>
+  <meta property="og:url" content="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-2.html"/>
+  <meta property="og:image"
+        content=""/>
+  <meta property="og:description"
+        content="Kubernetes Pod 间通信
+之前的文章中主要关于 Docker 的网络实现进行了介绍和探讨，对于 Docker 网络而言，其最大的局限性在于跨主机的容器通信方案上存在空白，而 Kubernetes 作为适合大规模分布式集群的容器编排平台，其在网络实现层面上主要解决的问题就包括了如下几点：
+
+容器间通信；
+Pod 间通信；
+Pod 与 Service 通信；
+集群内外通信；
+
+这篇博文主要..."/>
+  <meta property="og:site_name" content="Yingchi Blog"/>
+  <meta property="article:published_time"
+        content="2020-04-12T21:45:23&#43;08:00"/>
+  <meta property="article:section" content="posts"/>
+  <meta property="article:tag" content="kubernetes"/>
+  <meta property="article:tag" content="network"/>
+
+  
+  
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:site"
+        content=""/>
+  <meta name="twitter:title" content="Kubernetes &amp; Docker 网络原理（二）"/>
+  <meta name="twitter:description"
+        content="Kubernetes Pod 间通信
+之前的文章中主要关于 Docker 的网络实现进行了介绍和探讨，对于 Docker 网络而言，其最大的局限性在于跨主机的容器通信方案上存在空白，而 Kubernetes 作为适合大规模分布式集群的容器编排平台，其在网络实现层面上主要解决的问题就包括了如下几点：
+
+容器间通信；
+Pod 间通信；
+Pod 与 Service 通信；
+集群内外通信；
+
+这篇博文主要..."/>
+  <meta name="twitter:creator"
+        content=""/>
+  <meta name="twitter:image:src"
+        content=""/>
+
+  
+
+  
+  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
+  
+  
+
+  
+  
+  
+  
+  <script>
+  	var _mtac = {};
+  	(function() {
+  		var mta = document.createElement("script");
+  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
+  		mta.setAttribute("name", "MTAH5");
+  		mta.setAttribute("sid", "500724862");
+
+  		var s = document.getElementsByTagName("script")[0];
+  		s.parentNode.insertBefore(mta, s);
+  	})();
+</script>
+</head>
+
+
+  <body style="min-height:100vh;display:flex;flex-direction:column">
+
+    <section>
+  <nav style="text-align: center; margin-top: 30px;">
+    <div>
+        <a class="custom-title" href="/">
+          
+          <img class="logo" src="/logo.png"/>
+        </a>
+    </div>
+  </nav>
+
+</section>
+
+<style>
+  .custom-title{
+    color: rgb(87, 87, 87);
+    font-size: 25px;
+    font-weight: bold;
+    text-decoration: none;
+  }
+
+  .logo{
+    width: 190px;
+  }
+</style>
+
+    <section class="section" style="flex:1">
+
+      
+      <div class="container">
+        
+        <p class="title-custom">Kubernetes &amp; Docker 网络原理（二）</p>
+        <p class="subtitle-custom">Apr 12, 2020</p>
+
+        
+
+        
+        
+        <div class="content-custom">
+          <h1 id="kubernetes-pod-间通信">Kubernetes Pod 间通信</h1>
+<p>之前的文章中主要关于 Docker 的网络实现进行了介绍和探讨，对于 Docker 网络而言，其最大的局限性在于跨主机的容器通信方案上存在空白，而 Kubernetes 作为适合大规模分布式集群的容器编排平台，其在网络实现层面上主要解决的问题就包括了如下几点：</p>
+<ul>
+<li>容器间通信；</li>
+<li>Pod 间通信；</li>
+<li>Pod 与 Service 通信；</li>
+<li>集群内外通信；</li>
+</ul>
+<p>这篇博文主要针对 Kubernetes 的容器间通信和 Pod 间通信进行介绍和探讨，之后再通过单独一篇文章去探讨 Pod 与 Service 的通信，也就是 kube-proxy 工作原理和 Service 机制相关。</p>
+<h2 id="容器间通信">容器间通信</h2>
+<p>学习 Kubernetes 的容器间通信方案之前要理解 Kubernetes 中的 Pod 概念，Pod 是 Kubernetes 中最基本的调度单位，而不是 Docker 容器，Pod 的本意是豆荚，可以将容器理解为豆荚中的豆子，一个 Pod 可以包含多个有关联关系的容器，之后讨论的 Pod 与 Service 的通信也是从 Pod 层面而言的。这是必须要提前认识的概念，但是在底层，还是涉及到容器之间的通信，毕竟 Pod 只是一个抽象概念。</p>
+<p>同一个 Pod 内的容器不会跨主机通信，它们共享同一个 Network Namesapce 空间，共享同一个 Linux 协议栈。所以对于网络的各类操作，因此可以把一个 Pod 视作一个独立的「主机」，内部的容器可以用 localhost 地址访问彼此的端口。这么做的结果是简单、安全和高效，也能减小将已经存在的程序从物理机或者虚拟机移植到容器下运行的难度。</p>
+<p>如图，Node 上运行着一个 Pod 实例，Pod 内部的容器共享同一个 Network Namespace，因此容器1和容器2之间的通信非常简单，就可以通过直接的本地 IPC 方式通信，对于网络应用，可以直接通过 localhost 访问指定端口通信。因此对于一些传统程序想要移植到 Pod 中，几乎不需要做太多的修改。</p>
+<p><img src="docker-k8s-network-2/image-20200712130551563.png" alt="image-20200712130551563"></p>
+<h2 id="pod-间通信">Pod 间通信</h2>
+<p>刚才说同一个 Pod 内的容器都在同一个 Node 上，因此不会出现跨节点通信的问题，但是在 Pod 层面，作为 Kubernetes 的基本调度单位，不同的 Pod 是很有可能被调度到不同的 Node 上的，当然也有可能被调度到同一个 Node 上，因此对于 Pod 间的通信，应该分为两种来探讨：</p>
+<ul>
+<li>相同 Node 下 Pod 间通信</li>
+<li>不同 Node 下 Pod 间通信</li>
+</ul>
+<h3 id="相同-node-下-pod-间通信">相同 Node 下 Pod 间通信</h3>
+<p><strong>每一个 Pod 都有一个真实的全局IP地址</strong>，<strong>同一个 Node 内的不同 Pod 之间可以直接采用对方Pod的IP地址通信</strong>，而且不需要采用其他发现机制，例如 DNS、Consul 或者 Etcd。</p>
+<p><img src="docker-k8s-network-2/image-20200712131614447.png" alt="image-20200712131614447"></p>
+<p>同一个 Node 下，不同的 Pod 都通过 Veth 设备对连接至 docker0 网桥，Docker bridge 模式在之前的 Docker 网络实现里已经讲过了，Pod 的 IP 都是从 docker0 网桥上动态分配的，图上的 Pod1、Pod2、docker0 网桥它们三者属于同一个网段，即它们之间是可以直接通信的，这个很好理解。</p>
+<p>对于每个 Pod 的 eth0 这一点，难道大家没有疑问吗？为什么 Pod 是一个抽象的虚拟的概念，自己还能有一个独立的网络协议栈，即 Network Namespace，还能挂载一个 Veth 设备？实际上这里的图上没有划出来，每个 Pod 默认会有一个 pause 容器 (实际名称：google_containers/pause)，可以认为是 Pod 的一个「管家容器」，pause 容器负责了包括 Pod 网络相关的一些初始化工作，pause 容器使用的就是之前讲到的 Docker 的默认网络通信模型 Bridge，pause 通过 Veth 设备对与 docker0 桥接，而 Pod 内的其它容器采用了非默认的网络配置和<strong>映射容器的模型</strong>，指定映射目标容器到 Pause 容器上，这么做的目的很简单，为实现一个 Pod 内多个容器，本身没有很好的方式进行连接，pause 提供一个 Pod 内部的通信「桥梁」，为什么不是后一个容器关联前一个容器的方式呢？这种方式的话一旦前一个容器启动不起来或者挂掉，后面的容器都会跟着受影响。</p>
+<h3 id="不同-node-下-pod-间通信">不同 Node 下 Pod 间通信</h3>
+<p>在同一个 Node 下的 Pod 间通信因为可以直接通过 docker0 桥接实现，因此很容易理解，但是在不同 Node 下的 Pod 间通信如何实现就是个很有学问的事情了。</p>
+<p>首先我们要知道的是，每个宿主机上 docker0 网桥为 Pod 分配的都是私有 IP，而 Kubernetes 要求网络对 Pod 的地址是平面且直达的，说白了就是在集群中可以通过 Pod 的私有 IP 在各个不同 Node 之间通信。因此我们可以知道，对于 Pod IP 的规划是非常重要的，要实现上面讲的可以在集群内部使用私有 IP 进行不同 Node 间的 Pod 通信，最起码要保证在集群层面这些私有 IP 一定是不冲突的才行，注意，这些 Pod 私有 IP 是保存在 Etcd 集群中的。</p>
+<p>另外，我们知道，不同 Node 之间的通信一定是要经由宿主机的物理网卡，因此要实现 Pod 在不同 Node 之间的通信，还要通过 Node 的 IP 进行寻址和通信，这也是需要关注的一点。</p>
+<p>综上我们可知，对于不同 Node 下的 Pod 间通信，核心是满足两点：</p>
+<ol>
+<li><strong>Pod IP 实现集群层级的不冲突</strong>。Pod 的 IP 分配虽然是有本地 docker0 负责，但是具体的地址规划一定是要在集群层面，保证其不冲突，这是通过私有 Pod IP 跨 Node 通信的基本条件；</li>
+<li><strong>Pod IP 借助 Node IP 进行寻址访问</strong>。Node 之间通信的桥梁还是 Node 实实在在的物理网卡，因此需要找到一种方法，将 Pod IP 与 Node IP 关联起来，通过这个关联实现不同 Node 的 Pod 之间的访问。</li>
+</ol>
+<p>对于第一点，实现 Pod IP 在集群层级的不冲突，我们需要对 docker0 的地址段进行规划，保证每个 Node 上的 docker0 网段都是没有冲突的，针对这一点，可以手工配置，当然如果是小集群还好，如果是大规模集群的话，我认为这是在扯淡，因此，应该有不这么反运维工程师的方案，比如做一个分配规则，让程序自己去分配地址段，这是很容易想到的，没错，多亏了 Kubernetes 的 CNI（容器网络接口），有一些优秀的 Kubernetes 网络增强软件就可以对接进来帮我们完成这些工作，典型的比如 Flannel、Calico。</p>
+<p>对于第二点，其核心目标就是实现 Pod IP 经由 Node IP 的寻址，也就是说需要有一个机制知道 Pod IP 具体在哪一个 Node 上，通过宿主机将数据转发到目标 Node 上，然后再由目标 Node 将数据转发到具体的本地 docker0 上，最后转发到目标 Pod 中，整个过程大致如图所示：</p>
+<p><img src="docker-k8s-network-2/image-20200712135259615.png" alt="image-20200712135259615"></p>
+<p>一些知名的云平台本身就设计实现 Pod 的 IP 管理，因此 Pod 的通信可以借助平台层的网络设计打通，但是在大部分情况下，尤其是一般企业自己维护的 Kubernetes 集群上，可能无法享受到这种机制，因此还需要自己进行相关的网络配置，让网络满足 Kuberntes 的要求之后才能实现 Pod 之前的正常通信，进而实现集群的正常运转，就像上面第一点中说的那样，好在 Kubernetes 的高可扩展性，通过 CNI 机制，一些网络增强组件（Flannel、Calico 等）实现了上面这些网络要求。但是基本的原理，基本的需求是上面描述的，这个是必须要理解的，但是对于其实际实现，每个增强组件都有自己的实现方案，这里没法一个一个去详细介绍，心有余而力不足，真有时间的话会好好研究并且撰写相关的博文与大家分享。</p>
+
+        </div>
+
+        
+
+        
+<br>
+<div class="heading">Tags:</div>
+<div class="field is-grouped is-grouped-multiline">
+  <div class="control">
+    <a href="/tags/kubernetes">
+      <span class="tag">Kubernetes</span>
+    </a>
+  </div>
+  <div class="control">
+    <a href="/tags/network">
+      <span class="tag">Network</span>
+    </a>
+  </div>
+</div>
+
+      </div>
+
+    </section>
+
+    <section class="section">
+
+      
+      <script src="https://utteranc.es/client.js"
+        repo = "yingchi1994/HugoComments"
+        issue-term = "pathname"
+        theme = "github-light"
+        crossorigin="anonymous"
+        async>
+      </script>
+      <br>
+      
+      
+      <div class="container">
+  <div class="level">
+
+    <div class="level-left">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-3.html">
+            <span class="icon is-small"><i class="fa fa-chevron-left"></i></span>
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Kubernetes &amp; Docker 网络原理（三）
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Kubernetes &amp; Docker 网络原理（三）
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Kubernetes &amp; Docker 网络原理（三）
+            </span>
+            <span class="is-hidden-tablet">
+              Kubernetes &amp; Docker 网络原理（三）
+            </span>
+            
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <div class="level-right">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-1.html">
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Kubernetes &amp; Docker 网络原理（一）
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Kubernetes &amp; Docker 网络原理（一）
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Kubernetes &amp; Docker 网络原理（一）
+            </span>
+            <span class="is-hidden-tablet">
+              Kubernetes &amp; Docker 网络原理（一）
+            </span>
+            
+            <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+          </a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+      <br>
+
+      
+      
+
+      <br>
+      
+      
+      
+<div class="container">
+  <nav class="panel">
+    <p class="panel-heading">Related</p>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-1.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes &amp; Docker 网络原理（一）&nbsp;
+      <div class="tag">Kubernetes</div>
+      <div class="tag">Network</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-resources.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>理解 Kubernetes 的 Resource 设计概念&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes 架构浅析&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes Rolling Update 滚动升级&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>记一次 Kubeadm 部署 k8s &#43; Flannel&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2019/10/network-devices.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>网络模型学习基础：各层网络设备概念&nbsp;
+      <div class="tag">Kubernetes</div>
+      <div class="tag">Network</div>
+      </span>
+    </a>
+  </nav>
+</div>
+
+    </section>
+
+    <footer class="footer" 
+style="text-align: center; background-color: #ffffff;">
+  <div class="container">
+    <span style="font-size: small;">
+      <a href="https://yingchi.io/">yingchi.io</a>
+       © 2018-2020</span>
+    <span style="font-size: small;"> Joey.Jiang | 
+      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
+  </div>
+</footer>
+
+  </body>
+
+</html>
+<style>
+
+body {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.container{
+  width: 800px;
+}
+
+.title-custom {
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.subtitle-custom {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.content-custom {
+    color: #000;
+    font-size: 16px;
+}
+
+.content-custom blockquote {
+    margin-bottom: 15px;
+    padding: 15px 0 15px 25px;
+    background: rgb(245, 246, 247);
+    border-left: 10px solid rgb(229, 232, 236);
+    border-radius: 5px;
+}
+
+.content-custom strong {
+    color: rgb(91, 127, 194);
+}
+
+.content-custom em {
+    font-style: normal;
+    font-weight: bold;
+}
+
+.content-custom p {
+    margin: 0 10px;
+}
+
+.content-custom ul{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+    list-style-type: square;
+}
+
+.content-custom ul ul{
+    margin: 0px;
+    list-style-type: circle;
+    padding: 0;
+}
+
+.content-custom ol{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+}
+
+.content-custom li {
+    margin: 5px 40px;
+}
+
+.content-custom img {
+    margin: 20px auto !important;
+    text-align: center;
+    clear: both;
+    display: block;
+    margin: auto;
+    width: 80%;
+}
+
+
+
+.content-custom pre{
+    color: rgb(224, 235, 247);
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgb(85, 94, 104);
+    background-color: rgb(85, 94, 104) !important;
+}
+
+.content-custom h1 {
+    font-size: 25px;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+    padding: 15px;
+     
+    border-bottom: 3px solid #555;
+}
+.content-custom h2 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 40px 0 20px 0;
+    padding: 10px;
+     
+    border-bottom: 2px solid #555;
+}
+.content-custom h3 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 16px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+.content-custom h4 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 10px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+
+ 
+@media screen and (max-width: 960px){
+
+  body{
+    overflow-x: hidden;
+  }
+
+  .container{
+    width: 100%;
+  }
+
+  .content-custom img {
+    width: 100%;
+  }
+
+  .title-custom {
+    font-size: 22px;
+  }
+}
+
+
+</style>

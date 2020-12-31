@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <title>解读 kubernetes Controller Manager 工作原理</title>
+  <meta name="author" content="YINGCHI_Joey" />
+  <meta name="description"
+        content="kubernetes master 节点最重要的三个组件是：kube-apiserver、kube-controller-manager、kube-scheduler，分别负责 kubernetes 集群的资源访问入口、集群状态管理、资源调度。
+这篇文章的主角就是其中的 kube-controller-manager 组件，分析一下它以及其核心组件 informer 是如何有效管理集群状态的。..."/>
+
+
+  <meta name="generator" content="Hugo 0.71.1" />
+
+  
+  <meta itemprop="name" content="解读 kubernetes Controller Manager 工作原理"/>
+  <meta itemprop="description"
+        content="kubernetes master 节点最重要的三个组件是：kube-apiserver、kube-controller-manager、kube-scheduler，分别负责 kubernetes 集群的资源访问入口、集群状态管理、资源调度。
+这篇文章的主角就是其中的 kube-controller-manager 组件，分析一下它以及其核心组件 informer 是如何有效管理集群状态的。..."/>
+  <meta itemprop="image"
+        content=""/>
+
+  
+  <meta property="og:title" content="解读 kubernetes Controller Manager 工作原理"/>
+  <meta property="og:type"
+        content="article"/>
+  <meta property="og:url" content="https://blog.yingchi.io/posts/2020/7/k8s-cm-informer.html"/>
+  <meta property="og:image"
+        content=""/>
+  <meta property="og:description"
+        content="kubernetes master 节点最重要的三个组件是：kube-apiserver、kube-controller-manager、kube-scheduler，分别负责 kubernetes 集群的资源访问入口、集群状态管理、资源调度。
+这篇文章的主角就是其中的 kube-controller-manager 组件，分析一下它以及其核心组件 informer 是如何有效管理集群状态的。..."/>
+  <meta property="og:site_name" content="Yingchi Blog"/>
+  <meta property="article:published_time"
+        content="2020-07-24T23:41:26&#43;08:00"/>
+  <meta property="article:section" content="posts"/>
+  <meta property="article:tag" content="kubernetes"/>
+
+  
+  
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:site"
+        content=""/>
+  <meta name="twitter:title" content="解读 kubernetes Controller Manager 工作原理"/>
+  <meta name="twitter:description"
+        content="kubernetes master 节点最重要的三个组件是：kube-apiserver、kube-controller-manager、kube-scheduler，分别负责 kubernetes 集群的资源访问入口、集群状态管理、资源调度。
+这篇文章的主角就是其中的 kube-controller-manager 组件，分析一下它以及其核心组件 informer 是如何有效管理集群状态的。..."/>
+  <meta name="twitter:creator"
+        content=""/>
+  <meta name="twitter:image:src"
+        content=""/>
+
+  
+
+  
+  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
+  
+  
+
+  
+  
+  
+  
+  <script>
+  	var _mtac = {};
+  	(function() {
+  		var mta = document.createElement("script");
+  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
+  		mta.setAttribute("name", "MTAH5");
+  		mta.setAttribute("sid", "500724862");
+
+  		var s = document.getElementsByTagName("script")[0];
+  		s.parentNode.insertBefore(mta, s);
+  	})();
+</script>
+</head>
+
+
+  <body style="min-height:100vh;display:flex;flex-direction:column">
+
+    <section>
+  <nav style="text-align: center; margin-top: 30px;">
+    <div>
+        <a class="custom-title" href="/">
+          
+          <img class="logo" src="/logo.png"/>
+        </a>
+    </div>
+  </nav>
+
+</section>
+
+<style>
+  .custom-title{
+    color: rgb(87, 87, 87);
+    font-size: 25px;
+    font-weight: bold;
+    text-decoration: none;
+  }
+
+  .logo{
+    width: 190px;
+  }
+</style>
+
+    <section class="section" style="flex:1">
+
+      
+      <div class="container">
+        
+        <p class="title-custom">解读 kubernetes Controller Manager 工作原理</p>
+        <p class="subtitle-custom">Jul 24, 2020</p>
+
+        
+
+        
+        
+        <div class="content-custom">
+          <p>kubernetes master 节点最重要的三个组件是：kube-apiserver、kube-controller-manager、kube-scheduler，分别负责 kubernetes 集群的资源访问入口、集群状态管理、资源调度。</p>
+<p>这篇文章的主角就是其中的 kube-controller-manager 组件，分析一下它以及其核心组件 informer 是如何有效管理集群状态的。</p>
+<h2 id="controller-manager--controller-工作原理概述">Controller Manager &amp; Controller 工作原理概述</h2>
+<p>我们都知道 kubernetes 中管理资源的方式比较简单，通常就是写一个 YAML 清单，简单的可以通过 kubectl 命令直接解决，在这个过程中，我们定义了某个资源的「期望状态」，比如 YAML 清单文件中的 spec 字段，Deployment 的 YAML 中的 spec 字段可能定义了期望的 replicas，我们期望集群的某个 pod 的副本数维持在某个数量上，当我们提交清单给集群，kubernetes 会在一段时间内将集群中的某些资源调整至我们期望的状态；亦或是另一个场景，集群中某个 Pod 挂掉了，或者我们将 Pod 从某个 Worker Node 上驱逐了，然后我们没有做任何操作，Pod 又会自动重建，并且达到指定的副本数，这是很常见的场景。</p>
+<p>上面说的这些资源的状态管理是由谁实现的呢？没错，就是 <strong>Controller Manager</strong>，Controller Manager 是 Kubernetes 的灵魂组件之一，可以说通过定义资源期望状态实现集群资源编排管理的思想其底层就是依赖 Controller Manager 这个组件。</p>
+<p>Controller Manager 的作用简而言之：<strong>保证集群中各种资源的实际状态（status）和用户定义的期望状态（spec）一致</strong>。</p>
+<p>按照官方定义：kube-controller-manager 运行控制器，它们是处理集群中常规任务的后台线程。</p>
+<p>Controller Manager 就是集群内部的管理控制中心，刚才说 Controller Manager 的作用是保证集群中各种资源的实际状态和用户定义的期望状态一致，但是如果出现不一致的情况怎么办？是由 Controller Manager 自己来对各种资源进行调整吗？</p>
+<p>这时候就要说到 <strong>Controller</strong> 的概念了，之所以叫 Controller Manager，是因为 Controller Manager 由负责不同资源的多个 Controller 构成，如 Deployment Controller、Node Controller、Namespace Controller、Service Controller 等，这些 Controllers 各自明确分工负责集群内资源的管理。</p>
+<p><img src="k8s-cm-informer/image-20200725172912964.png" alt="image-20200725172912964"></p>
+<p>如图，<strong>Controller Manager 发现资源的实际状态和期望状态有偏差之后，会触发相应 Controller 注册的 Event Handler，让它们去根据资源本身的特点进行调整</strong>。</p>
+<p>比如当通过 Deployment 创建的某个 Pod 发生异常退出时，Deployment Controller 便会接受并处理该退出的 Event，并创建新的 Pod 来维持期望副本数。这样设计的原因也很好理解，可以将 Controller Manager 与具体的状态管理工作相解耦，因为不同的资源对于状态的管理多种多样，Deployment Controller 关注 Pod 副本数，而 Service 则关注 Service 的 IP、Port 等等。</p>
+<h2 id="client-go">client-go</h2>
+<p>Controller Manager 中一个很关键的部分就是 client-go，client-go 在 controller manager 中起到向 controllers 进行事件分发的作用。目前 client-go 已经被单独抽取出来成为一个项目了，除了在 kubernetes 中经常被用到，在 kubernetes 的二次开发过程中会经常用到 client-go，比如可以通过 client-go 开发自定义 controller。</p>
+<p>client-go 包中一个非常核心的工具就是 informer，informer 可以让与 kube-apiserver 的交互更加优雅。</p>
+<p>informer 主要功能可以概括为两点：</p>
+<ul>
+<li>资源数据缓存功能，缓解对 kube-apiserver 的访问压力；</li>
+<li>资源事件分发，触发事先注册好的 ResourceEventHandler；</li>
+</ul>
+<p>Informer 另外一块内容在于提供了事件 handler 机制，并会触发回调，这样 Controller 就可以基于回调处理具体业务逻辑。因为 Informer 通过 List、Watch 机制可以监控到所有资源的所有事件，因此只要给 Informer 添加ResourceEventHandler 实例的回调函数实例取实现 <code>OnAdd(obj interface{})</code>、 <code>OnUpdate(oldObj, newObj interface{}) </code> 和 <code> OnDelete(obj interface{})</code> 这三个方法，就可以处理好资源的创建、更新和删除操作</p>
+<h3 id="client-go-工作机制">client-go 工作机制</h3>
+<p><img src="k8s-cm-informer/client-go-controller-interaction.jpeg" alt="img"></p>
+<p>上图是官方给出的 client-go 与自定义 controller 的实现原理。</p>
+<h4 id="reflactor">Reflactor</h4>
+<p>反射器，具有以下几个功能：</p>
+<ul>
+<li>采用 List、Watch 机制与 kube-apiserver 交互，List 短连接获取全量数据，Watch 长连接获取增量数据；</li>
+<li>可以 Watch 任何资源包括 CRD；</li>
+<li>Watch 到的增量 Object 添加到 Delta FIFO 队列，然后 Informer 会从队列里面取数据;</li>
+</ul>
+<h4 id="informer">Informer</h4>
+<p>Informer 是 client-go 中较为核心的一个模块，其主要作用包括如下两个方面：</p>
+<ul>
+<li>同步数据到本地缓存。Informer 会不断读取 Delta FIFO 队列中的 Object，在触发事件回调之前先更新本地的 store，如果是新增 Object，如果事件类型是 Added（添加对象），那么 Informer 会通过 Indexer 的库把这个增量里的 API 对象保存到本地的缓存中，并为它创建索引。之后通过 Lister 对资源进行 List / Get 操作时会直接读取本地的 store 缓存，通过这种方式避免对 kube-apiserver 的大量不必要请求，缓解其访问压力；</li>
+<li>根据对应的事件类型，触发事先注册好的 ResourceEventHandler。client-go 的 informer 模块启动时会创建一个 shardProcessor，各种 controller（如 Deployment Controller、自定义 Controller&hellip;）的事件 handler 注册到 informer 的时候会转换为一个 processorListener 实例，然后 processorListener 会被 append 到 shardProcessor 的 Listeners 切片中，shardProcessor 会管理这些 listeners。</li>
+</ul>
+<p>processorListener 的重要作用就是当事件到来时触发对应的处理方法，因此不停地从 nextCh 中拿到事件并执行对应的 handler。<code>sharedProcessor</code> 的职责便是管理所有的 Handler 以及分发事件，而真正做分发工作的是 <code>distribute</code> 方法。</p>
+<p>梳理一下这中间的过程：</p>
+<ol>
+<li>Controller 将 Handler 注册给 Informer；</li>
+<li>Informer 通过 <code>sharedProcessor</code> 维护了所有转换为 processorListener 的 Handler；</li>
+<li>Informer 收到事件时，通过 <code>sharedProcessor.distribute</code> 将事件分发下去；</li>
+<li>Controller 被触发对应的 Handler 来处理自己的逻辑。</li>
+</ol>
+<p><img src="k8s-cm-informer/2019-12-15-eventdistribute.jpg" alt="img"></p>
+<p>Reflactor 启动后会执行一个 processLoop 死循环，Loop 中不停地将 Delta FIFO 队列中的事件 Pop 出来，Pop 时会取出该资源的所有事件，并交给 <code>sharedIndexInformer</code> 的 <code>HandleDeltas</code> 方法（创建 <code>controller</code> 时赋值给了 <code>config.Process</code>，传递到 Pop 参数的处理函数中 <code>Pop(PopProcessFunc(c.config.Process))</code>），<code>HandleDeltas</code> 调用了 <code>processor.distribute</code> 完成事件的分发。</p>
+<p>在注册的 ResourceEventHandler 回调函数中，只是做了一些很简单的过滤，然后将关心变更的 Object 放到 workqueue 里面。之后 Controller 从 workqueue 里面取出 Object，启动一个 worker 来执行自己的业务逻辑，通常是对比资源的当前运行状态与期望状态，做出相应的处理，实现运行状态向期望状态的收敛。</p>
+<p>注意，在 worker 中就可以使用 lister 来获取 resource，这个时候不需要频繁的访问 kube-apiserver 了，对于资源的 List / Get 会直接访问 informer 本地 store 缓存，apiserver 中资源的的变更都会反映到这个缓存之中。同时，LocalStore 会周期性地把所有的 Pod 信息重新放到 DeltaFIFO 中。</p>
+<h2 id="参考">参考</h2>
+<ul>
+<li><a href="http://dockone.io/article/9557">http://dockone.io/article/9557</a></li>
+<li><a href="https://www.cnblogs.com/lovezbs/p/13172842.html">https://www.cnblogs.com/lovezbs/p/13172842.html</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/59660536">https://zhuanlan.zhihu.com/p/59660536</a></li>
+<li><a href="https://www.jianshu.com/p/1e2e686fe363">https://www.jianshu.com/p/1e2e686fe363</a></li>
+<li><a href="https://www.lizenghai.com/archives/50034.html#1">https://www.lizenghai.com/archives/50034.html#1</a></li>
+<li><a href="https://www.jianshu.com/p/d17f70369c35">https://www.jianshu.com/p/d17f70369c35</a></li>
+<li><a href="https://www.jianshu.com/p/ac9179007fe2">https://www.jianshu.com/p/ac9179007fe2</a></li>
+<li><a href="https://blog.hdls.me/15763918313590.html">https://blog.hdls.me/15763918313590.html</a></li>
+<li><a href="https://blog.ihypo.net/15763910382218.html">https://blog.ihypo.net/15763910382218.html</a></li>
+</ul>
+
+        </div>
+
+        
+
+        
+<br>
+<div class="heading">Tags:</div>
+<div class="field is-grouped is-grouped-multiline">
+  <div class="control">
+    <a href="/tags/kubernetes">
+      <span class="tag">Kubernetes</span>
+    </a>
+  </div>
+</div>
+
+      </div>
+
+    </section>
+
+    <section class="section">
+
+      
+      <script src="https://utteranc.es/client.js"
+        repo = "yingchi1994/HugoComments"
+        issue-term = "pathname"
+        theme = "github-light"
+        crossorigin="anonymous"
+        async>
+      </script>
+      <br>
+      
+      
+      <div class="container">
+  <div class="level">
+
+    <div class="level-left">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="#" disabled>
+            <span class="icon is-small"><i class="fa fa-chevron-left"></i></span>
+            <span>Newest</span>
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <div class="level-right">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/7/k8s-rbac.html">
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              一文读懂 Kubernetes RBAC 机制
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              一文读懂 Kubernetes RBAC 机制
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              一文读懂 Kubernetes RBAC 机制
+            </span>
+            <span class="is-hidden-tablet">
+              一文读懂 Kubernetes RBAC 机制
+            </span>
+            
+            <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+          </a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+      <br>
+
+      
+      
+
+      <br>
+      
+      
+      
+<div class="container">
+  <nav class="panel">
+    <p class="panel-heading">Related</p>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/7/k8s-rbac.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>一文读懂 Kubernetes RBAC 机制&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/7/k8s-authn-authz.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes API Server 认证与授权机制&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/6/cka-note.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>2020 年 6 月 CKA 认证通过分享&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/5/client-go.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>client-go 初步认识与实践&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/5/linux-iptables.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Linux Netfilter/iptables 学习&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-3.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes &amp; Docker 网络原理（三）&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-2.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes &amp; Docker 网络原理（二）&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-1.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes &amp; Docker 网络原理（一）&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-resources.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>理解 Kubernetes 的 Resource 设计概念&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes 架构浅析&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes Rolling Update 滚动升级&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>记一次 Kubeadm 部署 k8s &#43; Flannel&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2019/10/network-devices.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>网络模型学习基础：各层网络设备概念&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+  </nav>
+</div>
+
+    </section>
+
+    <footer class="footer" 
+style="text-align: center; background-color: #ffffff;">
+  <div class="container">
+    <span style="font-size: small;">
+      <a href="https://yingchi.io/">yingchi.io</a>
+       © 2018-2020</span>
+    <span style="font-size: small;"> Joey.Jiang | 
+      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
+  </div>
+</footer>
+
+  </body>
+
+</html>
+<style>
+
+body {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.container{
+  width: 800px;
+}
+
+.title-custom {
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.subtitle-custom {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.content-custom {
+    color: #000;
+    font-size: 16px;
+}
+
+.content-custom blockquote {
+    margin-bottom: 15px;
+    padding: 15px 0 15px 25px;
+    background: rgb(245, 246, 247);
+    border-left: 10px solid rgb(229, 232, 236);
+    border-radius: 5px;
+}
+
+.content-custom strong {
+    color: rgb(91, 127, 194);
+}
+
+.content-custom em {
+    font-style: normal;
+    font-weight: bold;
+}
+
+.content-custom p {
+    margin: 0 10px;
+}
+
+.content-custom ul{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+    list-style-type: square;
+}
+
+.content-custom ul ul{
+    margin: 0px;
+    list-style-type: circle;
+    padding: 0;
+}
+
+.content-custom ol{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+}
+
+.content-custom li {
+    margin: 5px 40px;
+}
+
+.content-custom img {
+    margin: 20px auto !important;
+    text-align: center;
+    clear: both;
+    display: block;
+    margin: auto;
+    width: 80%;
+}
+
+
+
+.content-custom pre{
+    color: rgb(224, 235, 247);
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgb(85, 94, 104);
+    background-color: rgb(85, 94, 104) !important;
+}
+
+.content-custom h1 {
+    font-size: 25px;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+    padding: 15px;
+     
+    border-bottom: 3px solid #555;
+}
+.content-custom h2 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 40px 0 20px 0;
+    padding: 10px;
+     
+    border-bottom: 2px solid #555;
+}
+.content-custom h3 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 16px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+.content-custom h4 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 10px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+
+ 
+@media screen and (max-width: 960px){
+
+  body{
+    overflow-x: hidden;
+  }
+
+  .container{
+    width: 100%;
+  }
+
+  .content-custom img {
+    width: 100%;
+  }
+
+  .title-custom {
+    font-size: 22px;
+  }
+}
+
+
+</style>

@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <title>HashTable 原理 &amp; Go Map 实现</title>
+  <meta name="author" content="YINGCHI_Joey" />
+  <meta name="description"
+        content="Go Map 也就是所谓的“ HashTable ”数据结构，有些语言，比如 Python 中称作“字典”，但是无论如何都是一种东西。 HashTable 最重要的特点是：
+
+提供键值对形式的的存储结构，即提供键值之间的映射；
+具有O(1)的读写性能
+
+HashTable 的思想很简单，但是实现原理思路在不同的语言中都有着些许不同，本文主要针对 Go Map 这种 HashTable 的实现和相关..."/>
+
+
+  <meta name="generator" content="Hugo 0.71.1" />
+
+  
+  <meta itemprop="name" content="HashTable 原理 &amp; Go Map 实现"/>
+  <meta itemprop="description"
+        content="Go Map 也就是所谓的“ HashTable ”数据结构，有些语言，比如 Python 中称作“字典”，但是无论如何都是一种东西。 HashTable 最重要的特点是：
+
+提供键值对形式的的存储结构，即提供键值之间的映射；
+具有O(1)的读写性能
+
+HashTable 的思想很简单，但是实现原理思路在不同的语言中都有着些许不同，本文主要针对 Go Map 这种 HashTable 的实现和相关..."/>
+  <meta itemprop="image"
+        content=""/>
+
+  
+  <meta property="og:title" content="HashTable 原理 &amp; Go Map 实现"/>
+  <meta property="og:type"
+        content="article"/>
+  <meta property="og:url" content="https://blog.yingchi.io/posts/2020/3/go-map.html"/>
+  <meta property="og:image"
+        content=""/>
+  <meta property="og:description"
+        content="Go Map 也就是所谓的“ HashTable ”数据结构，有些语言，比如 Python 中称作“字典”，但是无论如何都是一种东西。 HashTable 最重要的特点是：
+
+提供键值对形式的的存储结构，即提供键值之间的映射；
+具有O(1)的读写性能
+
+HashTable 的思想很简单，但是实现原理思路在不同的语言中都有着些许不同，本文主要针对 Go Map 这种 HashTable 的实现和相关..."/>
+  <meta property="og:site_name" content="Yingchi Blog"/>
+  <meta property="article:published_time"
+        content="2020-03-10T11:23:08&#43;08:00"/>
+  <meta property="article:section" content="posts"/>
+  <meta property="article:tag" content="golang"/>
+
+  
+  
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:site"
+        content=""/>
+  <meta name="twitter:title" content="HashTable 原理 &amp; Go Map 实现"/>
+  <meta name="twitter:description"
+        content="Go Map 也就是所谓的“ HashTable ”数据结构，有些语言，比如 Python 中称作“字典”，但是无论如何都是一种东西。 HashTable 最重要的特点是：
+
+提供键值对形式的的存储结构，即提供键值之间的映射；
+具有O(1)的读写性能
+
+HashTable 的思想很简单，但是实现原理思路在不同的语言中都有着些许不同，本文主要针对 Go Map 这种 HashTable 的实现和相关..."/>
+  <meta name="twitter:creator"
+        content=""/>
+  <meta name="twitter:image:src"
+        content=""/>
+
+  
+
+  
+  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
+  
+  
+
+  
+  
+  
+  
+  <script>
+  	var _mtac = {};
+  	(function() {
+  		var mta = document.createElement("script");
+  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
+  		mta.setAttribute("name", "MTAH5");
+  		mta.setAttribute("sid", "500724862");
+
+  		var s = document.getElementsByTagName("script")[0];
+  		s.parentNode.insertBefore(mta, s);
+  	})();
+</script>
+</head>
+
+
+  <body style="min-height:100vh;display:flex;flex-direction:column">
+
+    <section>
+  <nav style="text-align: center; margin-top: 30px;">
+    <div>
+        <a class="custom-title" href="/">
+          
+          <img class="logo" src="/logo.png"/>
+        </a>
+    </div>
+  </nav>
+
+</section>
+
+<style>
+  .custom-title{
+    color: rgb(87, 87, 87);
+    font-size: 25px;
+    font-weight: bold;
+    text-decoration: none;
+  }
+
+  .logo{
+    width: 190px;
+  }
+</style>
+
+    <section class="section" style="flex:1">
+
+      
+      <div class="container">
+        
+        <p class="title-custom">HashTable 原理 &amp; Go Map 实现</p>
+        <p class="subtitle-custom">Mar 10, 2020</p>
+
+        
+
+        
+        
+        <div class="content-custom">
+          <p>Go Map 也就是所谓的“ HashTable ”数据结构，有些语言，比如 Python 中称作“字典”，但是无论如何都是一种东西。 HashTable 最重要的特点是：</p>
+<ul>
+<li>提供键值对形式的的存储结构，即提供键值之间的映射；</li>
+<li>具有<code>O(1)</code>的读写性能</li>
+</ul>
+<p>HashTable 的思想很简单，但是实现原理思路在不同的语言中都有着些许不同，本文主要针对 Go Map 这种 HashTable 的实现和相关问题展开讨论。</p>
+<h2 id="基本原理">基本原理</h2>
+<p>在讨论 Go 的 Map 之前，首先要熟悉 HashTable 的基本原理，当然这些都是上个世纪的知识点了，但是还是有必要深入理解透彻的。</p>
+<p>HashTable 的两个主要概念涉及到：<strong>Hash Function</strong> 和 <strong>冲突处理</strong>。</p>
+<h3 id="hash-function">Hash Function</h3>
+<p>前面说过 Hash Table 是存储键值对的数据结构，所以容易理解，<strong>所谓 Hash Function 就是将 key 映射到某个存储位置的函数</strong>。</p>
+<p>Hash Function 的选择非常重要，好的 Hash Function 可以确保 Hash 结果尽可能的均匀，最理想的情况是每一个不同的 key 都能映射到一个独立的存储索引位置上，但是，毕竟，这只是理想。</p>
+<p>比较实际的思想还是让 Hash Function 的结果能够<strong>尽可能</strong>的均匀分布即可，既然是尽可能均匀分布，那么就有冲突的风险，冲突很好理解：</p>
+<p>比如有个 Hash Function 是 <code>key %3</code>，那么对 key = 1/4/7 执行 hash 结果就是：</p>
+<pre><code>hash(1) = 1
+hash(4) = 1
+hash(7) = 1
+</code></pre><p>可以看到三个不同的 key 都映射到了索引 1 上，这样的话就是产生了 Hash 冲突，换言之就是 Hash 的结果不够均匀，都集中在了索引 1 上，这样类似的情况造成的直接后果就是 HashTable 性能变差，即使我们采用冲突处理方式，也是无法改变这种不均匀 Hash 带来的性能影响。</p>
+<p>Hash 结果均匀的情况，Hash Table 增删改查的时间复杂度都是 <code>O(1)</code>，而不均匀的 Hash 最严重可以导致时间复杂度退化到 <code>O(n)</code>，也就是全部映射到一个索引上，那么查了等于没查；</p>
+<h3 id="冲突处理">冲突处理</h3>
+<p>再完美的 Hash Function 也抵不住更多的 key 的侵袭&hellip;(哲学问题？)，况且我们的 Hash Function 往往都是不完美的，Hash 冲突在所难免，为了确保键值的唯一映射，我们需要对 Hash 冲突进行处理，前人总结出了两种常用的方法：<strong>开放寻址法</strong>和<strong>拉链法（哈希桶）</strong></p>
+<h4 id="开放寻址法">开放寻址法</h4>
+<p>用网上见过的一个例子来讲就是：去公共厕所要找坑位的时候，推开一扇门，发现一个小哥直勾勾瞪着你，然后你默默关上门，然后去找其它的坑位，然后找其它的坑位并不一定是按照顺序找对吧，反正就是这么个意思。</p>
+<p>回到 HashTable 上，如果把 hash 得到指定索引位置比作槽，那么开放寻址法的核心思想通俗而言就是<strong>这个槽放不下的(冲突的)，找其它槽放下</strong>，其中在“找其它槽放下”这一点上，又有着不同的解决方式，分为：线性探查、二次探查、双重哈希，其中效果比较好的是双重哈希，关于这三种方法，继续深入理解的话要去查阅相关的算法介绍，这里不再赘述。</p>
+<p>开放地址法读取数据的过程：当需要查找某个键对应的值时，就会从索引的位置开始对数组进行线性探测，找到目标键值对或者空内存就意味着这一次查询操作的结束。</p>
+<p>开放寻址法中对性能影响最大的就是<strong>装载因子</strong>：</p>
+<p><strong>开放寻址法装载因子 = 元素数量 / 数组大小</strong></p>
+<p>随着装载因子的增加，线性探测的平均用时就会逐渐增加，这会同时影响 HashTable 的读写性能，当装载率超过 70% 之后， HashTable 的性能就会急剧下降，而一旦装载率达到 100%，整个 HashTable 就会完全失效，这时查找任意元素都需要遍历数组中全部的元素，所以在实现 HashTable 时一定要时刻关注装载因子的变化。</p>
+<h4 id="拉链法哈希桶">拉链法（哈希桶）</h4>
+<p>还是以找坑位的例子来讲，当你推开一个坑位的门，发现一个小哥直勾勾瞪着你，然后这时候你并没有默默关上门，而是告诉他，能进一个坑是缘分，挤一挤吧&hellip;。这就是拉链法，更形象地，哈希桶&hellip;</p>
+<p>与开放地址法相比，哈希桶的方式还是更常见一点的，大多数的编程语言都用拉链法实现 HashTable ，它的实现比较开放地址法稍微复杂一些，但是平均查找的长度也比较短，各个用于存储节点的内存都是动态申请的，可以节省比较多的存储空间。</p>
+<p>实现拉链法一般会使用数组加上链表，不过<strong>某些语言</strong>会在拉链法的哈希中引入红黑树以优化性能。当以链表数组作为哈希底层的数据结构时，我们可以将它看成一个可以扩展的二维数组。当我们需要将一个键值对写 HashTable 时，键值对中的 key 先经过一个 Hash Function ， Hash Function 返回的哈希会帮助我们选择一个桶，和开放地址法一样，选择桶的方式就是直接对哈希返回的结果取模：</p>
+<p>哈希桶法读取数据过程：当 Hash Function 命中某个桶时，它会依次遍历桶中的链表，然而遍历到链表的末尾也没有找到期望的键，所以 HashTable 中没有该键对应的值。</p>
+<p>计算哈希、定位桶和遍历链表三个过程是 HashTable 读写操作的主要开销，使用哈希桶实现的 HashTable 也有装载因子这一概念：</p>
+<p><strong>哈希桶法装载因子 = 元素数量 / 桶数量</strong></p>
+<p>与开放地址法一样，拉链法的装载因子越大，哈希的读写性能就越差，在一般情况下使用拉链法的 HashTable 装载因子都不会超过 1，当 HashTable 的装载因子较大时就会触发哈希的扩容，创建更多的桶来存储哈希中的元素，保证性能不会出现严重的下降。如果有 1000 个桶的 HashTable 存储了 10000 个键值对，它的性能是保存 1000 个键值对的 1/10，但是仍然比在链表中直接读写好 1000 倍。</p>
+<h2 id="go-map-实现">Go Map 实现</h2>
+<p>Go 语言运行时同时使用了多个数据结构组合表示 HashTable ，其中使用 <strong>hmap</strong> 结构体来表示 Go Map 结构，我们先来看一下这个结构体内部的字段：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#75715e">// A header for a Go map.
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">hmap</span> <span style="color:#66d9ef">struct</span> {
+	<span style="color:#a6e22e">count</span>     <span style="color:#66d9ef">int</span> 	<span style="color:#75715e">// 元素个数，内置的 len 函数会通过unsafe.Pointer会从这里读取
+</span><span style="color:#75715e"></span>	<span style="color:#a6e22e">flags</span>     <span style="color:#66d9ef">uint8</span>
+	<span style="color:#a6e22e">B</span>         <span style="color:#66d9ef">uint8</span> <span style="color:#75715e">// bucket的数量是2^B, 最多可以放 loadFactor * 2^B 个元素，再多就要扩容
+</span><span style="color:#75715e"></span>	<span style="color:#a6e22e">noverflow</span> <span style="color:#66d9ef">uint16</span> <span style="color:#75715e">//overflow 的 bucket 近似数
+</span><span style="color:#75715e"></span>	<span style="color:#a6e22e">hash0</span>     <span style="color:#66d9ef">uint32</span> <span style="color:#75715e">// hash seed
+</span><span style="color:#75715e"></span>	<span style="color:#a6e22e">buckets</span>    <span style="color:#a6e22e">unsafe</span>.<span style="color:#a6e22e">Pointer</span> <span style="color:#75715e">//2^B 大小的 buckets 数组
+</span><span style="color:#75715e"></span>	<span style="color:#a6e22e">oldbuckets</span> <span style="color:#a6e22e">unsafe</span>.<span style="color:#a6e22e">Pointer</span> <span style="color:#75715e">// 扩容的时候，buckets 长度会是 oldbuckets 的两倍
+</span><span style="color:#75715e"></span>	<span style="color:#a6e22e">nevacuate</span>  <span style="color:#66d9ef">uintptr</span> <span style="color:#75715e">// 指示扩容进度，小于此地址的 buckets 迁移完成
+</span><span style="color:#75715e"></span>	<span style="color:#a6e22e">extra</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">mapextra</span>
+}
+</code></pre></div><p><strong>Bucket 结构体</strong></p>
+<p>这个是 bucket 在编码期间的结构体</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">bmap</span> <span style="color:#66d9ef">struct</span> {
+	<span style="color:#a6e22e">tophash</span> [<span style="color:#a6e22e">bucketCnt</span>]<span style="color:#66d9ef">uint8</span>
+}
+</code></pre></div><p>runtime 期编译器会动态创建新的结构体</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">bmap</span> <span style="color:#66d9ef">struct</span> {
+    <span style="color:#a6e22e">topbits</span>  [<span style="color:#ae81ff">8</span>]<span style="color:#66d9ef">uint8</span>
+    <span style="color:#a6e22e">keys</span>     [<span style="color:#ae81ff">8</span>]<span style="color:#a6e22e">keytype</span>
+    <span style="color:#a6e22e">values</span>   [<span style="color:#ae81ff">8</span>]<span style="color:#a6e22e">valuetype</span>
+    <span style="color:#a6e22e">pad</span>      <span style="color:#66d9ef">uintptr</span>
+    <span style="color:#a6e22e">overflow</span> <span style="color:#66d9ef">uintptr</span>
+}
+</code></pre></div><p>bmap 就是我们常说的“bucket”结构，<strong>每个 bucket 里面最多存储 8 个 key</strong>，这些 key 经过 Hash Function 计算后落入一个桶内。在桶内，又会<strong>根据 key 计算出来的 hash 值的高 8 位来决定 key 到底落入桶内的哪个位置</strong>（一个桶内最多有8个位置），每个 bucket 设计成最多只能放 8 个 key-value 对，如果有第 9 个 key-value 落入当前的 bucket，<strong>那就需要再构建一个 overflow bucket（溢出桶） ，通过 overflow 指针连接起来</strong>。</p>
+<p>Map 元素查找的过程如下：</p>
+<ul>
+<li>key 进行 Hash 计算得到 Key 的 Hash 值；</li>
+<li>Hash 值<strong>低8位用于定位 key 属于哪个 bucket</strong>（hash值的低八位和bucket数组长度取余）;</li>
+<li>Hash 值<strong>高8位用于用来快速判断key是否存在</strong>，存在则返回对应 value，不存在则退出；</li>
+</ul>
+<p>注意，这里<strong>高8位不是用来当作key/value在bucket内部的offset的</strong>，而是作为一个主键，在查找时对tophash数组的每一项进行顺序匹配的。先比较hash值高位与 bucket 的 tophash[i] 是否相等，如果相等则再比较bucket的第i个的key与所给的key是否相等。如果相等，则返回其对应的value，反之，在overflow buckets中按照上述方法继续寻找。即<strong>高8位为 tophash[i] 的比较的主要作用是为了加快判断 key 的速度</strong>。</p>
+<p>注意：bucket 不是采用 key/value 的形式，这样做的好处是：在key和value的长度不同的时候，可<strong>以消除padding(内存对齐)带来的空间浪费</strong>。</p>
+<h3 id="go-map-创建">Go Map 创建</h3>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">m</span> <span style="color:#66d9ef">map</span>[<span style="color:#a6e22e">kT</span>]<span style="color:#a6e22e">vT</span>
+</code></pre></div><p>声明后的 map 并没有分配内存空间，即 <code>nil</code>，此时对其访问会触发 panic:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">panic</span>: <span style="color:#a6e22e">assignment</span> <span style="color:#a6e22e">to</span> <span style="color:#a6e22e">entry</span> <span style="color:#a6e22e">in</span> <span style="color:#66d9ef">nil</span> <span style="color:#66d9ef">map</span>
+</code></pre></div><h3 id="go-map-初始化">Go Map 初始化</h3>
+<p>可以通过 <code>make</code>关键字分配初始空间（<strong><code>make</code>只用于 Go 的 slice / map / chan 这三个内置对象类型</strong>），可以通过字面量初始化，例如：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">m0</span> <span style="color:#f92672">:=</span> make(<span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">int</span>]<span style="color:#66d9ef">bool</span>)
+<span style="color:#a6e22e">m1</span> <span style="color:#f92672">:=</span> make(<span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">int</span>]<span style="color:#66d9ef">bool</span>, <span style="color:#ae81ff">5</span>) <span style="color:#75715e">// 可以指定 size
+</span></code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">m2</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">string</span>]<span style="color:#66d9ef">string</span>{
+  <span style="color:#e6db74">&#34;Joey&#34;</span>: <span style="color:#e6db74">&#34;Handsome&#34;</span>,
+  <span style="color:#e6db74">&#34;Sophie&#34;</span>: <span style="color:#e6db74">&#34;Pretty&#34;</span>
+}
+</code></pre></div><p>make函数实际上会被编译器定位到调用 <code>runtime.makemap</code>，主要做的工作就是初始化 hmap 结构体的各种字段，例如计算 B 的大小，设置哈希种子 hash0 等等。</p>
+<p>注意，<code>runtime.makemap</code> 返回的结果 <strong><code>*hmap</code> 是一个指针</strong>，而 slice 的 make 过程中 <code>makeslice</code> 函数返回的是 Slice 结构体对象。这也是 makemap 和 makeslice 返回值的区别所带来一个不同点：<strong>当 map 和 slice 作为函数参数时，在函数参数内部对 map 的操作会影响 map 自身；而对 slice 却不会</strong>。主要原因，一个是指针（<code>*hmap</code>），一个是结构体（slice）。Go 语言中的函数传参都是值传递，在函数内部，参数会被 copy 到本地。<code>*hmap</code>指针 copy 完之后，仍然指向同一个 map，因此函数内部对 map 的操作会影响实参。而 slice 被 copy 后，会成为一个新的 slice，对它进行的操作不会影响到实参。</p>
+<p>另外，初始化过程还有一些值得关注的点：</p>
+<ul>
+<li>当 HashTable 中的元素数量少于或者等于 25 个时，编译器会直接将所有的键值对一次加入到 HashTable 中；</li>
+<li>一旦 HashTable 中元素的数量超过了 25 个，就会在编译期间创建两个数组分别存储键和值的信息，这些键值对会通过一个for 循环存储；</li>
+<li>不过无论使用哪种方法，使用字面量初始化的过程都会使用 Go 语言中的关键字 <code>make</code> 来创建新的哈希并通过最原始的 <code>[]</code> 语法向哈希追加元素；</li>
+</ul>
+<h3 id="扩容">扩容</h3>
+<p>有两种情况下，需要做扩容。</p>
+<ul>
+<li>触发 <code>load factor</code> 的最大值，负载因子已达到当前界限（默认负载因子6.5）</li>
+<li>溢出桶 <code>overflow buckets</code> 过多</li>
+</ul>
+<p>当满足条件后，将开始扩容，扩容的规则如下：</p>
+<ul>
+<li>
+<p>若是负载因子 <code>load factor</code> 达到当前界限，将会<strong>动态扩容当前大小的两倍作为其新容量大小</strong>；</p>
+</li>
+<li>
+<p>若是溢出桶 <code>overflow buckets</code> 过多的情况，本次扩容规则将是 <code>sameSizeGrow</code>，即是<strong>不改变大小的扩容动作</strong>；</p>
+</li>
+</ul>
+<p>有以下几点需要注意：</p>
+<ul>
+<li>根据需扩容的原因不同，分为两类容量规则方向，为等量扩容（不改变原有大小）或双倍扩容；</li>
+<li>新申请的扩容空间都是预分配，等真正使用的时候才会初始化；</li>
+<li>扩容完毕后（预分配），不会马上就进行迁移。而是采取<strong>增量扩容</strong>的方式，<strong>当有访问到具体 bukcet 时，才会逐渐的进行迁移</strong>（将 oldbucket 迁移到 bucket）；</li>
+</ul>
+<p>所谓”<strong>增量扩容</strong>“，主要是为了缩短map容器的响应时间。如果不采用增量扩容，当map里面存储的元素很多之后，扩容时系统就会卡往，导致较长一段时间内无法响应请求。不过增量扩容本质上还是将总的扩容时间分摊到了每一次哈希操作上面。扩容会建立一个大小是原来2倍的新的表，将旧的 bucket 搬到新的表中之后，并不会将旧的bucket 从 oldbucket 中删除，而是加上一个已删除的标记。正是由于这个工作是逐渐完成的，这样就会导致一部分数据在 old table 中，一部分在 new table 中， 所以对于hash table的insert, remove, lookup操作的处理逻辑产生影响。只有当所有的 bucket 都从旧表移到新表之后，才会将 oldbucket 释放掉。</p>
+<h2 id="小结">小结</h2>
+<p>Go 语言使用哈希桶来解决哈希碰撞的问题实现了 map 数据结构 ，它的访问、写入和删除等操作都在编译期间转换成了运行时的函数或者方法。</p>
+<p>哈希在每一个桶中存储键对应哈希的前 8 位，当对哈希进行操作时，这些 <code>tophash</code> 就成为了一级缓存帮助哈希快速遍历桶中元素，每一个桶都只能存储 8 个键值对，一旦当前哈希的某个桶超出 8 个，新的键值对就会被存储到哈希的溢出桶中。</p>
+<p>随着键值对数量的增加，溢出桶的数量和哈希的装载因子也会逐渐升高，超过一定范围就会触发扩容，扩容会将桶的数量翻倍，元素再分配的过程也是在调用写操作时增量进行的，不会造成性能的瞬时巨大抖动。</p>
+<h2 id="参考">参考</h2>
+<ul>
+<li>
+<p><a href="https://www.cnblogs.com/maji233/p/11070853.html">https://www.cnblogs.com/maji233/p/11070853.html</a></p>
+</li>
+<li>
+<p><a href="https://www.jianshu.com/p/aa0d4808cbb8">https://www.jianshu.com/p/aa0d4808cbb8</a></p>
+</li>
+</ul>
+
+        </div>
+
+        
+
+        
+<br>
+<div class="heading">Tags:</div>
+<div class="field is-grouped is-grouped-multiline">
+  <div class="control">
+    <a href="/tags/golang">
+      <span class="tag">Golang</span>
+    </a>
+  </div>
+</div>
+
+      </div>
+
+    </section>
+
+    <section class="section">
+
+      
+      <script src="https://utteranc.es/client.js"
+        repo = "yingchi1994/HugoComments"
+        issue-term = "pathname"
+        theme = "github-light"
+        crossorigin="anonymous"
+        async>
+      </script>
+      <br>
+      
+      
+      <div class="container">
+  <div class="level">
+
+    <div class="level-left">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/3/go-goroutine.html">
+            <span class="icon is-small"><i class="fa fa-chevron-left"></i></span>
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Goroutine 并发模型
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Goroutine 并发模型
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Goroutine 并发模型
+            </span>
+            <span class="is-hidden-tablet">
+              Goroutine 并发模型
+            </span>
+            
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <div class="level-right">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/3/go-array-slice.html">
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Go Array 与 Slice 原理
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Go Array 与 Slice 原理
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Go Array 与 Slice 原理
+            </span>
+            <span class="is-hidden-tablet">
+              Go Array 与 Slice 原理
+            </span>
+            
+            <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+          </a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+      <br>
+
+      
+      
+
+      <br>
+      
+      
+      
+<div class="container">
+  <nav class="panel">
+    <p class="panel-heading">Related</p>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/3/go-array-slice.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Go Array 与 Slice 原理&nbsp;
+      <div class="tag">Golang</div>
+      </span>
+    </a>
+  </nav>
+</div>
+
+    </section>
+
+    <footer class="footer" 
+style="text-align: center; background-color: #ffffff;">
+  <div class="container">
+    <span style="font-size: small;">
+      <a href="https://yingchi.io/">yingchi.io</a>
+       © 2018-2020</span>
+    <span style="font-size: small;"> Joey.Jiang | 
+      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
+  </div>
+</footer>
+
+  </body>
+
+</html>
+<style>
+
+body {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.container{
+  width: 800px;
+}
+
+.title-custom {
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.subtitle-custom {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.content-custom {
+    color: #000;
+    font-size: 16px;
+}
+
+.content-custom blockquote {
+    margin-bottom: 15px;
+    padding: 15px 0 15px 25px;
+    background: rgb(245, 246, 247);
+    border-left: 10px solid rgb(229, 232, 236);
+    border-radius: 5px;
+}
+
+.content-custom strong {
+    color: rgb(91, 127, 194);
+}
+
+.content-custom em {
+    font-style: normal;
+    font-weight: bold;
+}
+
+.content-custom p {
+    margin: 0 10px;
+}
+
+.content-custom ul{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+    list-style-type: square;
+}
+
+.content-custom ul ul{
+    margin: 0px;
+    list-style-type: circle;
+    padding: 0;
+}
+
+.content-custom ol{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+}
+
+.content-custom li {
+    margin: 5px 40px;
+}
+
+.content-custom img {
+    margin: 20px auto !important;
+    text-align: center;
+    clear: both;
+    display: block;
+    margin: auto;
+    width: 80%;
+}
+
+
+
+.content-custom pre{
+    color: rgb(224, 235, 247);
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgb(85, 94, 104);
+    background-color: rgb(85, 94, 104) !important;
+}
+
+.content-custom h1 {
+    font-size: 25px;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+    padding: 15px;
+     
+    border-bottom: 3px solid #555;
+}
+.content-custom h2 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 40px 0 20px 0;
+    padding: 10px;
+     
+    border-bottom: 2px solid #555;
+}
+.content-custom h3 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 16px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+.content-custom h4 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 10px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+
+ 
+@media screen and (max-width: 960px){
+
+  body{
+    overflow-x: hidden;
+  }
+
+  .container{
+    width: 100%;
+  }
+
+  .content-custom img {
+    width: 100%;
+  }
+
+  .title-custom {
+    font-size: 22px;
+  }
+}
+
+
+</style>

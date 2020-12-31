@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <title>Kubernetes Rolling Update 滚动升级</title>
+  <meta name="author" content="YINGCHI_Joey" />
+  <meta name="description"
+        content="
+用户希望应用程序始终可用，而开发人员则需要每天多次部署它们的新版本。在 Kubernetes 中，这些是通过滚动更新（Rolling Updates）完成的。 滚动更新 允许通过使用新的实例逐步更新 Pod 实例，零停机进行 Deployment 更新。
+
+Kubernetes Rolling Update 基本概念
+概念
+当集群中的某个服务需要升级时，传统的做法是，先将要更新的服务下线，业务停..."/>
+
+
+  <meta name="generator" content="Hugo 0.71.1" />
+
+  
+  <meta itemprop="name" content="Kubernetes Rolling Update 滚动升级"/>
+  <meta itemprop="description"
+        content="
+用户希望应用程序始终可用，而开发人员则需要每天多次部署它们的新版本。在 Kubernetes 中，这些是通过滚动更新（Rolling Updates）完成的。 滚动更新 允许通过使用新的实例逐步更新 Pod 实例，零停机进行 Deployment 更新。
+
+Kubernetes Rolling Update 基本概念
+概念
+当集群中的某个服务需要升级时，传统的做法是，先将要更新的服务下线，业务停..."/>
+  <meta itemprop="image"
+        content=""/>
+
+  
+  <meta property="og:title" content="Kubernetes Rolling Update 滚动升级"/>
+  <meta property="og:type"
+        content="article"/>
+  <meta property="og:url" content="https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html"/>
+  <meta property="og:image"
+        content=""/>
+  <meta property="og:description"
+        content="
+用户希望应用程序始终可用，而开发人员则需要每天多次部署它们的新版本。在 Kubernetes 中，这些是通过滚动更新（Rolling Updates）完成的。 滚动更新 允许通过使用新的实例逐步更新 Pod 实例，零停机进行 Deployment 更新。
+
+Kubernetes Rolling Update 基本概念
+概念
+当集群中的某个服务需要升级时，传统的做法是，先将要更新的服务下线，业务停..."/>
+  <meta property="og:site_name" content="Yingchi Blog"/>
+  <meta property="article:published_time"
+        content="2020-04-05T21:03:12&#43;08:00"/>
+  <meta property="article:section" content="posts"/>
+  <meta property="article:tag" content="kubernetes"/>
+
+  
+  
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:site"
+        content=""/>
+  <meta name="twitter:title" content="Kubernetes Rolling Update 滚动升级"/>
+  <meta name="twitter:description"
+        content="
+用户希望应用程序始终可用，而开发人员则需要每天多次部署它们的新版本。在 Kubernetes 中，这些是通过滚动更新（Rolling Updates）完成的。 滚动更新 允许通过使用新的实例逐步更新 Pod 实例，零停机进行 Deployment 更新。
+
+Kubernetes Rolling Update 基本概念
+概念
+当集群中的某个服务需要升级时，传统的做法是，先将要更新的服务下线，业务停..."/>
+  <meta name="twitter:creator"
+        content=""/>
+  <meta name="twitter:image:src"
+        content=""/>
+
+  
+
+  
+  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
+  
+  
+
+  
+  
+  
+  
+  <script>
+  	var _mtac = {};
+  	(function() {
+  		var mta = document.createElement("script");
+  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
+  		mta.setAttribute("name", "MTAH5");
+  		mta.setAttribute("sid", "500724862");
+
+  		var s = document.getElementsByTagName("script")[0];
+  		s.parentNode.insertBefore(mta, s);
+  	})();
+</script>
+</head>
+
+
+  <body style="min-height:100vh;display:flex;flex-direction:column">
+
+    <section>
+  <nav style="text-align: center; margin-top: 30px;">
+    <div>
+        <a class="custom-title" href="/">
+          
+          <img class="logo" src="/logo.png"/>
+        </a>
+    </div>
+  </nav>
+
+</section>
+
+<style>
+  .custom-title{
+    color: rgb(87, 87, 87);
+    font-size: 25px;
+    font-weight: bold;
+    text-decoration: none;
+  }
+
+  .logo{
+    width: 190px;
+  }
+</style>
+
+    <section class="section" style="flex:1">
+
+      
+      <div class="container">
+        
+        <p class="title-custom">Kubernetes Rolling Update 滚动升级</p>
+        <p class="subtitle-custom">Apr 5, 2020</p>
+
+        
+
+        
+        
+        <div class="content-custom">
+          <blockquote>
+<p>用户希望应用程序始终可用，而开发人员则需要每天多次部署它们的新版本。在 Kubernetes 中，这些是通过滚动更新（Rolling Updates）完成的。 <strong>滚动更新</strong> 允许通过使用新的实例逐步更新 Pod 实例，零停机进行 Deployment 更新。</p>
+</blockquote>
+<h2 id="kubernetes-rolling-update-基本概念">Kubernetes Rolling Update 基本概念</h2>
+<h3 id="概念">概念</h3>
+<p>当集群中的某个服务需要升级时，传统的做法是，先将要更新的服务下线，业务停止后再更新版本和配置，然后重新启动并提供服务。这种方式很明显的一个问题就是：会导致服务较长时间不可用，并且在大规模服务场景下会产生极大的工作量。</p>
+<p>滚动更新就是针对多实例服务的一种不中断服务的更新升级方式。一般情况下，对于多实例服务，滚动更新采用对各个实例逐个进行单独更新而非同一时刻对所有实例进行全部更新的方式。</p>
+<p>对于 kubernetes 集群部署的 service 来说，rolling update 就是指一次仅更新一个pod，并逐个进行更新，而不是在同一时刻将该 service 下面的所有 pod 全部停止，然后更新为新版本后再全部上线，rolling update 方式可以避免业务中断。</p>
+<h3 id="特点">特点</h3>
+<p>优点：</p>
+<ul>
+<li>业务不中断，用户体验影响较小，较平滑</li>
+<li>相对于蓝绿部署，更加节约资源——它不需要运行两个集群、两倍的实例数</li>
+</ul>
+<p>滚动更新也并不是银弹，有很多问题需要考虑到，比如：<strong>因为是逐步更新，那么我们在上线代码的时候，就会短暂出现新老版本不一致的情况，如果对上线要求较高的场景，那么就需要考虑如何做好兼容的问题</strong>。</p>
+<h2 id="k8s-基于-deployment-的-rolling-update">K8S 基于 Deployment 的 Rolling Update</h2>
+<p>kubernetes 的 Deployment 是一个相比较早前 Replication Controller 以及现在的 Replica Set 更高级别的抽象。Deployment会创建一个Replica Set，用来保证Deployment中的Pod的副本数。要 rolling-update deployment 中的 Pod，只需要修改 Deployment 自己的yml 文件并应用即可。这个修改会创建一个新的 Replica Set，在增加这个新 RS 的 pod 数的同时，减少旧RS的pod，直至完全升级。而这一切都发生在 Server 端，并不需要 kubectl 参与。</p>
+<p>创建一个Deployment yml文件nginx-demo-dm.yml：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">apiVersion</span>: apps/v1
+<span style="color:#66d9ef">kind</span>: Deployment
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: nginx-deploy
+<span style="color:#66d9ef">spec</span>:
+  <span style="color:#66d9ef">replicas</span>: <span style="color:#ae81ff">3</span>
+  <span style="color:#66d9ef">selector</span>:
+    <span style="color:#66d9ef">matchLabels</span>:
+      <span style="color:#66d9ef">app</span>: nginx-deploy
+  <span style="color:#66d9ef">minReadySeconds</span>: <span style="color:#ae81ff">10</span>
+  <span style="color:#66d9ef">template</span>:
+    <span style="color:#66d9ef">metadata</span>:
+      <span style="color:#66d9ef">labels</span>:
+        <span style="color:#66d9ef">app</span>: nginx-deploy
+        <span style="color:#66d9ef">version</span>: v1
+    <span style="color:#66d9ef">spec</span>:
+      <span style="color:#66d9ef">containers</span>:
+        - <span style="color:#66d9ef">name</span>: nginx-deploy
+          <span style="color:#66d9ef">image</span>: nginx:<span style="color:#ae81ff">1.10.1</span>
+          <span style="color:#66d9ef">ports</span>:
+            - <span style="color:#66d9ef">containerPort</span>: <span style="color:#ae81ff">80</span>
+              <span style="color:#66d9ef">protocol</span>: TCP
+</code></pre></div><p>创建该deployment：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">kubect create -f nginx-demo-dm.yml --record
+</code></pre></div><p>直接修改该 deployment 的 YAML 文件，<strong>修改到目标版本配置</strong>，如下 ：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">apiVersion</span>: apps/v1
+<span style="color:#66d9ef">kind</span>: Deployment
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: nginx-deploy
+<span style="color:#66d9ef">spec</span>:
+  <span style="color:#66d9ef">replicas</span>: <span style="color:#ae81ff">3</span>
+  <span style="color:#66d9ef">selector</span>:
+    <span style="color:#66d9ef">matchLabels</span>:
+      <span style="color:#66d9ef">app</span>: nginx-deploy
+  <span style="color:#66d9ef">minReadySeconds</span>: <span style="color:#ae81ff">10</span>
+  <span style="color:#66d9ef">template</span>:
+    <span style="color:#66d9ef">metadata</span>:
+      <span style="color:#66d9ef">labels</span>:
+        <span style="color:#66d9ef">app</span>: nginx-deploy
+        <span style="color:#66d9ef">version</span>: v2
+    <span style="color:#66d9ef">spec</span>:
+      <span style="color:#66d9ef">containers</span>:
+        - <span style="color:#66d9ef">name</span>: nginx-deploy
+          <span style="color:#66d9ef">image</span>: nginx:<span style="color:#ae81ff">1.11.9</span>
+          <span style="color:#66d9ef">ports</span>:
+            - <span style="color:#66d9ef">containerPort</span>: <span style="color:#ae81ff">80</span>
+              <span style="color:#66d9ef">protocol</span>: TCP
+</code></pre></div><p>修改了其中一个 label，修改了 image 的 tag，然后执行：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">kubectl apply -f nginx-demo-dm.yml --record
+</code></pre></div><p>没错，不需要像 <code>kubectl rolling-update [SVC] -f [TARGET-RC]</code>这种 Replication Controller 时代的滚动更新形式，只需要像平常一样 <code>apply -f</code>即可，唯一不同的是需要加一个 <code>--record</code> ，目的很明显，方便回滚。</p>
+<p>此时可以查看 Deployment 具体的滚动更新过程：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">kubectl describe deployment nginx-demo
+</code></pre></div><p>由于通过 <code>--record</code> 记录了更新历史，可以通过 <code>kubectl rollout history</code> 命令查看</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">kubectl rollout history deployment nginx-demo
+</code></pre></div><h3 id="回滚">回滚</h3>
+<p>如果需要回滚到之前一个版本：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">kubectl rollout undo deployment nginx-demo
+</code></pre></div><p>回滚到指定版本：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">kubectl rollout undo deployment xxx-deployment --to-version<span style="color:#f92672">=</span><span style="color:#ae81ff">2</span>
+</code></pre></div><h2 id="参考">参考</h2>
+<ul>
+<li>
+<p><a href="https://kubernetes.io/zh/docs/tutorials/kubernetes-basics/update/update-intro/">https://kubernetes.io/zh/docs/tutorials/kubernetes-basics/update/update-intro/</a></p>
+</li>
+<li>
+<p><a href="https://www.cnblogs.com/tylerzhou/p/10995774.html">https://www.cnblogs.com/tylerzhou/p/10995774.html</a></p>
+</li>
+</ul>
+
+        </div>
+
+        
+
+        
+<br>
+<div class="heading">Tags:</div>
+<div class="field is-grouped is-grouped-multiline">
+  <div class="control">
+    <a href="/tags/kubernetes">
+      <span class="tag">Kubernetes</span>
+    </a>
+  </div>
+</div>
+
+      </div>
+
+    </section>
+
+    <section class="section">
+
+      
+      <script src="https://utteranc.es/client.js"
+        repo = "yingchi1994/HugoComments"
+        issue-term = "pathname"
+        theme = "github-light"
+        crossorigin="anonymous"
+        async>
+      </script>
+      <br>
+      
+      
+      <div class="container">
+  <div class="level">
+
+    <div class="level-left">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/4/kubernetes-resources.html">
+            <span class="icon is-small"><i class="fa fa-chevron-left"></i></span>
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              理解 Kubernetes 的 Resource 设计概念
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              理解 Kubernetes 的 Resource 设计概念
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              理解 Kubernetes 的 Resource 设计概念
+            </span>
+            <span class="is-hidden-tablet">
+              理解 Kubernetes 的 Resource 设计概念
+            </span>
+            
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <div class="level-right">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html">
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Kubernetes 架构浅析
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Kubernetes 架构浅析
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Kubernetes 架构浅析
+            </span>
+            <span class="is-hidden-tablet">
+              Kubernetes 架构浅析
+            </span>
+            
+            <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+          </a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+      <br>
+
+      
+      
+
+      <br>
+      
+      
+      
+<div class="container">
+  <nav class="panel">
+    <p class="panel-heading">Related</p>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes 架构浅析&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>记一次 Kubeadm 部署 k8s &#43; Flannel&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2019/10/network-devices.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>网络模型学习基础：各层网络设备概念&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+  </nav>
+</div>
+
+    </section>
+
+    <footer class="footer" 
+style="text-align: center; background-color: #ffffff;">
+  <div class="container">
+    <span style="font-size: small;">
+      <a href="https://yingchi.io/">yingchi.io</a>
+       © 2018-2020</span>
+    <span style="font-size: small;"> Joey.Jiang | 
+      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
+  </div>
+</footer>
+
+  </body>
+
+</html>
+<style>
+
+body {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.container{
+  width: 800px;
+}
+
+.title-custom {
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.subtitle-custom {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.content-custom {
+    color: #000;
+    font-size: 16px;
+}
+
+.content-custom blockquote {
+    margin-bottom: 15px;
+    padding: 15px 0 15px 25px;
+    background: rgb(245, 246, 247);
+    border-left: 10px solid rgb(229, 232, 236);
+    border-radius: 5px;
+}
+
+.content-custom strong {
+    color: rgb(91, 127, 194);
+}
+
+.content-custom em {
+    font-style: normal;
+    font-weight: bold;
+}
+
+.content-custom p {
+    margin: 0 10px;
+}
+
+.content-custom ul{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+    list-style-type: square;
+}
+
+.content-custom ul ul{
+    margin: 0px;
+    list-style-type: circle;
+    padding: 0;
+}
+
+.content-custom ol{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+}
+
+.content-custom li {
+    margin: 5px 40px;
+}
+
+.content-custom img {
+    margin: 20px auto !important;
+    text-align: center;
+    clear: both;
+    display: block;
+    margin: auto;
+    width: 80%;
+}
+
+
+
+.content-custom pre{
+    color: rgb(224, 235, 247);
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgb(85, 94, 104);
+    background-color: rgb(85, 94, 104) !important;
+}
+
+.content-custom h1 {
+    font-size: 25px;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+    padding: 15px;
+     
+    border-bottom: 3px solid #555;
+}
+.content-custom h2 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 40px 0 20px 0;
+    padding: 10px;
+     
+    border-bottom: 2px solid #555;
+}
+.content-custom h3 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 16px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+.content-custom h4 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 10px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+
+ 
+@media screen and (max-width: 960px){
+
+  body{
+    overflow-x: hidden;
+  }
+
+  .container{
+    width: 100%;
+  }
+
+  .content-custom img {
+    width: 100%;
+  }
+
+  .title-custom {
+    font-size: 22px;
+  }
+}
+
+
+</style>

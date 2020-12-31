@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Yingchi Blog</title>
+    <link>https://blog.yingchi.io/</link>
+    <description>Recent content on Yingchi Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 24 Jul 2020 23:41:26 +0800</lastBuildDate>
+    
+	<atom:link href="https://blog.yingchi.io/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>解读 kubernetes Controller Manager 工作原理</title>
+      <link>https://blog.yingchi.io/posts/2020/7/k8s-cm-informer.html</link>
+      <pubDate>Fri, 24 Jul 2020 23:41:26 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/7/k8s-cm-informer.html</guid>
+      <description>kubernetes master 节点最重要的三个组件是：kube-apiserver、kube-controller-manager、kube-scheduler，分别负责 kubernetes 集群的资源访问入口、集群状态管理、资源调度。
+这篇文章的主角就是其中的 kube-controller-manager 组件，分析一下它以及其核心组件 informer 是如何有效管理集群状态的。
+Controller Manager &amp;amp; Controller 工作原理概述 我们都知道 kubernetes 中管理资源的方式比较简单，通常就是写一个 YAML 清单，简单的可以通过 kubectl 命令直接解决，在这个过程中，我们定义了某个资源的「期望状态」，比如 YAML 清单文件中的 spec 字段，Deployment 的 YAML 中的 spec 字段可能定义了期望的 replicas，我们期望集群的某个 pod 的副本数维持在某个数量上，当我们提交清单给集群，kubernetes 会在一段时间内将集群中的某些资源调整至我们期望的状态；亦或是另一个场景，集群中某个 Pod 挂掉了，或者我们将 Pod 从某个 Worker Node 上驱逐了，然后我们没有做任何操作，Pod 又会自动重建，并且达到指定的副本数，这是很常见的场景。
+上面说的这些资源的状态管理是由谁实现的呢？没错，就是 Controller Manager，Controller Manager 是 Kubernetes 的灵魂组件之一，可以说通过定义资源期望状态实现集群资源编排管理的思想其底层就是依赖 Controller Manager 这个组件。
+Controller Manager 的作用简而言之：保证集群中各种资源的实际状态（status）和用户定义的期望状态（spec）一致。
+按照官方定义：kube-controller-manager 运行控制器，它们是处理集群中常规任务的后台线程。
+Controller Manager 就是集群内部的管理控制中心，刚才说 Controller Manager 的作用是保证集群中各种资源的实际状态和用户定义的期望状态一致，但是如果出现不一致的情况怎么办？是由 Controller Manager 自己来对各种资源进行调整吗？
+这时候就要说到 Controller 的概念了，之所以叫 Controller Manager，是因为 Controller Manager 由负责不同资源的多个 Controller 构成，如 Deployment Controller、Node Controller、Namespace Controller、Service Controller 等，这些 Controllers 各自明确分工负责集群内资源的管理。</description>
+    </item>
+    
+    <item>
+      <title>一文读懂 Kubernetes RBAC 机制</title>
+      <link>https://blog.yingchi.io/posts/2020/7/k8s-rbac.html</link>
+      <pubDate>Thu, 23 Jul 2020 21:15:06 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/7/k8s-rbac.html</guid>
+      <description>之前在做 PaaS 平台开发时涉及到租户的权限管理，考虑到 Kubernetes 默认提供了 RBAC（基于角色的访问控制）机制，于是想如何利用好 Kubernetes 的 RBAC 来实现。但是开始学习这块儿知识的时候还是遇到了一些问题，比如 Role 和 ClusterRole，Role Binding 和 ClusterRoleBinding，很多概念是比较模糊的，随着后来深入的学习了解和实践才算理清它们之间的关系，这篇文章就是分享一下这期间学到的内容。
+ 什么是 RBAC？ RBAC（基于角色的访问控制） RBAC，Role-Based Access Control，即基于角色的访问控制，通过自定义具有某些特定 Permission 的 Role，然后将 Role 和特定的 Subject（user，group，serviceaccounts&amp;hellip;)关联起来已达到权限控制的目的。
+RBAC 中有三个比较重要的概念：
+ Role：角色，本质是一组规则权限的集合，注意：RBAC 中，Role 只声明授予权限，而不存在否定规则； Subject：被作用者，包括 user，group，通俗来讲就是认证机制中所识别的用户； RoleBinding：定义了“Role”和“Subject”的绑定关系，也就是将用户以及操作权限进行绑定；  RBAC 其实就是通过创建角色(Role），通过 RoleBinding 将被作用者（subject）和角色（Role）进行绑定。下图是 RBAC 中的几种绑定关系：
+Kubernetes RBAC 现在以 Kubernetes 的视角重新来看 RBAC 的实现。
+Kubernetes 中实现 RBAC 角色创建、角色绑定整个流程还是比较清晰的，RBAC 的配置都是以资源配置的形式呈现给管理员，我们只需要定义一些配置文件即可，当然在这其中会涉及到对一些配置的理解。首先来看 Kubernetes 中 RBAC 配置关系图：
+如图可知，实现 Kubernetes 的自定义 RBAC 过程，主要涉及到几个概念，其实一开始已经提到过了，这不过在 Kubernetes 中定义了更具体的概念，这是重点需要关注的。
+Subject 主体，kubernetes 中的 Subject 包括了 User、Group、Service Account，前两个好理解，Service Account 其实就是区别开 User Account 的，Kubernetes 中的资源也是可以当做一个 Subject 的，比如一个 Pod 需要操作集群资源时，它采用的就是 Service Account。</description>
+    </item>
+    
+    <item>
+      <title>Kubernetes API Server 认证与授权机制</title>
+      <link>https://blog.yingchi.io/posts/2020/7/k8s-authn-authz.html</link>
+      <pubDate>Sun, 19 Jul 2020 19:54:22 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/7/k8s-authn-authz.html</guid>
+      <description>kube-apiserver 是 kubernetes 的网关性质的组件，是 kubernetes 集群资源操作的唯一入口，因此像认证与授权等一些过程很明显是要基于这个组件实施。kubernetes 集群的所有操作基本上都是通过 apiserver 这个组件进行的，它提供 HTTP RESTful 形式的 API 供集群内外客户端调用。kubernetes 对于访问 API 来说提供了三个步骤的安全措施：认证、授权、准入控制，当用户使用 kubectl，client-go 或者 REST API 请求 apiserver 时，都要经过这三个步骤的校验。
+ 认证解决的问题是识别用户的身份； 授权是明确用户具有哪些权限； 准入控制是作用于 kubernetes 中的资源对象。  Kubernetes API Server 认证机制（Authentication） 一旦TLS连接建立，请求就进入到身份认证阶段，在这一阶段，请求有效负载由一个或多个认证器模块检查。
+认证模块时管理员在集群创建过程中配置的，一个集群可能有多个认证模块配置，每个模块会依次尝试认证， 直到其中一个认证成功。
+在主流的认证模块中会包括客户端证书、密码、plain tokens、bootstrap tokens以及JWT tokens（用于service account）。客户端证书的使用是默认的并且是最常见的方案。
+kubernetes 目前所有的认证策略如下所示：
+ X509 client certs Static Token File Bootstrap Tokens Static Password File Service Account Tokens OpenId Connect Tokens Webhook Token Authentication Authticating Proxy Anonymous requests User impersonation Client-go credential plugins  Kubernetes 常用认证机制 X509 client certs X509 client certs 认证方式是用在一些客户端访问 apiserver 以及集群组件之间访问时使用，比如 kubectl 请求 apiserver 时。</description>
+    </item>
+    
+    <item>
+      <title>2020 年 6 月 CKA 认证通过分享</title>
+      <link>https://blog.yingchi.io/posts/2020/6/cka-note.html</link>
+      <pubDate>Mon, 29 Jun 2020 22:43:03 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/6/cka-note.html</guid>
+      <description>CKA (Certified Kubernetes Administrator)认证是由 CNCF 与 Linux Foundation 管理的与 Kubernetes 运维技能相关的一个认证，目前业内对于云原生这一块儿专门的认证还是比较少的。自己目前所做的大部分工作都与 Kubernetes 关系比较密切，因此就报名预约了 6 月份的认证，好好准备一段时间，最后成功通过了认证（证书详见文末）
+ 考试大纲 CNCF 官网中找到 CKA 认证考试页面 https://www.cncf.io/certification/cka/ 可以看到基本的考试大纲，分值分配情况。
+The online exam consists of a set of performance-based items (problems) to be solved in a command line and candidates have 3 hours to complete the tasks.
+The Certification focuses on the skills required to be a successful Kubernetes Administrator in industry today. This includes these general domains and their weights on the exam:</description>
+    </item>
+    
+    <item>
+      <title>Istio Sidecar 流量拦截机制分析</title>
+      <link>https://blog.yingchi.io/posts/2020/6/istio-sidecar-proxy.html</link>
+      <pubDate>Mon, 22 Jun 2020 16:23:17 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/6/istio-sidecar-proxy.html</guid>
+      <description>流量流经主机的基本过程 过程如下：
+ Inbound 流量经过 NIC（网卡）进入主机的网络协议栈； 协议栈会根据预先定制的网络规则(iptables/netfilter)对报文进行检查； 协议栈规则检查后，符合要求的 Inbound 流量会从内核空间进入到用户空间，并进入指定监听端口的进程； 处于用户态的用户进程接收到网络流量报文进行处理后，将处理后的结果再通过用户空间返回给内核空间的网络协议栈； 网络协议栈检查报文，并将结果报文根据指定的网络策略通过网卡发送出去；  Sidecar 流量拦截基本过程 之前的文章已经介绍过了 Sidecar 的注入机制，注入到 Pod 中的即下面两个容器：
+ istio-init：InitContainer，用于在 Pod 初始化过程中对 Pod 的 iptables 进行初始配置； istio-proxy：负责与 pilot 组件通信以及流量的控制；该容器运行时会启动两个关键的进程 pilot-agent 和 envoy。pilot-agent 进程会定时跟 istio 的 pilot 组件进行通信，envoy 进程会接收入口和出口网络流量。  注意：istio-proxy 和 Kubernetes 中的 kube-proxy 都是通过 iptables/netfilter 来处理网络流量。只不过 istio-proxy 位于 pod 网络空间，处理的是 pod 内的网络流量，而 kube-proxy 位于宿主机网络空间，处理的是宿主机内网络流量（因为 kube-proxy 是 daemonset，因此它位于 k8s 集群的每个 node 节点上）。
+Sidecar 流量拦截其实指基于 iptables 规则，由 init 容器在 Pod 启动的时候首先设置iptables 规则。</description>
+    </item>
+    
+    <item>
+      <title>Istio Sidecar 注入机制</title>
+      <link>https://blog.yingchi.io/posts/2020/6/istio-sidecar-injection.html</link>
+      <pubDate>Sun, 21 Jun 2020 21:31:42 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/6/istio-sidecar-injection.html</guid>
+      <description>Service Mesh 及 Sidecar 概念 在了解 Sidecar 的注入机制前还是先要明确是什么和为什么的问题。
+首先，Service Mesh 是什么？
+Service Mesh，或者翻译为「服务网格」，是一个可配置的低延迟的基础设施层，目的是通过API（应用程序编程接口）处理应用程序服务之间的大量基于网络的进程间通信。服务网络确保容器化的短暂存在的应用程序的基础结构服务之间的通信快速，可靠和安全。网格提供关键功能，包括服务发现，负载平衡，加密，可观察性，可追溯性，身份验证和授权，以及对断路器模式的支持。其实服务网格的目的说的最简单就是「接管和治理应用程序间的通信」，其中有个最为核心的要点就是，通信，基于 Service Mesh 的服务治理就是在服务的通信或者说调用过程中「做手脚」，离开这一点，Service Mesh 毫无意义，当然，这个应用程序似乎也没有意义了。如下图所示，就是典型的 Service Mesh 基础设施层架构。
+可以看到分为 Control Plane 和 Data Plane，Control Plane 的主要作用就是治理规则的控制与下发，而 Data Plane 的主要作用就是处理服务实例间的通信过程，实施指定的治理策略。Data Plane 中就可以看到今天的主角，也就是 Sidecar，正如图中标识的，Sidecar 最准确的表述应该是 「Sidecar Proxy」，它的本质是一个代理组件，这个组件会被直接注入到服务实例相同的 Network Namesapce 下，在 Kubernetes 中，就是注入到 Pod 里面，此时 Sidecar 与服务实例共享 Pod Network Namespace，可以通过 iptables 对流经实例的 inbound 和 outbound 流量进行相应的规则处理。
+本文主要基于 Istio 这个 Service Mesh 实现针对 Sidecar 的注入机制进行分析。
+Admission Controller 与 Admission Webhook Sidecar 的注入依赖于 Kubernetes 的几个概念，其中比较核心的就是 Admission Controller 和 Admission Webhook。</description>
+    </item>
+    
+    <item>
+      <title>Cloud Native 云原生 | 概念解读</title>
+      <link>https://blog.yingchi.io/posts/2020/5/what-is-cloud-native.html</link>
+      <pubDate>Fri, 29 May 2020 22:43:03 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/5/what-is-cloud-native.html</guid>
+      <description>定义的探索之路 都在提「云原生」的概念，但是真正理解这个概念的又有多少人呢？每次浏览一些社区的时候（不乏一些专业的技术社区），看到有些朋友在讨论云原生相关的话题，有些时候总感觉他们对于云原生的理解还是有那么一点问题。
+很多朋友直接就认为部署在云端的应用就叫做云原生应用，一般出现在刚接触云计算与云原生概念的群体中，这个明显是错误的认识，或者说就是「概念滥用」，再有就是懂一些容器化相关概念的内行人士，他们认为，云原生应用是通过容器技术构建，部署在 Kubernetes 这种容器编排平台上的，才能是云原生应用，这听起来像那么回事了，但是呢，还是不够严谨，只是从云原生应用的实现层面来讲的，但是对于其核心概念还是没解释，比如 Cloud Native 的 Native 具体体现在什么上？
+其实也不能怪大家伙没搞明白啥是云原生，其实就连最早发起云原生概念的这群人自己也是在逐渐摸索。
+来看 CNCF 最初对云原生的定义：
+ The CNCF defines “cloud-native” a little more narrowly, to mean using open source software stack to be containerized, where each part of the app is packaged in its own container, dynamically orchestrated so each part is actively scheduled and managed to optimize resource utilization, and microservices-oriented to increase the overall agility and maintainability of applications.</description>
+    </item>
+    
+    <item>
+      <title>client-go 初步认识与实践</title>
+      <link>https://blog.yingchi.io/posts/2020/5/client-go.html</link>
+      <pubDate>Sat, 23 May 2020 12:21:08 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/5/client-go.html</guid>
+      <description>最近本人的一个容器应用管理平台项目需要实现对接 Kubernetes 平台并进行一些相关资源的操作，查阅了官方文档、GitHub 以及相关技术文章，发现有个叫做 client-go 的 go 语言库是非常适合做 Kubernetes 二次开发的，于是就边实践，边学习，对 client-go 这个库有了一定程度的了解。对于其中比较复杂的设计，如 informer 部分，之后有时间的话会结合 kube-controller-manager 相关机制的研究学习过程加以介绍分享。
+ client-go 是 Kubernetes 项目所采用的编程式交互客户端库，官方从2016年8月份开始，资源交互操作相关的核心源码，也就是 client-go 抽取出来，独立出来作为一个项目。也就是现在所用到的 Kubernetes 内部都是集成有 client-go 的，因此对于这个库的编码质量应该是值得放心的。
+client-go 所谓编程式交互客户端库说白了就是可以通过写一些 Go 代码实现对kubernetes集群中资源对象（包括deployment、service、ingress、replicaSet、pod、namespace、node等）的增删改查操作。
+源码简介 源码目录简述  discovery：通过Kubernetes API 进行服务发现； kubernetes：提供 ClientSet 客户端，可以对 Kubernetes 内置资源对象进行操作； dynamic：提供 DynamicClient 客户端，可以实现对任意 Kubernetes 资源对象操作； rest：提供 RESTClient 客户端，可以实现对 kube-apiserver 执行 REST 请求实现资源操作； scale：提供 ScaleClient 客户端，主要用于 Deployment 等资源的扩缩容； listers：为 Kubernetes 资源提供 Lister 功能，对 Get / List 请求提供只读的缓存数据； informers：提供每种 Kubernetes 资源的 Informer 实现； transport：用于提供安全的 TCP 连接； tools/cache：提供常用工具；提供 Client 查询和缓存机制，以缓解 kube-apiserver 压力； util：提供常用方法；  Client 对象 学习 client-go 进行 kubernetes 二次开发的很大一部分工作是学会熟练使用它的几种 client，client-go 有如下 4 种 client 客户端对象，通过 kubeconfig 配置信息连接到指定集群的 kube-apiserver 从而实现对于资源的相关操作。</description>
+    </item>
+    
+    <item>
+      <title>Linux Netfilter/iptables 学习</title>
+      <link>https://blog.yingchi.io/posts/2020/5/linux-iptables.html</link>
+      <pubDate>Thu, 14 May 2020 17:35:21 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/5/linux-iptables.html</guid>
+      <description>Linux 网络协议栈非常高效，同时比较复杂。如果我们希望在数据的处理过程中对关心的数据进行一些操作，则该怎么做呢？Linux 提供了一套机制来为用户实现自定义的数据包处理过程。在 Linux 网络协议栈中有一组回调函数挂接点，通过这些挂接点挂接的钩子函数可以在 Linux 网络栈处理数据包的过程中对数据包进行一些操作，例如过滤、修改、丢弃等。整个挂接点技术叫作 Netfilter 和 iptables。
+Netfilter 与 iptables 不是两个独立的组件，Netfilter 是一个位于内核空间的防火墙框架，而 iptables 可以认为是一个位于用户空间的客户端。
+Netfilter 的核心功能就是数据包过滤、数据包修改、网络地址转换（NAT）
+基础概念 规则概念 iptables 最核心的概念是 Rules，即规则，一句话概括其工作逻辑就是“对于匹配到规则的数据包执行预先指定好的逻辑”。这里涉及到几个概念，首先是匹配，从字面上很好理解，匹配就是看对不对的上号，对于 iptables 而言，它面对的是数据包，因此它要匹配的自然是与数据包相关的信息，比如源地址、目的地址、传输协议、服务类型，只有当这些可以匹配的时候，才执行一些规则逻辑，比如放行、拒绝、丢弃等。
+五链 或许你对 iptables 具体是做什么的，怎么工作的并不熟悉，但是当你听到一个内行来讲 iptables 的时候，他一定会提到“四表五链”，那么什么是 iptables 的四表无链？他们又有什么作用呢？
+首先说“链”，这里的链指的是“规则链”，即在 iptables 的工作过程中，并不是只通过一条规则来处理数据包的，而是有许多规则，这些规则按照一定的顺序排列起来，报文经过 iptables 时就要对着一些规则一条一条进行匹配，执行相应的动作，我们把这种一系列的规则看作是一种串联，则称为是“链”。
+比如以其中一条称作 PREROUTING 的链来看，它的内部结构是这样的：
+数据包会在这条链里经过很多条的规则匹配，如果该数据包不符合链中任一条规则，iptables就会根据预先定义的默认策略来处理数据包。
+在 iptables 中存在着如下五条链：
+ PREROUTING 链：路由选择前； INPUT 链：路由目的地为本机； FORWARD 链：路由目的地非本机，转发； OUTPUT 链：本机发出数据包； POSTROUTING 链：路由选择后；  四表 知道了五链之后，接下来看四表，如果说链是表现的是一系列规则的执行顺序关系，那么表则是表现的一系列规则的功能逻辑关系，我们把具有相同功能的规则集合称为“表”，因为我们会发现有时在不同的链上执行的规则它们之间是有内在关联的，或是对数据的过滤，或是对报文数据的修改等等，iptables 为我们提供了如下的规则分类：
+ Filter 表：iptables 默认表，负责包过滤，防火墙功能； NAT 表：负责网络地址转换功能，对应内核模块； Mangle 表：主要负责修改数据包，对应内核模块； Raw 表：优先级最高，关闭 NAT 表启用的连接追踪机制；  注意这些表是有优先级之分的，优先级高到低：raw&amp;ndash;&amp;gt;mangle&amp;ndash;&amp;gt;nat&amp;ndash;&amp;gt;filter</description>
+    </item>
+    
+    <item>
+      <title>Kubernetes &amp; Docker 网络原理（三）</title>
+      <link>https://blog.yingchi.io/posts/2020/4/docker-k8s-network-3.html</link>
+      <pubDate>Mon, 13 Apr 2020 20:26:41 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/4/docker-k8s-network-3.html</guid>
+      <description>Service 通信 kube-proxy 运行机制 为了支持集群的水平扩展、高可用性，Kubernetes抽象出了Service的概念。Service是对一组Pod的抽象，它会根据访问策略（如负载均衡策略）来访问这组Pod。 Kubernetes在创建服务时会为服务分配一个虚拟的IP地址，客户端通过访问这个虚拟的IP地址来访问服务，服务则负责将请求转发到后端的Pod上。起到一个类似于反向代理的作用，但是它和普通的反向代理还是有一些不同：首先，它的Service 的 IP 地址，也就是所谓的 ClusterIP 是虚拟的，想从外面访问还需要一些技巧；其次，它的部署和启停是由Kubernetes统一自动管理的。
+Service 和 Pod 一样，其实仅仅是一个抽象的概念，背后的运作机制是依赖于 kube-proxy 组件实现的。
+在 Kubernetes 集群的每个 Node 上都会运行一个 kube-proxy 服务进程，我们可以把这个进程看作 Service 的透明代理兼负载均衡器，其核心功能是将到某个 Service 的访问请求转发到后端的多个 Pod 实例上。此外，Service的Cluster IP与 NodePort 等概念是 kube-proxy 服务通过iptables的NAT转换实现的，kube-proxy 在运行过程中动态创建与 Service 相关的 iptables 规则，这些规则实现了将访问服务（Cluster IP或NodePort）的请求负载分发到后端 Pod 的功能。由于 iptables 机制针对的是本地的 kube-proxy 端口，所以在每个 Node 上都要运行 kube-proxy 组件，这样一来，在 Kubernetes 集群内部，我们可以在任意 Node 上发起对 Service 的访问请求。综上所述，由于 kube-proxy 的作用，在 Service 的调用过程中客户端无须关心后端有几个 Pod，中间过程的通信、负载均衡及故障恢复都是透明的。
+kube-proxy 运行模式 kube-proxy 的具体运行模式其实是随着 Kubernetes 版本的演进有着较大的变化的，整体上分为以下几个模式的演化：
+ userspace (用户空间代理)模式 iptables 模式 IPVS 模式  userspace 模式</description>
+    </item>
+    
+    <item>
+      <title>Kubernetes &amp; Docker 网络原理（二）</title>
+      <link>https://blog.yingchi.io/posts/2020/4/docker-k8s-network-2.html</link>
+      <pubDate>Sun, 12 Apr 2020 21:45:23 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/4/docker-k8s-network-2.html</guid>
+      <description>Kubernetes Pod 间通信 之前的文章中主要关于 Docker 的网络实现进行了介绍和探讨，对于 Docker 网络而言，其最大的局限性在于跨主机的容器通信方案上存在空白，而 Kubernetes 作为适合大规模分布式集群的容器编排平台，其在网络实现层面上主要解决的问题就包括了如下几点：
+ 容器间通信； Pod 间通信； Pod 与 Service 通信； 集群内外通信；  这篇博文主要针对 Kubernetes 的容器间通信和 Pod 间通信进行介绍和探讨，之后再通过单独一篇文章去探讨 Pod 与 Service 的通信，也就是 kube-proxy 工作原理和 Service 机制相关。
+容器间通信 学习 Kubernetes 的容器间通信方案之前要理解 Kubernetes 中的 Pod 概念，Pod 是 Kubernetes 中最基本的调度单位，而不是 Docker 容器，Pod 的本意是豆荚，可以将容器理解为豆荚中的豆子，一个 Pod 可以包含多个有关联关系的容器，之后讨论的 Pod 与 Service 的通信也是从 Pod 层面而言的。这是必须要提前认识的概念，但是在底层，还是涉及到容器之间的通信，毕竟 Pod 只是一个抽象概念。
+同一个 Pod 内的容器不会跨主机通信，它们共享同一个 Network Namesapce 空间，共享同一个 Linux 协议栈。所以对于网络的各类操作，因此可以把一个 Pod 视作一个独立的「主机」，内部的容器可以用 localhost 地址访问彼此的端口。这么做的结果是简单、安全和高效，也能减小将已经存在的程序从物理机或者虚拟机移植到容器下运行的难度。
+如图，Node 上运行着一个 Pod 实例，Pod 内部的容器共享同一个 Network Namespace，因此容器1和容器2之间的通信非常简单，就可以通过直接的本地 IPC 方式通信，对于网络应用，可以直接通过 localhost 访问指定端口通信。因此对于一些传统程序想要移植到 Pod 中，几乎不需要做太多的修改。</description>
+    </item>
+    
+    <item>
+      <title>Kubernetes &amp; Docker 网络原理（一）</title>
+      <link>https://blog.yingchi.io/posts/2020/4/docker-k8s-network-1.html</link>
+      <pubDate>Sat, 11 Apr 2020 22:14:12 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/4/docker-k8s-network-1.html</guid>
+      <description>Docker 网络实现 平时在进行 Kubernetes 开发和运维的时候，接触到的最多的概念应该就是 Docker 与 Kubernetes 的网络概念了，尤其是 Kubernetes，各种各样的 IP，Port，有时候会混淆，因此有必要对 Docker 和 Kubernetes 的底层网络实现进行学习。这篇文章呢就先针对 Docker 的网络实现进行一下分析介绍。
+Docker 网络基础 Docker 的网络实现主要利用到的还是 Linux 网络相关的技术，如 Network Namespace、Veth 设备对、网桥、iptables、路由。
+Network Namespace 基本原理 作用可以用一句话概括：
+实现 Linux 网络虚拟化，即容器间网络协议栈层面的隔离
+通过 Network Namespace 技术就可以实现不同的 Docker 容器拥有自己完全隔离的网络环境，就像各自拥有自己独立的网卡一样。不同的 Network Namespace 下默认是不可以直接通信的。
+Linux 的 Network Namespace 中可以有自己独立的路由表及独立的 iptables 设置来提供包转发、NAT 及 IP 包过滤等操作。为了隔离出独立的协议栈，需要纳入命名空间的元素有进程、套接字、网络设备等。进程创建的套接字必须属于某个命名空间，套接字的操作也必须在命名空间中进行。同样，网络设备也必须属于某个命名空间。因为网络设备属于公共资源，所以可以通过修改属性实现在命名空间之间移动。
+Linux 的网络协议栈是非常复杂的，这里因为毕竟不是做系统底层开发，所以争取从概念层面对于 Linux 的 Network Namespace 这种网络隔离机制进行理解：
+通过查阅相关书籍知道，Linux 网络协议栈为了支持 Namespace 这种隔离机制，方法就是让一些与网络协议栈相关的全局变量称为一个 Network Namespace 变量的成员，协议栈函数调用时指定 Namespace 参数，这个就是 Linux 实现 Network Namespace 的核心原理，通过这种方式，实现一些协议栈全局变量的私有化，保证有效的隔离。</description>
+    </item>
+    
+    <item>
+      <title>理解 Kubernetes 的 Resource 设计概念</title>
+      <link>https://blog.yingchi.io/posts/2020/4/kubernetes-resources.html</link>
+      <pubDate>Tue, 07 Apr 2020 15:34:33 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/4/kubernetes-resources.html</guid>
+      <description>Kubernetes 是一个完全以资源为中心的容器编排平台，这一点从 kube-apiserver 对外暴露的 REST API 设计上其实就能很明显地感受到。Kubernetes 的生态系统围绕着诸多组件资源的控制维护而运作，因此也可以认为它本质上是一个「资源控制系统」
+ Group / Version / Resource 针对于资源这一概念，如果在一个庞大而复杂的容器编排平台上仅设计这么一个简单的「资源」语义显然是有点单薄，或者说表达力过于欠缺，因此对于资源这么一个概念，在 Kubernetes 上又进行了分组和版本话，于是就有了我们平时运维与开发中常见到的一些术语：Group / Version / Resource / Kind，分别代表的意义：资源组 / 资源版本 / 资源 / 资源种类。
+他们之间的关系是这样的：
+ Kubernetes 系统支持多个 Group(资源组)； 每个 Group 支持多个资源版本(Version)； 每个资源版本又支持多种资源(Resource)，部分资源还拥有自己的子资源； Kind 与 Resource 属于同一级概念，Kind 用于描述 Resource 的种类；  定位一个资源的完整形式如下：
+&amp;lt;GROUP&amp;gt;/&amp;lt;VERSION&amp;gt;/&amp;lt;RESOURCE&amp;gt;[/&amp;lt;SUBSOURCE&amp;gt;] 以 Deployment 为例：apps/v1/deployments/status
+在 Kubernetes 中还有一种描述资源的概念叫做「资源对象」(Resource Object)，其描述形式为：
+&amp;lt;GROUP&amp;gt;/&amp;lt;VERSION&amp;gt;, Kind=&amp;lt;RESOURCE_NAME&amp;gt; 以 Deployment 为例：apps/v1, Kind=Deployment
+资源概念的一些基本特点：
+ 每个资源都有一定数量的操作方法，称为 Verbs，如 create / delete / update / get / list / watch &amp;hellip;（8种）； 每个资源 Version 至少有两种，包括一个面向用户请求的外部版本，还有 api-server 内部使用的内部版本； Kubernetes 资源整体上分为内置资源以及 Custom Resources 自定义资源，其中 CR 通过 CRD 自定义资源定义实现；  Group 资源组，Kubenetes API Server 也称为 APIGroup，其有如下特点：</description>
+    </item>
+    
+    <item>
+      <title>Kubernetes Rolling Update 滚动升级</title>
+      <link>https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html</link>
+      <pubDate>Sun, 05 Apr 2020 21:03:12 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html</guid>
+      <description>用户希望应用程序始终可用，而开发人员则需要每天多次部署它们的新版本。在 Kubernetes 中，这些是通过滚动更新（Rolling Updates）完成的。 滚动更新 允许通过使用新的实例逐步更新 Pod 实例，零停机进行 Deployment 更新。
+ Kubernetes Rolling Update 基本概念 概念 当集群中的某个服务需要升级时，传统的做法是，先将要更新的服务下线，业务停止后再更新版本和配置，然后重新启动并提供服务。这种方式很明显的一个问题就是：会导致服务较长时间不可用，并且在大规模服务场景下会产生极大的工作量。
+滚动更新就是针对多实例服务的一种不中断服务的更新升级方式。一般情况下，对于多实例服务，滚动更新采用对各个实例逐个进行单独更新而非同一时刻对所有实例进行全部更新的方式。
+对于 kubernetes 集群部署的 service 来说，rolling update 就是指一次仅更新一个pod，并逐个进行更新，而不是在同一时刻将该 service 下面的所有 pod 全部停止，然后更新为新版本后再全部上线，rolling update 方式可以避免业务中断。
+特点 优点：
+ 业务不中断，用户体验影响较小，较平滑 相对于蓝绿部署，更加节约资源——它不需要运行两个集群、两倍的实例数  滚动更新也并不是银弹，有很多问题需要考虑到，比如：因为是逐步更新，那么我们在上线代码的时候，就会短暂出现新老版本不一致的情况，如果对上线要求较高的场景，那么就需要考虑如何做好兼容的问题。
+K8S 基于 Deployment 的 Rolling Update kubernetes 的 Deployment 是一个相比较早前 Replication Controller 以及现在的 Replica Set 更高级别的抽象。Deployment会创建一个Replica Set，用来保证Deployment中的Pod的副本数。要 rolling-update deployment 中的 Pod，只需要修改 Deployment 自己的yml 文件并应用即可。这个修改会创建一个新的 Replica Set，在增加这个新 RS 的 pod 数的同时，减少旧RS的pod，直至完全升级。而这一切都发生在 Server 端，并不需要 kubectl 参与。</description>
+    </item>
+    
+    <item>
+      <title>Kubernetes 架构浅析</title>
+      <link>https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html</link>
+      <pubDate>Sun, 05 Apr 2020 21:03:12 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html</guid>
+      <description>前言 Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&amp;hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发布了 Kubernetes，这是振奋人心的，随后巨硬、IBM、RedHat 一些大佬企业也加入 Kubernetes 社区添砖加瓦，项目日益成熟，社区非常活跃，如今的 Kubernetes 项目也已经成为了开源项目中最耀眼的其中之一。
+Kubernetes 的成功在于它填补了大规模容器集群的编排调度管理平台的空白，在此之前，大家都仿佛在云时代中做着石器时代的活，费时费力地部署管理自己的应用，虽然容器概念已经流行，但是还是用着最原始的方式去使用它们，虽然有一些技术框架，如 Docker Swarm 尝试改变这一现状，但是反响并不好，直到 Kubernetes 的出现，人们都惊呆了，原来 Kubernetes 与 Docker 与 微服务可以这么有机地结合？难以置信，它们虽然是不同的项目不同的设计思想，但是当融合在一起的时候是如此的完美。
+因此，我们的确有必要去学习去了解优秀的 Kubernetes，当然，学习它的架构实现，从宏观角度理解它的运转机制就是必不可少的环节。
+架构概述 Kubernetes 系统架构整体采用的是 C/S 的架构，即 Master 作为 Server，各个 Worker 节点作为 Client，在一个面向生产环境的集群中，通常可以采用多个 Master 节点实现 HA。
+然后从 Master 与 Worker 两种不同的节点类型来概述一下它们的「职责」
+Master Node 主要职责：  管理集群所有的 Node； 调度集群的 Pod； 管理集群的运行状态；  主要组件：  kube-apiserver: 负责处理资源的 CRUD 请求，提供 REST API 接口； kube-scheduler: 负责集群中 Pod 资源的调度（哪个 Pod 运行在 哪个 Node 上）； kube-controller-manager: 控制器管理器，自动化地管理集群状态（如自动扩容、滚动更新）；  Worker Node 主要职责：  管理容器的生命周期，网络，存储等； 监控上报 Pod 的运行状态；  主要组件：  kubelet: 管理容器的生命周期，与 Master 节点进行通信，可理解为 Kubernetes 在 Worker 节点的 Agent； kube-proxy: 负责 Kubernetes Service 组件的通信，原理是为当前节点 Pod 动态地生成 iptables 或 ipvs 规则，并且与 kube-apiserver 保持通信，一旦发现某一个 Service 的后端 Pod 改变，需要将改变保存在 kube-apiserver 中； container engine: 负责接收 kubelet 指令，对容器进行基础地管理；  组件浅析 [Master] kube-apiserver 顾名思义，「apiserver」即本质是提供 API，而且是 REST API，我们提到 REST API 总是会想到「资源」这个概念，没错，这里的 kube-apiserver 就是为 Kubernetes 集群中的各种资源提供 CRUD 的 REST API。</description>
+    </item>
+    
+    <item>
+      <title>记一次 Kubeadm 部署 k8s &#43; Flannel</title>
+      <link>https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html</link>
+      <pubDate>Fri, 03 Apr 2020 14:51:38 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html</guid>
+      <description>以 master 节点的配置为例记录一下在 CentOS 7.0 上使用 kubeadm 部署 kubernetes 集群 + Flannel 插件的过程
+ 一、基础环境配置 安装 wget yum install -y wget 配置 YUM 软件源  配置阿里镜像源  wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo 配置 kubernetes 源  vi /etc/yum.repos.d/kubernetes.repo [kubernetes] name=Kubernetes baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64 enabled=1 gpgcheck=1 repo_gpgcheck=1 gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg yum clean all yum makecache fast 常用软件安装 yum install -y net-tools yum install -y vim 安装 Docker wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -O/etc/yum.repos.d/docker-ce.repo yum -y install docker-ce systemctl start docker systemctl enable docker 配置时间同步 不然后面 Flannel 安装时会出现证书错误</description>
+    </item>
+    
+    <item>
+      <title>Go channel 原理与实践</title>
+      <link>https://blog.yingchi.io/posts/2020/3/go-channel.html</link>
+      <pubDate>Thu, 19 Mar 2020 18:33:25 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/3/go-channel.html</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Goroutine 并发模型</title>
+      <link>https://blog.yingchi.io/posts/2020/3/go-goroutine.html</link>
+      <pubDate>Sat, 14 Mar 2020 11:53:31 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/3/go-goroutine.html</guid>
+      <description>并发基础 在学习 Goroutine 之前，如果对于 Linux 基本的并发模型不了解，那么可能会学的一头雾水，所以一切的一切之前，从 Linux 基本的并发知识说起，复习一下。
+并发与并行  并发（Concurrency）：指宏观上看起来两个程序在同时运行，比如说在单核cpu上的多任务。但是从微观上看两个程序的指令是交织着运行的，你的指令之间穿插着我的指令，我的指令之间穿插着你的，在单个周期内只运行了一个指令。这种并发并不能提高计算机的性能，只能提高效率； 并行（Parallelism）：提到并行时往往涉及到的概念就是分布式/多核/多机这种概念，即一定是指严格物理意义上的同时运行，比如多核cpu，两个程序分别运行在两个核上，两者之间互不影响，单个周期内每个程序都运行了自己的指令，也就是运行了两条指令。这样说来并行的确提高了计算机的效率。所以现在的cpu都是往多核方面发展。  进程与线程   定位：进程是资源分配的最小单位，线程是CPU调度的最小单位；
+  线程依赖于进程而存在，一个线程只能属于一个进程，而一个进程可以有多个线程，但至少有一个线程；
+  进程在执行过程中拥有独立的内存单元，而多个线程共享进程的内存资源；
+  创建和撤销开销： 进程的创建和撤销操作开销远大于线程创建和撤销的开销（系统都要为进程分配或回收资源，如内存空间等）；
+  切换开销：进程切换时，涉及到整个当前进程 CPU 环境的保存以及新被调度运行的进程的 CPU 环境的设置。而线程切换只须保存和设置少量寄存器的内容，并不涉及存储器管理方面的操作。即，进程切换的开销也远大于线程切换的开销；
+  通信：由于同一进程中的多个线程具有相同的地址空间，使它们之间的同步和通信的实现比较容易。进程间通信则是通过诸如管道、共享内存、信号、信号量、Socket、消息队列等实现；
+  进程编程调试简单可靠性高，但是创建销毁开销大；线程正相反，开销小，切换速度快，但是编程调试相对复杂；
+  进程间不会相互影响 ；线程一个线程挂掉将导致整个进程挂掉；
+  进程适应于多核、多机分布；线程适用于多核；
+  系统调用 &amp;amp; 用户态内核态 &amp;amp; 进程切换/调度 用户进程生存在用户空间中，无法直接操纵计算机的硬件，但是内核空间中的内核是可以做到的，因此内核会暴露出一些接口供用户进程使用，用户进程通过这些接口去使用内核的功能，进而操控计算机的硬件，这个用户空间与内核空间之间的桥梁，就叫做“系统调用(System call)”，与普通程序函数不同的是，内核调用会导致内核空间的数据存取和指令的执行，而普通函数只在用户空间中起作用，如果普通函数需要对内核空间进行访问，也是借助于系统调用相关函数实现的。
+然后说，用户态和内核态，这是为了保证操作系统安全而建立的一个特性，大部分时间里 CPU 处于用户态，此时 CPU 只能对用户空间进行访问，用户态下的用户进程是不允许访问内核空间的，当用户进程发出系统调用的时候，内核会把 CPU 从用户态切换到内核态，然后执行相关的内核函数，执行完毕后切换回用户态，并把执行结果返回给用户。
+最后说到进程，为了实现一开始说的操作系统并发特性，Linux 操作系统可以凭借 CPU 的强大性能在多个进程之间快速切换，这个过程从专业上讲我们称为进程间的上下文切换，通过这种快速的切换，营造了多个进程同时运行的假象，而每个进程也地以为自己独占 CPU，但是我们要知道的是，同一时刻正在运行的进程仅会有一个。最重要的是，进程的切换是需要付出代价的，就像一开始提到的，进程切换时，涉及到整个当前进程 CPU 环境的保存以及新被调度运行的进程的 CPU 环境的设置，即进程切换的开销是比较大的。此外，除了进程切换，为了使每个生存的进程都有运行的机会，内核还要考虑下次切换时运行哪个进程，何时进行切换，被换下的进程何时重新换上，这些类似的问题称为进程调度。</description>
+    </item>
+    
+    <item>
+      <title>HashTable 原理 &amp; Go Map 实现</title>
+      <link>https://blog.yingchi.io/posts/2020/3/go-map.html</link>
+      <pubDate>Tue, 10 Mar 2020 11:23:08 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/3/go-map.html</guid>
+      <description>Go Map 也就是所谓的“ HashTable ”数据结构，有些语言，比如 Python 中称作“字典”，但是无论如何都是一种东西。 HashTable 最重要的特点是：
+ 提供键值对形式的的存储结构，即提供键值之间的映射； 具有O(1)的读写性能  HashTable 的思想很简单，但是实现原理思路在不同的语言中都有着些许不同，本文主要针对 Go Map 这种 HashTable 的实现和相关问题展开讨论。
+基本原理 在讨论 Go 的 Map 之前，首先要熟悉 HashTable 的基本原理，当然这些都是上个世纪的知识点了，但是还是有必要深入理解透彻的。
+HashTable 的两个主要概念涉及到：Hash Function 和 冲突处理。
+Hash Function 前面说过 Hash Table 是存储键值对的数据结构，所以容易理解，所谓 Hash Function 就是将 key 映射到某个存储位置的函数。
+Hash Function 的选择非常重要，好的 Hash Function 可以确保 Hash 结果尽可能的均匀，最理想的情况是每一个不同的 key 都能映射到一个独立的存储索引位置上，但是，毕竟，这只是理想。
+比较实际的思想还是让 Hash Function 的结果能够尽可能的均匀分布即可，既然是尽可能均匀分布，那么就有冲突的风险，冲突很好理解：
+比如有个 Hash Function 是 key %3，那么对 key = 1/4/7 执行 hash 结果就是：</description>
+    </item>
+    
+    <item>
+      <title>Go Array 与 Slice 原理</title>
+      <link>https://blog.yingchi.io/posts/2020/3/go-array-slice.html</link>
+      <pubDate>Thu, 05 Mar 2020 19:42:31 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/3/go-array-slice.html</guid>
+      <description>数组 Array 几乎每个常见的编程语言都有数组这个概念，但是每个语言对于数组的定位都不一样，有的语言会把数组用作常用的基本的数据结构，比如 JavaScript，而 Golang 中的数组(Array)，更倾向定位于一种底层的数据结构，记录的是一段连续的内存空间数据。但是在 Go 语言中平时直接用数组的时候不多，大多数场景下我们都会直接选用更加灵活的切片(Slice)，我这里很谨慎地说“直接”用数组，因为里面有学问，稍后会说。在Go程序中经常看不到数组的一个很重要原因是，数组的大小是固定的&amp;hellip; ，所以很多场景下我们无法直接给出数组的确定长度，因此才会选择长度“可变”的切片。变与不变是编程中一个恒久远的话题，牵扯到这个话题的往往是性能与灵活性两个关键词，这个话题很庞大，有机会会单独写一篇博客进行探讨。
+回到数组中，数组的声明形式：
+var arr [5]int var buffer [256]byte 初始化方式有两种，一种是显示声明长度，另一种是[...]T推断长度，注意，推断长度也是给出了长度，这个和之后 Slice 的[]T的声明方式是不一样的：
+arr1 := [3]int{0,1,2} arr2 := [...]string{&amp;#34;Joey&amp;#34;,&amp;#34;Sophie&amp;#34;} 第二种初始化属于语法糖，会经过编译器推导，得到数组长度，即最终转换成第一种，显然，两种方式在运行时是没有任何区别的。但是在编译期，Go 为不同类型不同结构的初始化方式进行了优化（不止是数组的初始化这一点上，其它一些代码同样如此），对于优化过程，可以简单概括为下面的话：
+ 如果数组中元素的个数小于或者等于 4 个，那么所有的变量会直接在栈上初始化； 如果数组元素大于 4 个，变量就会在静态存储区初始化然后拷贝到栈上，这些转换后的代码才会继续进入中间代码生成和机器码生成两个阶段，最后生成可以执行的二进制文件。  数组虽然比较重要，但是的概念其实比较简单，还有一个非常需要注意的点是，当你用到 Go 数组的时候，一定要注意一个避不开的问题，一定不要越界访问
+切片 Slice 及其与 Array 的关系 刚接触 Go 的一些学习者们肯定会混淆 Array 与 Slice 的用法，我想主要原因是受其它语言影响比较大，比如国内用 Java 的比较多，如果突然换到 Go，一定会对这个 slice 概念一头雾水。
+很多人仅仅知道 Slice 与 Array 的区别是：Slice 长度可变，如果仅仅是知道这个的话其实是很危险的，平时有一些错误的用法会直接把你整的找不着北，我们需要从底层了解这个语言特性。
+学习 slice，或者说区别 Slice 与 Array 的首要关键是记住下面几点：
+ Slice 不是 Array，它描述一个 Array； Slice 的本质是一个 Struct，携带一个数组指针，长度，容量，这是他长度可变的根本原因；  可以在 Go 源码中找到 sliceHeader 的定义：</description>
+    </item>
+    
+    <item>
+      <title>网络模型学习基础：各层网络设备概念</title>
+      <link>https://blog.yingchi.io/posts/2019/10/network-devices.html</link>
+      <pubDate>Sun, 27 Oct 2019 00:29:30 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2019/10/network-devices.html</guid>
+      <description>在学习研究诸如 kubernetes 网络或 Docker 网络等各种开源网络模型时，会涉及到各种或实际或虚拟的网络设备概念，例如各种虚拟网桥。因此必须对这些网络设备有充分的认识才可以进行接下来的学习。
+  根据 OSI 参考模型，网络分为七层，根据之后的学习需要，这里主要针对 L1、L2、L3 层的设备进行学习认识
+ L1：Hub（集线器/中继器） L1 层即“物理层”，作为网络的最底层，这一层的网络设备所做的事情比较单调，主要的作用就是实现物理上的网络连通，如下图几个终端节点，
+想要实现这几个节点的互连互通，可以连接到叫做 Hub（集线器）的设备上，如下图，这个设备的主要任务仅仅是把接收到的信号整型放大，从其它各个端口转发出去，因此也称之为“中继器”。
+以 Node0 为例展示一下节点发送网络信号的过程。如下图，Node0 向连接的 Hub 发出网络信号，Hub 接收到信号后，将其整型放大，然后转发给了 Node1、Node2、Node3。这其实就是最简单的一种星型的局域网架构。
+这个过程要注意两点核心：
+ Hub 仅仅对信号进行物理上的整型放大操作 Hub 转发时采用的是广播方式，向其它端口节点转发信号，无选择  然后我们再来看一个复杂一点的例子，假如两个机房各有一组终端节点连接到了各自的 Hub 上，各自组成了局域网，如下图。
+我们现在想把两个房间的网络互连起来，应该如何做？按照上面的思想，我们是否可以加入一个更高层级的 Hub（称之为主干 Hub），把各个机房的网络连接起来？如图
+答案是可行的，在这种情况下，通过中间这个主干 Hub的转发，我们可以将一个机房发出的信号转发到另一个机房，如图
+但是，虽然可行，我们应该有这样的疑问，这样做真的好吗？虽然两个机房的网络互通了，但是是否又增加了这个网络的负担呢？我们举一个简单的例子就可以发现问题所在，假如 Node0 仅仅是想将信号发送给 Node1，尽管从网络拓扑中看到他们挨得很近，仅仅通过一个 Hub 就可以转发到，但是由于 Hub 只能采用广播的方式转发，因此这个信号不仅被传到了 Node2 上，还通过刚加入的总集线器被传递到了另一个机房的所有节点中，当然这些都是无用功。
+说到这里，我们还要认识两个概念 —— 冲突域和广播域。其实很好理解，所谓冲突域，很多地方也叫碰撞域，顾名思义，就是在当网络中有一个信号在流转时，此时若有另一个节点向网络中发送信号，会引起干扰，也就是冲突或碰撞，这个受波及的范围就是冲突域，我们可以认为，L1 网络中靠类似 Hub 这种设备连接起来的物理网段都是属于一个冲突域，Hub 是无法隔离冲突域的，在 L2、L3 网络中均有能力隔离冲突域；另一个概念，广播域，广播域就是接收同样广播消息的集合，我们一般认为，广播域其实就是同一个网络的代名词，我们如今所使用的互联网，其实是通过 Router 这种网际交换设备连接不同网络而产生的。
+结合上面这两个概念，我们重新分析通过主干 Hub 连接两个局域网的方式，就能明白为什么这样会严重影响网络性能了。
+那么，还是针对连接两个机房的场景，我们期望既可以实现两个网络的互通，又能提高通信的效率，有没有好的方式呢？
+L2：Bridge（网桥）、Switch(交换机/多端口网桥) 现在到网络模型的第2层，也就是数据链路层，看一下这一层的网络设备。继续讨论之前的场景，这次我们不再采用主干 Hub 的方案，而是加入一个叫做 Bridge（网桥）的设备，狭义上的网桥其实是二端口网桥，如图。所谓 Bridge，我们很容易就能明白这是一个桥接设备，桥接的核心是延长，是扩大，因此，我们可以在某种程度上把它看做为一个智能的、高级的 Hub，智能高级的原因是它是工作在第二层的，在进行它的工作原理介绍之前，重新看一下我之前 L1 层对于 Hub 工作原理的描述，网络中流转的信息我在第一层中是以“信号”称呼的，因为第一层只能操作物理电信号，无非就是对电流的整型放大复制转发。</description>
+    </item>
+    
+  </channel>
+</rss>

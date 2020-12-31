@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>cloud-native on Yingchi Blog</title>
+    <link>https://blog.yingchi.io/tags/cloud-native.html</link>
+    <description>Recent content in cloud-native on Yingchi Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 29 May 2020 22:43:03 +0800</lastBuildDate>
+    
+	<atom:link href="https://blog.yingchi.io/tags/cloud-native/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Cloud Native 云原生 | 概念解读</title>
+      <link>https://blog.yingchi.io/posts/2020/5/what-is-cloud-native.html</link>
+      <pubDate>Fri, 29 May 2020 22:43:03 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/5/what-is-cloud-native.html</guid>
+      <description>定义的探索之路 都在提「云原生」的概念，但是真正理解这个概念的又有多少人呢？每次浏览一些社区的时候（不乏一些专业的技术社区），看到有些朋友在讨论云原生相关的话题，有些时候总感觉他们对于云原生的理解还是有那么一点问题。
+很多朋友直接就认为部署在云端的应用就叫做云原生应用，一般出现在刚接触云计算与云原生概念的群体中，这个明显是错误的认识，或者说就是「概念滥用」，再有就是懂一些容器化相关概念的内行人士，他们认为，云原生应用是通过容器技术构建，部署在 Kubernetes 这种容器编排平台上的，才能是云原生应用，这听起来像那么回事了，但是呢，还是不够严谨，只是从云原生应用的实现层面来讲的，但是对于其核心概念还是没解释，比如 Cloud Native 的 Native 具体体现在什么上？
+其实也不能怪大家伙没搞明白啥是云原生，其实就连最早发起云原生概念的这群人自己也是在逐渐摸索。
+来看 CNCF 最初对云原生的定义：
+ The CNCF defines “cloud-native” a little more narrowly, to mean using open source software stack to be containerized, where each part of the app is packaged in its own container, dynamically orchestrated so each part is actively scheduled and managed to optimize resource utilization, and microservices-oriented to increase the overall agility and maintainability of applications.</description>
+    </item>
+    
+  </channel>
+</rss>

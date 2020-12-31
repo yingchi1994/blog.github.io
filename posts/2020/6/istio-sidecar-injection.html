@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <title>Istio Sidecar 注入机制</title>
+  <meta name="author" content="YINGCHI_Joey" />
+  <meta name="description"
+        content="Service Mesh 及 Sidecar 概念
+在了解 Sidecar 的注入机制前还是先要明确是什么和为什么的问题。
+首先，Service Mesh 是什么？
+Service Mesh，或者翻译为「服务网格」，是一个可配置的低延迟的基础设施层，目的是通过API（应用程序编程接口）处理应用程序服务之间的大量基于网络的进程间通信。服务网络确保容器化的短暂存在的应用程序的基础结构服务之间的通信快..."/>
+
+
+  <meta name="generator" content="Hugo 0.71.1" />
+
+  
+  <meta itemprop="name" content="Istio Sidecar 注入机制"/>
+  <meta itemprop="description"
+        content="Service Mesh 及 Sidecar 概念
+在了解 Sidecar 的注入机制前还是先要明确是什么和为什么的问题。
+首先，Service Mesh 是什么？
+Service Mesh，或者翻译为「服务网格」，是一个可配置的低延迟的基础设施层，目的是通过API（应用程序编程接口）处理应用程序服务之间的大量基于网络的进程间通信。服务网络确保容器化的短暂存在的应用程序的基础结构服务之间的通信快..."/>
+  <meta itemprop="image"
+        content=""/>
+
+  
+  <meta property="og:title" content="Istio Sidecar 注入机制"/>
+  <meta property="og:type"
+        content="article"/>
+  <meta property="og:url" content="https://blog.yingchi.io/posts/2020/6/istio-sidecar-injection.html"/>
+  <meta property="og:image"
+        content=""/>
+  <meta property="og:description"
+        content="Service Mesh 及 Sidecar 概念
+在了解 Sidecar 的注入机制前还是先要明确是什么和为什么的问题。
+首先，Service Mesh 是什么？
+Service Mesh，或者翻译为「服务网格」，是一个可配置的低延迟的基础设施层，目的是通过API（应用程序编程接口）处理应用程序服务之间的大量基于网络的进程间通信。服务网络确保容器化的短暂存在的应用程序的基础结构服务之间的通信快..."/>
+  <meta property="og:site_name" content="Yingchi Blog"/>
+  <meta property="article:published_time"
+        content="2020-06-21T21:31:42&#43;08:00"/>
+  <meta property="article:section" content="posts"/>
+  <meta property="article:tag" content="service-mesh"/>
+  <meta property="article:tag" content="istio"/>
+
+  
+  
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:site"
+        content=""/>
+  <meta name="twitter:title" content="Istio Sidecar 注入机制"/>
+  <meta name="twitter:description"
+        content="Service Mesh 及 Sidecar 概念
+在了解 Sidecar 的注入机制前还是先要明确是什么和为什么的问题。
+首先，Service Mesh 是什么？
+Service Mesh，或者翻译为「服务网格」，是一个可配置的低延迟的基础设施层，目的是通过API（应用程序编程接口）处理应用程序服务之间的大量基于网络的进程间通信。服务网络确保容器化的短暂存在的应用程序的基础结构服务之间的通信快..."/>
+  <meta name="twitter:creator"
+        content=""/>
+  <meta name="twitter:image:src"
+        content=""/>
+
+  
+
+  
+  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
+  
+  
+
+  
+  
+  
+  
+  <script>
+  	var _mtac = {};
+  	(function() {
+  		var mta = document.createElement("script");
+  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
+  		mta.setAttribute("name", "MTAH5");
+  		mta.setAttribute("sid", "500724862");
+
+  		var s = document.getElementsByTagName("script")[0];
+  		s.parentNode.insertBefore(mta, s);
+  	})();
+</script>
+</head>
+
+
+  <body style="min-height:100vh;display:flex;flex-direction:column">
+
+    <section>
+  <nav style="text-align: center; margin-top: 30px;">
+    <div>
+        <a class="custom-title" href="/">
+          
+          <img class="logo" src="/logo.png"/>
+        </a>
+    </div>
+  </nav>
+
+</section>
+
+<style>
+  .custom-title{
+    color: rgb(87, 87, 87);
+    font-size: 25px;
+    font-weight: bold;
+    text-decoration: none;
+  }
+
+  .logo{
+    width: 190px;
+  }
+</style>
+
+    <section class="section" style="flex:1">
+
+      
+      <div class="container">
+        
+        <p class="title-custom">Istio Sidecar 注入机制</p>
+        <p class="subtitle-custom">Jun 21, 2020</p>
+
+        
+
+        
+        
+        <div class="content-custom">
+          <h2 id="service-mesh-及-sidecar-概念">Service Mesh 及 Sidecar 概念</h2>
+<p>在了解 Sidecar 的注入机制前还是先要明确是什么和为什么的问题。</p>
+<p>首先，Service Mesh 是什么？</p>
+<p>Service Mesh，或者翻译为「服务网格」，是一个可配置的低延迟的<strong>基础设施层</strong>，目的是<strong>通过API（应用程序编程接口）处理应用程序服务之间的大量基于网络的进程间通信</strong>。服务网络确保容器化的短暂存在的应用程序的基础结构服务之间的通信快速，可靠和安全。网格提供关键功能，包括服务发现，负载平衡，加密，可观察性，可追溯性，身份验证和授权，以及对断路器模式的支持。其实服务网格的目的说的最简单就是「<strong>接管和治理应用程序间的通信</strong>」，其中有个最为核心的要点就是，<strong>通信</strong>，基于 Service Mesh 的服务治理就是在服务的通信或者说调用过程中「做手脚」，离开这一点，Service Mesh 毫无意义，当然，这个应用程序似乎也没有意义了。如下图所示，就是典型的 Service Mesh 基础设施层架构。</p>
+<p><img src="istio-sidecar-injection/0fd356679deb0658cf39a82bbb2de7f6.png" alt="service-mesh-generic-topology.png"></p>
+<p>可以看到分为 Control Plane 和 Data Plane，Control Plane 的主要作用就是治理规则的控制与下发，而 Data Plane 的主要作用就是处理服务实例间的通信过程，实施指定的治理策略。Data Plane 中就可以看到今天的主角，也就是 Sidecar，正如图中标识的，Sidecar 最准确的表述应该是 「Sidecar Proxy」，它的本质是一个代理组件，这个组件会被直接注入到服务实例相同的 Network Namesapce 下，在 Kubernetes 中，就是注入到 Pod 里面，此时 Sidecar 与服务实例共享 Pod Network Namespace，可以通过 iptables 对流经实例的 inbound 和 outbound 流量进行相应的规则处理。</p>
+<p>本文主要基于 Istio 这个 Service Mesh 实现针对 Sidecar 的注入机制进行分析。</p>
+<h2 id="admission-controller-与-admission-webhook">Admission Controller 与 Admission Webhook</h2>
+<p>Sidecar 的注入依赖于 Kubernetes 的几个概念，其中比较核心的就是 Admission Controller 和 Admission Webhook。</p>
+<p><strong>Admission Controller</strong>，可翻译为「<strong>准入控制器</strong>」，按照官方的解释是： Admission Controller是拦截 API Server 请求(经过身份验证的)的网关，并且可以修改请求对象或拒绝请求。简而言之，它可以认为是拦截器，类似web框架中的middleware，是 Kubernetes API Server 用于拦截请求的一种手段。</p>
+<p>Kubernetes 为什么引入 admission 这种机制？</p>
+<ol>
+<li>虽然 Kubernetes 有 Authentication &amp; Authorization 这种认证鉴权机制，Authentication &amp; Authorization 运行在 filter 中，<strong>只能获取 http 请求 header 以及证书，并不能获取请求的 body</strong>。所以不可以对请求的对象进行任何操作，因为获取不到对象。</li>
+<li>Admission Controller 运行在 API Server 的增删改查 handler 中，可以自然地操作 API resource。</li>
+</ol>
+<p>API Server 接收到客户端请求后首先进行认证鉴权，认证鉴权通过后才会进行后续的 endpoint handler 处理，kube-apiserver 处理资源请求的流程如下：</p>
+<p><img src="istio-sidecar-injection/193130833bb01379855014eda1e9cadd.png" alt="图片.png"></p>
+<p>可以看到，在 Authentication &amp; Authorization 之后请求就交由 Admission Controller 继续处理，这里涉及到 Admission 两个重要阶段，<code>Mutating</code>和<code>Validating</code>，它们的区别如下：</p>
+<ul>
+<li>Mutating：可以对请求内容进行修改；</li>
+<li>Validating：不允许修改请求内容，但可以根据请求的内容判断是继续执行该请求还是拒绝该请求；</li>
+</ul>
+<p>Kubernetes 提供了很多内置的 Admission Controller Plugin，一些常用的准入控制策略都能找到。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#75715e"># 支持的plugin 如下</span>
+AlwaysAdmit, AlwaysDeny, AlwaysPullImages, 
+DefaultStorageClass, DefaultTolerationSeconds, DenyEscalatingExec, 
+DenyExecOnPrivileged, EventRateLimit, ExtendedResourceToleration, 
+ImagePolicyWebhook, Initializers, LimitPodHardAntiAffinityTopology, 
+LimitRanger, MutatingAdmissionWebhook, NamespaceAutoProvision, 
+NamespaceExists, NamespaceLifecycle, NodeRestriction, 
+OwnerReferencesPermissionEnforcement, PersistentVolumeClaimResize, 
+PersistentVolumeLabel, PodNodeSelector, PodPreset, PodSecurityPolicy, 
+PodTolerationRestriction, Priority, ResourceQuota, SecurityContextDeny, 
+ServiceAccount, StorageObjectInUseProtection, ValidatingAdmissionWebhook. 
+</code></pre></div><p>Kubernetes 提供了这么多 Admission 插件， 但是并不能保证满足所有开发者的需求。因此 Kubernetes 同样允许用户自定义自己的 Admission Controller，Kubernetes 提供了 Admission Webhook 这种扩展机制。</p>
+<ul>
+<li><strong>MutatingAdmissionWebhook</strong>：在对象持久化之前进行修改</li>
+<li><strong>ValidatingAdmissionWebhook</strong>：在对象持久化之前进行</li>
+</ul>
+<p>Admission Webhook 属于同步调用，需要用户开发部署自己的 <strong>webhook server</strong>，创建自定义的配置资源对象： ValidatingWebhookConfiguration 或 MutatingWebhookConfiguration。</p>
+<p>可以说有了 Admission Webhook 这种扩展机制，才算是真正为后面 Sidecar 注入实现铺平道路。</p>
+<h2 id="istio-sidecar-自动注入实现">Istio Sidecar 自动注入实现</h2>
+<p>Sidecar Injector 是 Istio 中实现自动注入Sidecar的组件，它就是以 Kubernetes 准入控制器 Admission Controller 的形式运行的。回顾前面的概念，Admission Controller 的基本工作原理是拦截 Kube-apiserver 的请求，在对象持久化之前、认证鉴权之后进行拦截。之前提到 Admission Controller有两种：一种是内置的，另一种是用户自定义的。后者就是 Kubernetes 允许用户以 Webhook 的方式自定义准入控制器，Sidecar Injector 就是这样一种特殊的 <strong>MutatingAdmissionWebhook</strong>。</p>
+<p>Sidecar 注入的过程如下图所示：</p>
+<p><img src="istio-sidecar-injection/image-20200720115242028.png" alt="image-20200720115242028"></p>
+<p>如图，Sidecar Injector 只在创建 Pod 时进行 Sidecar 容器注入，在 Pod 的创建请求到达 Kube-apiserver 后，首先进行认证鉴权，然后在准入控制阶段，Kube-apiserver 以 REST 的方式同步调用 Sidecar Injector Webhook 服务进行 init 与 istio-proxy 容器的注入，最后将Pod对象持久化存储到etcd中。</p>
+<p>还可以看一下 <strong>MutatingWebhookConfiguration</strong> 的配置：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">kubectl get MutatingWebhookConfiguration istio-sidecar-injector -n istio-system -o yaml
+</code></pre></div><p><strong>istio-sidecar-injector MutatingWebhookConfiguration</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">apiVersion</span>: admissionregistration.k8s.io/v1
+<span style="color:#66d9ef">kind</span>: MutatingWebhookConfiguration
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">annotations</span>:
+    <span style="color:#66d9ef">kubectl.kubernetes.io/last-applied-configuration</span>: <span style="color:#e6db74">|
+</span><span style="color:#e6db74">      {&#34;apiVersion&#34;:&#34;admissionregistration.k8s.io/v1beta1&#34;,&#34;kind&#34;:&#34;MutatingWebhookConfiguration&#34;,&#34;metadata&#34;:{&#34;annotations&#34;:{},&#34;labels&#34;:{&#34;app&#34;:&#34;sidecar-injector&#34;,&#34;install.operator.istio.io/owning-resource&#34;:&#34;installed-state&#34;,&#34;istio.io/rev&#34;:&#34;default&#34;,&#34;operator.istio.io/component&#34;:&#34;Pilot&#34;,&#34;operator.istio.io/managed&#34;:&#34;Reconcile&#34;,&#34;operator.istio.io/version&#34;:&#34;1.6.2&#34;,&#34;release&#34;:&#34;istio&#34;},&#34;name&#34;:&#34;istio-sidecar-injector&#34;},&#34;webhooks&#34;:[{&#34;clientConfig&#34;:{&#34;caBundle&#34;:&#34;&#34;,&#34;service&#34;:{&#34;name&#34;:&#34;istiod&#34;,&#34;namespace&#34;:&#34;istio-system&#34;,&#34;path&#34;:&#34;/inject&#34;}},&#34;failurePolicy&#34;:&#34;Fail&#34;,&#34;name&#34;:&#34;sidecar-injector.istio.io&#34;,&#34;namespaceSelector&#34;:{&#34;matchLabels&#34;:{&#34;istio-injection&#34;:&#34;enabled&#34;}},&#34;rules&#34;:[{&#34;apiGroups&#34;:[&#34;&#34;],&#34;apiVersions&#34;:[&#34;v1&#34;],&#34;operations&#34;:[&#34;CREATE&#34;],&#34;resources&#34;:[&#34;pods&#34;]}],&#34;sideEffects&#34;:&#34;None&#34;}]}</span>
+  <span style="color:#66d9ef">creationTimestamp</span>: <span style="color:#e6db74">&#34;2020-06-16T06:47:00Z&#34;</span>
+  <span style="color:#66d9ef">generation</span>: <span style="color:#ae81ff">2</span>
+  <span style="color:#66d9ef">labels</span>:
+    <span style="color:#66d9ef">app</span>: sidecar-injector
+    <span style="color:#66d9ef">install.operator.istio.io/owning-resource</span>: installed-state
+    <span style="color:#66d9ef">istio.io/rev</span>: default
+    <span style="color:#66d9ef">operator.istio.io/component</span>: Pilot
+    <span style="color:#66d9ef">operator.istio.io/managed</span>: Reconcile
+    <span style="color:#66d9ef">operator.istio.io/version</span>: <span style="color:#ae81ff">1.6.2</span>
+    <span style="color:#66d9ef">release</span>: istio
+  <span style="color:#66d9ef">managedFields</span>:
+		...
+<span style="color:#66d9ef">webhooks</span>:
+- <span style="color:#66d9ef">admissionReviewVersions</span>:
+  - v1beta1
+  <span style="color:#66d9ef">clientConfig</span>:
+    <span style="color:#66d9ef">caBundle</span>: LS0tLS1CRUdJTiBDRVJUSUZJQ...
+    <span style="color:#66d9ef">service</span>:
+      <span style="color:#66d9ef">name</span>: istiod
+      <span style="color:#66d9ef">namespace</span>: istio-system
+      <span style="color:#66d9ef">path</span>: /inject
+      <span style="color:#66d9ef">port</span>: <span style="color:#ae81ff">443</span>
+  <span style="color:#66d9ef">failurePolicy</span>: Fail
+  <span style="color:#66d9ef">matchPolicy</span>: Exact
+  <span style="color:#66d9ef">name</span>: sidecar-injector.istio.io
+  <span style="color:#66d9ef">namespaceSelector</span>:
+    <span style="color:#66d9ef">matchLabels</span>:
+      <span style="color:#66d9ef">istio-injection</span>: enabled
+  <span style="color:#66d9ef">objectSelector</span>: {}
+  <span style="color:#66d9ef">reinvocationPolicy</span>: Never
+  <span style="color:#66d9ef">rules</span>:
+  - <span style="color:#66d9ef">apiGroups</span>:
+    - <span style="color:#e6db74">&#34;&#34;</span>
+    <span style="color:#66d9ef">apiVersions</span>:
+    - v1
+    <span style="color:#66d9ef">operations</span>:
+    - CREATE
+    <span style="color:#66d9ef">resources</span>:
+    - pods
+    <span style="color:#66d9ef">scope</span>: <span style="color:#e6db74">&#39;*&#39;</span>
+  <span style="color:#66d9ef">sideEffects</span>: None
+  <span style="color:#66d9ef">timeoutSeconds</span>: <span style="color:#ae81ff">30</span>
+</code></pre></div><p>Sidecar Injector 默认只对标签匹配 <code>istio-injection：enabled</code> 的命名空间下的Pod资源对象的创建生效。Webhook服务的访问路径为<code>/inject</code>，地址及访问凭证等都在clientConfig字段下进行配置。
+Istio Sidecar Injector组件是由sidecar-injector进程实现的。Sidecar Injector 的实现主要由两部分组成：</p>
+<ul>
+<li>
+<p>MutatingWebhookConfiguration</p>
+</li>
+<li>
+<p>Webhook Server，为应用工作负载自动注入Sidecar容器</p>
+</li>
+</ul>
+<p>Sidecar Injector 以轻量级 HTTPS 服务器的形式处理 Kube-apiserver 的 AdmissionRequest 请求。</p>
+<p>通常Pod Sidecar容器的注入由以下步骤完成:</p>
+<ol>
+<li>解析 Webhook REST 请求，将 AdmissionReview 原始数据反序列化；</li>
+<li>解析 Pod，将 AdmissionReview 中的 AdmissionRequest 反序列化；</li>
+<li>利用 Pod 及网格配置渲染 Sidecar 配置模板；</li>
+<li>利用 Pod 及渲染后的模板创建 JSON patch；</li>
+<li>构造 AdmissionResponse；</li>
+<li>构造 AdmissionReview，在进行 JSON 编码后，将其发送给 HTTP 客户端即Kube-apiserver；</li>
+</ol>
+<p>可以查看注入的配置项 istio-sidecar-injector：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">kubectl describe configmap istio-sidecar-injector -n istio-system
+</code></pre></div><p><strong>istio-sidecar-injector configmap (简略版本)</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">Name</span>:         istio-sidecar-injector
+<span style="color:#66d9ef">Namespace</span>:    istio-system
+<span style="color:#66d9ef">Labels</span>:       install.operator.istio.io/owning-resource=installed-state
+              istio.io/rev=default
+              operator.istio.io/component=Pilot
+              operator.istio.io/managed=Reconcile
+              operator.istio.io/version=<span style="color:#ae81ff">1.6.2</span>
+              release=istio
+<span style="color:#66d9ef">Annotations</span>:
+Data
+====
+<span style="color:#66d9ef">config</span>:
+----
+<span style="color:#66d9ef">policy</span>: enabled
+...
+<span style="color:#66d9ef">template</span>: <span style="color:#e6db74">|
+</span><span style="color:#e6db74">  rewriteAppHTTPProbe: {{ valueOrDefault .Values.sidecarInjectorWebhook.rewriteAppHTTPProbe false }}</span>
+  <span style="color:#66d9ef">initContainers</span>:
+  	...
+  - <span style="color:#66d9ef">name</span>: istio-validation
+  	...
+  - <span style="color:#66d9ef">name</span>: istio-init
+		...
+    <span style="color:#66d9ef">args</span>:
+    - istio-iptables
+    - <span style="color:#e6db74">&#34;-p&#34;</span>
+    - <span style="color:#ae81ff">15001</span>
+		...
+  <span style="color:#66d9ef">containers</span>:
+  - <span style="color:#66d9ef">name</span>: istio-proxy
+    <span style="color:#66d9ef">ports</span>:
+    - <span style="color:#66d9ef">containerPort</span>: <span style="color:#ae81ff">15090</span>
+      <span style="color:#66d9ef">protocol</span>: TCP
+      <span style="color:#66d9ef">name</span>: http-envoy-prom
+    <span style="color:#66d9ef">args</span>:
+		...
+    <span style="color:#66d9ef">env</span>:
+    - <span style="color:#66d9ef">name</span>: JWT_POLICY
+      <span style="color:#66d9ef">value</span>: {{ .Values.global.jwtPolicy }}
+    ...
+</code></pre></div><p>ConfigMap 保存了默认注入策略（policy）和 sidecar 注入模板（template）。
+策略（policy）:</p>
+<ul>
+<li>disabled：sidecar 注入器默认不会注入到 pod 中。添加pod模板定义中的注解 sidecar.istio.io/inject 值为 true会启用注入功能。</li>
+<li>enabled：sidecar 注入器默认会注入到 pod 中。添加pod模板定义中的注解 sidecar.istio.io/inject 值为 false会禁止注入功能。</li>
+</ul>
+<h2 id="参考">参考</h2>
+<ul>
+<li><a href="http://dockone.io/article/8975">http://dockone.io/article/8975</a></li>
+<li><a href="https://cloud.tencent.com/developer/article/1445760">https://cloud.tencent.com/developer/article/1445760</a></li>
+<li><a href="https://www.dazhuanlan.com/2019/12/10/5deec157cba32/">https://www.dazhuanlan.com/2019/12/10/5deec157cba32/</a></li>
+<li><a href="https://www.codercto.com/a/27364.html">https://www.codercto.com/a/27364.html</a></li>
+<li><a href="https://blog.csdn.net/weixin_34014277/article/details/89570351">https://blog.csdn.net/weixin_34014277/article/details/89570351</a></li>
+<li><a href="https://developer.aliyun.com/article/620700">https://developer.aliyun.com/article/620700</a></li>
+<li>《云原生服务网格 Istio: 原理、实践、架构及源码解析》张超盟</li>
+</ul>
+
+        </div>
+
+        
+
+        
+<br>
+<div class="heading">Tags:</div>
+<div class="field is-grouped is-grouped-multiline">
+  <div class="control">
+    <a href="/tags/service-mesh">
+      <span class="tag">Service Mesh</span>
+    </a>
+  </div>
+  <div class="control">
+    <a href="/tags/istio">
+      <span class="tag">Istio</span>
+    </a>
+  </div>
+</div>
+
+      </div>
+
+    </section>
+
+    <section class="section">
+
+      
+      <script src="https://utteranc.es/client.js"
+        repo = "yingchi1994/HugoComments"
+        issue-term = "pathname"
+        theme = "github-light"
+        crossorigin="anonymous"
+        async>
+      </script>
+      <br>
+      
+      
+      <div class="container">
+  <div class="level">
+
+    <div class="level-left">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/6/istio-sidecar-proxy.html">
+            <span class="icon is-small"><i class="fa fa-chevron-left"></i></span>
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Istio Sidecar 流量拦截机制分析
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Istio Sidecar 流量拦截机制分析
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Istio Sidecar 流量拦截机制分析
+            </span>
+            <span class="is-hidden-tablet">
+              Istio Sidecar 流量拦截机制分析
+            </span>
+            
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <div class="level-right">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/5/what-is-cloud-native.html">
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Cloud Native 云原生 | 概念解读
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Cloud Native 云原生 | 概念解读
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Cloud Native 云原生 | 概念解读
+            </span>
+            <span class="is-hidden-tablet">
+              Cloud Native 云原生 | 概念解读
+            </span>
+            
+            <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+          </a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+      <br>
+
+      
+      
+
+      <br>
+      
+      
+      
+
+    </section>
+
+    <footer class="footer" 
+style="text-align: center; background-color: #ffffff;">
+  <div class="container">
+    <span style="font-size: small;">
+      <a href="https://yingchi.io/">yingchi.io</a>
+       © 2018-2020</span>
+    <span style="font-size: small;"> Joey.Jiang | 
+      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
+  </div>
+</footer>
+
+  </body>
+
+</html>
+<style>
+
+body {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.container{
+  width: 800px;
+}
+
+.title-custom {
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.subtitle-custom {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.content-custom {
+    color: #000;
+    font-size: 16px;
+}
+
+.content-custom blockquote {
+    margin-bottom: 15px;
+    padding: 15px 0 15px 25px;
+    background: rgb(245, 246, 247);
+    border-left: 10px solid rgb(229, 232, 236);
+    border-radius: 5px;
+}
+
+.content-custom strong {
+    color: rgb(91, 127, 194);
+}
+
+.content-custom em {
+    font-style: normal;
+    font-weight: bold;
+}
+
+.content-custom p {
+    margin: 0 10px;
+}
+
+.content-custom ul{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+    list-style-type: square;
+}
+
+.content-custom ul ul{
+    margin: 0px;
+    list-style-type: circle;
+    padding: 0;
+}
+
+.content-custom ol{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+}
+
+.content-custom li {
+    margin: 5px 40px;
+}
+
+.content-custom img {
+    margin: 20px auto !important;
+    text-align: center;
+    clear: both;
+    display: block;
+    margin: auto;
+    width: 80%;
+}
+
+
+
+.content-custom pre{
+    color: rgb(224, 235, 247);
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgb(85, 94, 104);
+    background-color: rgb(85, 94, 104) !important;
+}
+
+.content-custom h1 {
+    font-size: 25px;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+    padding: 15px;
+     
+    border-bottom: 3px solid #555;
+}
+.content-custom h2 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 40px 0 20px 0;
+    padding: 10px;
+     
+    border-bottom: 2px solid #555;
+}
+.content-custom h3 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 16px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+.content-custom h4 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 10px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+
+ 
+@media screen and (max-width: 960px){
+
+  body{
+    overflow-x: hidden;
+  }
+
+  .container{
+    width: 100%;
+  }
+
+  .content-custom img {
+    width: 100%;
+  }
+
+  .title-custom {
+    font-size: 22px;
+  }
+}
+
+
+</style>

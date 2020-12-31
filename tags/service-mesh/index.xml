@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>service-mesh on Yingchi Blog</title>
+    <link>https://blog.yingchi.io/tags/service-mesh.html</link>
+    <description>Recent content in service-mesh on Yingchi Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Mon, 22 Jun 2020 16:23:17 +0800</lastBuildDate>
+    
+	<atom:link href="https://blog.yingchi.io/tags/service-mesh/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Istio Sidecar 流量拦截机制分析</title>
+      <link>https://blog.yingchi.io/posts/2020/6/istio-sidecar-proxy.html</link>
+      <pubDate>Mon, 22 Jun 2020 16:23:17 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/6/istio-sidecar-proxy.html</guid>
+      <description>流量流经主机的基本过程 过程如下：
+ Inbound 流量经过 NIC（网卡）进入主机的网络协议栈； 协议栈会根据预先定制的网络规则(iptables/netfilter)对报文进行检查； 协议栈规则检查后，符合要求的 Inbound 流量会从内核空间进入到用户空间，并进入指定监听端口的进程； 处于用户态的用户进程接收到网络流量报文进行处理后，将处理后的结果再通过用户空间返回给内核空间的网络协议栈； 网络协议栈检查报文，并将结果报文根据指定的网络策略通过网卡发送出去；  Sidecar 流量拦截基本过程 之前的文章已经介绍过了 Sidecar 的注入机制，注入到 Pod 中的即下面两个容器：
+ istio-init：InitContainer，用于在 Pod 初始化过程中对 Pod 的 iptables 进行初始配置； istio-proxy：负责与 pilot 组件通信以及流量的控制；该容器运行时会启动两个关键的进程 pilot-agent 和 envoy。pilot-agent 进程会定时跟 istio 的 pilot 组件进行通信，envoy 进程会接收入口和出口网络流量。  注意：istio-proxy 和 Kubernetes 中的 kube-proxy 都是通过 iptables/netfilter 来处理网络流量。只不过 istio-proxy 位于 pod 网络空间，处理的是 pod 内的网络流量，而 kube-proxy 位于宿主机网络空间，处理的是宿主机内网络流量（因为 kube-proxy 是 daemonset，因此它位于 k8s 集群的每个 node 节点上）。
+Sidecar 流量拦截其实指基于 iptables 规则，由 init 容器在 Pod 启动的时候首先设置iptables 规则。</description>
+    </item>
+    
+    <item>
+      <title>Istio Sidecar 注入机制</title>
+      <link>https://blog.yingchi.io/posts/2020/6/istio-sidecar-injection.html</link>
+      <pubDate>Sun, 21 Jun 2020 21:31:42 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/6/istio-sidecar-injection.html</guid>
+      <description>Service Mesh 及 Sidecar 概念 在了解 Sidecar 的注入机制前还是先要明确是什么和为什么的问题。
+首先，Service Mesh 是什么？
+Service Mesh，或者翻译为「服务网格」，是一个可配置的低延迟的基础设施层，目的是通过API（应用程序编程接口）处理应用程序服务之间的大量基于网络的进程间通信。服务网络确保容器化的短暂存在的应用程序的基础结构服务之间的通信快速，可靠和安全。网格提供关键功能，包括服务发现，负载平衡，加密，可观察性，可追溯性，身份验证和授权，以及对断路器模式的支持。其实服务网格的目的说的最简单就是「接管和治理应用程序间的通信」，其中有个最为核心的要点就是，通信，基于 Service Mesh 的服务治理就是在服务的通信或者说调用过程中「做手脚」，离开这一点，Service Mesh 毫无意义，当然，这个应用程序似乎也没有意义了。如下图所示，就是典型的 Service Mesh 基础设施层架构。
+可以看到分为 Control Plane 和 Data Plane，Control Plane 的主要作用就是治理规则的控制与下发，而 Data Plane 的主要作用就是处理服务实例间的通信过程，实施指定的治理策略。Data Plane 中就可以看到今天的主角，也就是 Sidecar，正如图中标识的，Sidecar 最准确的表述应该是 「Sidecar Proxy」，它的本质是一个代理组件，这个组件会被直接注入到服务实例相同的 Network Namesapce 下，在 Kubernetes 中，就是注入到 Pod 里面，此时 Sidecar 与服务实例共享 Pod Network Namespace，可以通过 iptables 对流经实例的 inbound 和 outbound 流量进行相应的规则处理。
+本文主要基于 Istio 这个 Service Mesh 实现针对 Sidecar 的注入机制进行分析。
+Admission Controller 与 Admission Webhook Sidecar 的注入依赖于 Kubernetes 的几个概念，其中比较核心的就是 Admission Controller 和 Admission Webhook。</description>
+    </item>
+    
+  </channel>
+</rss>

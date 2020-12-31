@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Tags on Yingchi Blog</title>
+    <link>https://blog.yingchi.io/tags.html</link>
+    <description>Recent content in Tags on Yingchi Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 24 Jul 2020 23:41:26 +0800</lastBuildDate>
+    
+	<atom:link href="https://blog.yingchi.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>kubernetes</title>
+      <link>https://blog.yingchi.io/tags/kubernetes.html</link>
+      <pubDate>Fri, 24 Jul 2020 23:41:26 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/tags/kubernetes.html</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>note</title>
+      <link>https://blog.yingchi.io/tags/note.html</link>
+      <pubDate>Mon, 29 Jun 2020 22:43:03 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/tags/note.html</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>istio</title>
+      <link>https://blog.yingchi.io/tags/istio.html</link>
+      <pubDate>Mon, 22 Jun 2020 16:23:17 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/tags/istio.html</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>service-mesh</title>
+      <link>https://blog.yingchi.io/tags/service-mesh.html</link>
+      <pubDate>Mon, 22 Jun 2020 16:23:17 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/tags/service-mesh.html</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>cloud-native</title>
+      <link>https://blog.yingchi.io/tags/cloud-native.html</link>
+      <pubDate>Fri, 29 May 2020 22:43:03 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/tags/cloud-native.html</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>network</title>
+      <link>https://blog.yingchi.io/tags/network.html</link>
+      <pubDate>Mon, 13 Apr 2020 20:26:41 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/tags/network.html</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>docker</title>
+      <link>https://blog.yingchi.io/tags/docker.html</link>
+      <pubDate>Sat, 11 Apr 2020 22:14:12 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/tags/docker.html</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>golang</title>
+      <link>https://blog.yingchi.io/tags/golang.html</link>
+      <pubDate>Thu, 19 Mar 2020 18:33:25 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/tags/golang.html</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

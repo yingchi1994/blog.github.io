@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <title>理解 Kubernetes 的 Resource 设计概念</title>
+  <meta name="author" content="YINGCHI_Joey" />
+  <meta name="description"
+        content="
+Kubernetes 是一个完全以资源为中心的容器编排平台，这一点从 kube-apiserver 对外暴露的 REST API 设计上其实就能很明显地感受到。Kubernetes 的生态系统围绕着诸多组件资源的控制维护而运作，因此也可以认为它本质上是一个「资源控制系统」
+
+Group / Version / Resource
+针对于资源这一概念，如果在一个庞大而复杂的容器编排平台上仅设计这么一..."/>
+
+
+  <meta name="generator" content="Hugo 0.71.1" />
+
+  
+  <meta itemprop="name" content="理解 Kubernetes 的 Resource 设计概念"/>
+  <meta itemprop="description"
+        content="
+Kubernetes 是一个完全以资源为中心的容器编排平台，这一点从 kube-apiserver 对外暴露的 REST API 设计上其实就能很明显地感受到。Kubernetes 的生态系统围绕着诸多组件资源的控制维护而运作，因此也可以认为它本质上是一个「资源控制系统」
+
+Group / Version / Resource
+针对于资源这一概念，如果在一个庞大而复杂的容器编排平台上仅设计这么一..."/>
+  <meta itemprop="image"
+        content=""/>
+
+  
+  <meta property="og:title" content="理解 Kubernetes 的 Resource 设计概念"/>
+  <meta property="og:type"
+        content="article"/>
+  <meta property="og:url" content="https://blog.yingchi.io/posts/2020/4/kubernetes-resources.html"/>
+  <meta property="og:image"
+        content=""/>
+  <meta property="og:description"
+        content="
+Kubernetes 是一个完全以资源为中心的容器编排平台，这一点从 kube-apiserver 对外暴露的 REST API 设计上其实就能很明显地感受到。Kubernetes 的生态系统围绕着诸多组件资源的控制维护而运作，因此也可以认为它本质上是一个「资源控制系统」
+
+Group / Version / Resource
+针对于资源这一概念，如果在一个庞大而复杂的容器编排平台上仅设计这么一..."/>
+  <meta property="og:site_name" content="Yingchi Blog"/>
+  <meta property="article:published_time"
+        content="2020-04-07T15:34:33&#43;08:00"/>
+  <meta property="article:section" content="posts"/>
+  <meta property="article:tag" content="kubernetes"/>
+
+  
+  
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:site"
+        content=""/>
+  <meta name="twitter:title" content="理解 Kubernetes 的 Resource 设计概念"/>
+  <meta name="twitter:description"
+        content="
+Kubernetes 是一个完全以资源为中心的容器编排平台，这一点从 kube-apiserver 对外暴露的 REST API 设计上其实就能很明显地感受到。Kubernetes 的生态系统围绕着诸多组件资源的控制维护而运作，因此也可以认为它本质上是一个「资源控制系统」
+
+Group / Version / Resource
+针对于资源这一概念，如果在一个庞大而复杂的容器编排平台上仅设计这么一..."/>
+  <meta name="twitter:creator"
+        content=""/>
+  <meta name="twitter:image:src"
+        content=""/>
+
+  
+
+  
+  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
+  
+  
+
+  
+  
+  
+  
+  <script>
+  	var _mtac = {};
+  	(function() {
+  		var mta = document.createElement("script");
+  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
+  		mta.setAttribute("name", "MTAH5");
+  		mta.setAttribute("sid", "500724862");
+
+  		var s = document.getElementsByTagName("script")[0];
+  		s.parentNode.insertBefore(mta, s);
+  	})();
+</script>
+</head>
+
+
+  <body style="min-height:100vh;display:flex;flex-direction:column">
+
+    <section>
+  <nav style="text-align: center; margin-top: 30px;">
+    <div>
+        <a class="custom-title" href="/">
+          
+          <img class="logo" src="/logo.png"/>
+        </a>
+    </div>
+  </nav>
+
+</section>
+
+<style>
+  .custom-title{
+    color: rgb(87, 87, 87);
+    font-size: 25px;
+    font-weight: bold;
+    text-decoration: none;
+  }
+
+  .logo{
+    width: 190px;
+  }
+</style>
+
+    <section class="section" style="flex:1">
+
+      
+      <div class="container">
+        
+        <p class="title-custom">理解 Kubernetes 的 Resource 设计概念</p>
+        <p class="subtitle-custom">Apr 7, 2020</p>
+
+        
+
+        
+        
+        <div class="content-custom">
+          <blockquote>
+<p>Kubernetes 是一个完全以资源为中心的容器编排平台，这一点从 kube-apiserver 对外暴露的 REST API 设计上其实就能很明显地感受到。Kubernetes 的生态系统围绕着诸多组件资源的控制维护而运作，因此也可以认为它本质上是一个「资源控制系统」</p>
+</blockquote>
+<h2 id="group--version--resource">Group / Version / Resource</h2>
+<p>针对于资源这一概念，如果在一个庞大而复杂的容器编排平台上仅设计这么一个简单的「资源」语义显然是有点单薄，或者说表达力过于欠缺，因此对于资源这么一个概念，在 Kubernetes 上又进行了分组和版本话，于是就有了我们平时运维与开发中常见到的一些术语：<strong>Group</strong> / <strong>Version</strong> / <strong>Resource</strong> / <strong>Kind</strong>，分别代表的意义：<strong>资源组</strong> / <strong>资源版本</strong> / <strong>资源</strong> / <strong>资源种类</strong>。</p>
+<p>他们之间的关系是这样的：</p>
+<ul>
+<li>Kubernetes 系统支持多个 Group(资源组)；</li>
+<li>每个 Group 支持多个资源版本(Version)；</li>
+<li>每个资源版本又支持多种资源(Resource)，部分资源还拥有自己的子资源；</li>
+<li>Kind 与 Resource 属于同一级概念，Kind 用于描述 Resource 的种类；</li>
+</ul>
+<p>定位一个资源的完整形式如下：</p>
+<pre><code>&lt;GROUP&gt;/&lt;VERSION&gt;/&lt;RESOURCE&gt;[/&lt;SUBSOURCE&gt;]
+</code></pre><p>以 Deployment 为例：apps/v1/deployments/status</p>
+<p>在 Kubernetes 中还有一种描述资源的概念叫做「资源对象」(Resource Object)，其描述形式为：</p>
+<pre><code>&lt;GROUP&gt;/&lt;VERSION&gt;, Kind=&lt;RESOURCE_NAME&gt;
+</code></pre><p>以 Deployment 为例：apps/v1, Kind=Deployment</p>
+<p><strong>资源概念的一些基本特点：</strong></p>
+<ul>
+<li>每个资源都有一定数量的操作方法，称为 Verbs，如 create / delete / update / get / list / watch &hellip;（8种）；</li>
+<li>每个资源 Version 至少有两种，包括一个面向用户请求的外部版本，还有 api-server 内部使用的内部版本；</li>
+<li>Kubernetes 资源整体上分为<strong>内置资源</strong>以及 <strong>Custom Resources 自定义资源</strong>，其中 CR 通过 <strong>CRD 自定义资源定义</strong>实现；</li>
+</ul>
+<h3 id="group">Group</h3>
+<p>资源组，Kubenetes API Server 也称为 <strong>APIGroup</strong>，其有如下特点：</p>
+<ul>
+<li>资源组的划分依据是<strong>资源的功能</strong>；</li>
+<li>支持不同资源组中拥有不同资源版本，从而方便组内资源迭代升级；</li>
+<li>支持不同 Group 内有同名 Kind 的 Resource；</li>
+<li>支持通过 CRD 扩展自定义资源；</li>
+<li>使用 kubectl 命令进行资源交互时，可以不指定 Group；</li>
+</ul>
+<p><strong>有组名 Group 及无组名 Group</strong></p>
+<p>包含拥有组名的 Group 和没有组名的 <strong>Core Groups</strong>（如 v1/pods），其 HTTP 请求方式也有差别：</p>
+<pre><code>有组名 Group 资源: .../apis/&lt;GROUP&gt;/&lt;VERSION&gt;/&lt;RESOURCE&gt;
+无组名 Group 资源: .../api/&lt;VERSION&gt;/&lt;RESOURCE&gt;
+</code></pre><h3 id="version">Version</h3>
+<p>Kubernetes 的资源版本 Version 采用的是语义化的版本号，版本号以 v 开头，版本号后面跟着版本的测试阶段(Alpha -&gt; Beta -&gt; Stable)，例如：v1alpha1、v1beta1、v2stable1</p>
+<p>版本的各个测试阶段情况如下：</p>
+<ul>
+<li><strong>Alpha 阶段</strong>：内部测试版本，存在很多的缺陷和漏洞，版本极其不稳定，官方随时可能会放弃支持该版本，仅仅用于开发者的测试使用，Alpha 版本中的功能默认情况下会被禁用。常见命名方式如 v1alpha1；</li>
+<li><strong>Beta 阶段</strong>：相对稳定版本，经过了官方和社区的测试，版本迭代时会有些许改变，但不会像 Alpha 版本一样不稳定，Beta 阶段下的功能默认是开启的。常见命名方式如 v2beta1；</li>
+<li><strong>Stable 阶段</strong>：正式发布版本，功能稳定版本，基本形成了产品，默认情况下所有功能全部开启，命名方式一般不加 stable，直接是 v1、v2 这种；</li>
+</ul>
+<h3 id="resource">Resource</h3>
+<p>Resource 是 Kubernetes 中的核心概念，Kubernetes 的本质就是管理、调度及维护其下各种 Resources。</p>
+<ul>
+<li>Resource 实例化后称为一个 Resource Object；</li>
+<li>Kubernetes 中所有的 Resource Object 都称为 <strong>Entity</strong>；</li>
+<li>可以通过 Kubenetes API Server 去操作 Resource Object；</li>
+</ul>
+<p>Kubernetes 目前将 Entity 分为两大类：</p>
+<ul>
+<li><strong>Persistent Entity</strong>：即 Resource Object 创建后会持久存在，绝大部分都是 PE，如 Deployment / Service；</li>
+<li><strong>Ephemeral Entity</strong>: 短暂实体，Resource Object 创建后不稳定，出现故障/调度失败后不再重建，如 Pod；</li>
+</ul>
+<h2 id="资源操作方法">资源操作方法</h2>
+<p>虽然在 Etcd 层面而言，对于资源的操作最终也只转换为增删改查这些基本操作，但是抽象到资源层面，Kubernetes 赋予了资源比较多的操作方法，之前提到过，称之为「Verbs」，分别是 create / delete / deletecollection / patch / update / get / list / watch，我们仍然可以把它们归到增删改查四大类:</p>
+<ul>
+<li>增：
+<ul>
+<li><strong>create</strong>：Resource Object 创建</li>
+</ul>
+</li>
+<li>删：
+<ul>
+<li><strong>delete</strong>：单个 Resource Object 删除</li>
+<li><strong>deletecollection</strong>：多个 Resource Objects 删除</li>
+</ul>
+</li>
+<li>改：
+<ul>
+<li><strong>patch</strong>：Resource Object 局部字段更新</li>
+<li><strong>update</strong>：Resource Object 整体更新</li>
+</ul>
+</li>
+<li>查：
+<ul>
+<li><strong>get</strong>：单个 Resource Object 获取</li>
+<li><strong>list</strong>：多个 Resource Objects 获取</li>
+<li><strong>watch</strong>：Resource Objects 监控</li>
+</ul>
+</li>
+</ul>
+<h2 id="resource-与-namespace">Resource 与 Namespace</h2>
+<p>Kubernetes 同样支持 Namespace（命名空间）的概念，可以解决 Resource Object 过多时带来的管理复杂性问题。Namespace 有如下几个特点；</p>
+<ul>
+<li>每个 Namespace 可以视作「虚拟集群」，即不同的 Namespace 间可以实现隔离；</li>
+<li>不同的 Namespace 间可以实现跨 Namespace 的通信；</li>
+<li>可以对不同的用户配置对不同 Namespace 的访问权限；</li>
+</ul>
+<p>因此我们知道，Namespace 即可实现资源的隔离，同时有能满足跨 Namespace 的通信，是一个非常灵活的概念，在很多场景下，比如多租户的实现、生产/测试/开发环境的隔离等场景中都会起到重要作用。</p>
+<h2 id="resource-manifest-file-资源对象描述文件">Resource Manifest File 资源对象描述文件</h2>
+<p>无论是 Kubernetes 的内置资源还是通过 CRD 定义的 Custom Resource，都是通过资源对象描述文件进行 Resource Object 的创建。</p>
+<p>Kubernetes 中 Manifest File 可以通过两种格式来定义：<strong>YAML</strong> 和 <strong>JSON</strong>，无论格式如何，Manifest File 各个字段都是固定的意义：</p>
+<ul>
+<li><strong>apiVersion</strong>：注意这里的 APIVersion 其实指的是 APIGroup/APIVersion，如 Deployment 可以写为 apps/v1，而对于 Pod，因为它属于 Core Group，即无名 Group，因此省略 Group，写为 v1 即可；</li>
+<li><strong>kind</strong>：Resource Object 的种类；</li>
+<li><strong>metadata</strong>：Resource Object 的元数据信息，常用的包括 name / namespace / labels；</li>
+<li><strong>spec</strong>：Resource Object 的期望状态（Desired Status）</li>
+<li><strong>status</strong>：Resource Object 的实际状态（Actual Status）</li>
+</ul>
+<h2 id="参考">参考</h2>
+<ul>
+<li>《Kubernetes 源码剖析》郑东旭</li>
+</ul>
+
+        </div>
+
+        
+
+        
+<br>
+<div class="heading">Tags:</div>
+<div class="field is-grouped is-grouped-multiline">
+  <div class="control">
+    <a href="/tags/kubernetes">
+      <span class="tag">Kubernetes</span>
+    </a>
+  </div>
+</div>
+
+      </div>
+
+    </section>
+
+    <section class="section">
+
+      
+      <script src="https://utteranc.es/client.js"
+        repo = "yingchi1994/HugoComments"
+        issue-term = "pathname"
+        theme = "github-light"
+        crossorigin="anonymous"
+        async>
+      </script>
+      <br>
+      
+      
+      <div class="container">
+  <div class="level">
+
+    <div class="level-left">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-1.html">
+            <span class="icon is-small"><i class="fa fa-chevron-left"></i></span>
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Kubernetes &amp; Docker 网络原理（一）
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Kubernetes &amp; Docker 网络原理（一）
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Kubernetes &amp; Docker 网络原理（一）
+            </span>
+            <span class="is-hidden-tablet">
+              Kubernetes &amp; Docker 网络原理（一）
+            </span>
+            
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <div class="level-right">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html">
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Kubernetes Rolling Update 滚动升级
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Kubernetes Rolling Update 滚动升级
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Kubernetes Rolling Update 滚动升级
+            </span>
+            <span class="is-hidden-tablet">
+              Kubernetes Rolling Update 滚动升级
+            </span>
+            
+            <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+          </a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+      <br>
+
+      
+      
+
+      <br>
+      
+      
+      
+<div class="container">
+  <nav class="panel">
+    <p class="panel-heading">Related</p>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes 架构浅析&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes Rolling Update 滚动升级&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>记一次 Kubeadm 部署 k8s &#43; Flannel&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2019/10/network-devices.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>网络模型学习基础：各层网络设备概念&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+  </nav>
+</div>
+
+    </section>
+
+    <footer class="footer" 
+style="text-align: center; background-color: #ffffff;">
+  <div class="container">
+    <span style="font-size: small;">
+      <a href="https://yingchi.io/">yingchi.io</a>
+       © 2018-2020</span>
+    <span style="font-size: small;"> Joey.Jiang | 
+      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
+  </div>
+</footer>
+
+  </body>
+
+</html>
+<style>
+
+body {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.container{
+  width: 800px;
+}
+
+.title-custom {
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.subtitle-custom {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.content-custom {
+    color: #000;
+    font-size: 16px;
+}
+
+.content-custom blockquote {
+    margin-bottom: 15px;
+    padding: 15px 0 15px 25px;
+    background: rgb(245, 246, 247);
+    border-left: 10px solid rgb(229, 232, 236);
+    border-radius: 5px;
+}
+
+.content-custom strong {
+    color: rgb(91, 127, 194);
+}
+
+.content-custom em {
+    font-style: normal;
+    font-weight: bold;
+}
+
+.content-custom p {
+    margin: 0 10px;
+}
+
+.content-custom ul{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+    list-style-type: square;
+}
+
+.content-custom ul ul{
+    margin: 0px;
+    list-style-type: circle;
+    padding: 0;
+}
+
+.content-custom ol{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+}
+
+.content-custom li {
+    margin: 5px 40px;
+}
+
+.content-custom img {
+    margin: 20px auto !important;
+    text-align: center;
+    clear: both;
+    display: block;
+    margin: auto;
+    width: 80%;
+}
+
+
+
+.content-custom pre{
+    color: rgb(224, 235, 247);
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgb(85, 94, 104);
+    background-color: rgb(85, 94, 104) !important;
+}
+
+.content-custom h1 {
+    font-size: 25px;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+    padding: 15px;
+     
+    border-bottom: 3px solid #555;
+}
+.content-custom h2 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 40px 0 20px 0;
+    padding: 10px;
+     
+    border-bottom: 2px solid #555;
+}
+.content-custom h3 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 16px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+.content-custom h4 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 10px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+
+ 
+@media screen and (max-width: 960px){
+
+  body{
+    overflow-x: hidden;
+  }
+
+  .container{
+    width: 100%;
+  }
+
+  .content-custom img {
+    width: 100%;
+  }
+
+  .title-custom {
+    font-size: 22px;
+  }
+}
+
+
+</style>

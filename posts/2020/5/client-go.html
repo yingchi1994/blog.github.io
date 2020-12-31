@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <title>client-go 初步认识与实践</title>
+  <meta name="author" content="YINGCHI_Joey" />
+  <meta name="description"
+        content="
+最近本人的一个容器应用管理平台项目需要实现对接 Kubernetes 平台并进行一些相关资源的操作，查阅了官方文档、GitHub 以及相关技术文章，发现有个叫做 client-go 的 go 语言库是非常适合做 Kubernetes 二次开发的，于是就边实践，边学习，对 client-go 这个库有了一定程度的了解。对于其中比较复杂的设计，如 informer 部分，..."/>
+
+
+  <meta name="generator" content="Hugo 0.71.1" />
+
+  
+  <meta itemprop="name" content="client-go 初步认识与实践"/>
+  <meta itemprop="description"
+        content="
+最近本人的一个容器应用管理平台项目需要实现对接 Kubernetes 平台并进行一些相关资源的操作，查阅了官方文档、GitHub 以及相关技术文章，发现有个叫做 client-go 的 go 语言库是非常适合做 Kubernetes 二次开发的，于是就边实践，边学习，对 client-go 这个库有了一定程度的了解。对于其中比较复杂的设计，如 informer 部分，..."/>
+  <meta itemprop="image"
+        content=""/>
+
+  
+  <meta property="og:title" content="client-go 初步认识与实践"/>
+  <meta property="og:type"
+        content="article"/>
+  <meta property="og:url" content="https://blog.yingchi.io/posts/2020/5/client-go.html"/>
+  <meta property="og:image"
+        content=""/>
+  <meta property="og:description"
+        content="
+最近本人的一个容器应用管理平台项目需要实现对接 Kubernetes 平台并进行一些相关资源的操作，查阅了官方文档、GitHub 以及相关技术文章，发现有个叫做 client-go 的 go 语言库是非常适合做 Kubernetes 二次开发的，于是就边实践，边学习，对 client-go 这个库有了一定程度的了解。对于其中比较复杂的设计，如 informer 部分，..."/>
+  <meta property="og:site_name" content="Yingchi Blog"/>
+  <meta property="article:published_time"
+        content="2020-05-23T12:21:08&#43;08:00"/>
+  <meta property="article:section" content="posts"/>
+  <meta property="article:tag" content="kubernetes"/>
+
+  
+  
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:site"
+        content=""/>
+  <meta name="twitter:title" content="client-go 初步认识与实践"/>
+  <meta name="twitter:description"
+        content="
+最近本人的一个容器应用管理平台项目需要实现对接 Kubernetes 平台并进行一些相关资源的操作，查阅了官方文档、GitHub 以及相关技术文章，发现有个叫做 client-go 的 go 语言库是非常适合做 Kubernetes 二次开发的，于是就边实践，边学习，对 client-go 这个库有了一定程度的了解。对于其中比较复杂的设计，如 informer 部分，..."/>
+  <meta name="twitter:creator"
+        content=""/>
+  <meta name="twitter:image:src"
+        content=""/>
+
+  
+
+  
+  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
+  
+  
+
+  
+  
+  
+  
+  <script>
+  	var _mtac = {};
+  	(function() {
+  		var mta = document.createElement("script");
+  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
+  		mta.setAttribute("name", "MTAH5");
+  		mta.setAttribute("sid", "500724862");
+
+  		var s = document.getElementsByTagName("script")[0];
+  		s.parentNode.insertBefore(mta, s);
+  	})();
+</script>
+</head>
+
+
+  <body style="min-height:100vh;display:flex;flex-direction:column">
+
+    <section>
+  <nav style="text-align: center; margin-top: 30px;">
+    <div>
+        <a class="custom-title" href="/">
+          
+          <img class="logo" src="/logo.png"/>
+        </a>
+    </div>
+  </nav>
+
+</section>
+
+<style>
+  .custom-title{
+    color: rgb(87, 87, 87);
+    font-size: 25px;
+    font-weight: bold;
+    text-decoration: none;
+  }
+
+  .logo{
+    width: 190px;
+  }
+</style>
+
+    <section class="section" style="flex:1">
+
+      
+      <div class="container">
+        
+        <p class="title-custom">client-go 初步认识与实践</p>
+        <p class="subtitle-custom">May 23, 2020</p>
+
+        
+
+        
+        
+        <div class="content-custom">
+          <blockquote>
+<p>最近本人的一个容器应用管理平台项目需要实现对接 Kubernetes 平台并进行一些相关资源的操作，查阅了官方文档、GitHub 以及相关技术文章，发现有个叫做 client-go 的 go 语言库是非常适合做 Kubernetes 二次开发的，于是就边实践，边学习，对 client-go 这个库有了一定程度的了解。对于其中比较复杂的设计，如 informer 部分，之后有时间的话会结合 kube-controller-manager 相关机制的研究学习过程加以介绍分享。</p>
+</blockquote>
+<p>client-go 是 Kubernetes 项目所采用的编程式交互客户端库，官方从2016年8月份开始，资源交互操作相关的核心源码，也就是 client-go 抽取出来，独立出来作为一个项目。也就是现在所用到的 Kubernetes 内部都是集成有 client-go 的，因此对于这个库的编码质量应该是值得放心的。</p>
+<p>client-go 所谓编程式交互客户端库说白了就是可以通过写一些 Go 代码实现对kubernetes集群中资源对象（包括deployment、service、ingress、replicaSet、pod、namespace、node等）的增删改查操作。</p>
+<h2 id="源码简介">源码简介</h2>
+<h3 id="源码目录简述">源码目录简述</h3>
+<ul>
+<li>discovery：通过Kubernetes API 进行服务发现；</li>
+<li>kubernetes：提供 <strong>ClientSet</strong> 客户端，可以对 <strong>Kubernetes 内置资源对象</strong>进行操作；</li>
+<li>dynamic：提供 <strong>DynamicClient</strong> 客户端，可以实现对<strong>任意 Kubernetes 资源对象</strong>操作；</li>
+<li>rest：提供 <strong>RESTClient</strong> 客户端，可以实现对 kube-apiserver 执行 REST 请求实现资源操作；</li>
+<li>scale：提供 <strong>ScaleClient</strong> 客户端，主要用于 Deployment 等资源的扩缩容；</li>
+<li>listers：为 Kubernetes 资源提供 Lister 功能，对 Get / List 请求提供只读的缓存数据；</li>
+<li>informers：提供每种 Kubernetes 资源的 Informer 实现；</li>
+<li>transport：用于提供安全的 TCP 连接；</li>
+<li>tools/cache：提供常用工具；提供 Client 查询和缓存机制，以缓解 kube-apiserver 压力；</li>
+<li>util：提供常用方法；</li>
+</ul>
+<h2 id="client-对象">Client 对象</h2>
+<p>学习 client-go 进行 kubernetes 二次开发的很大一部分工作是学会熟练使用它的几种 client，client-go 有如下 4 种 client 客户端对象，通过 kubeconfig 配置信息连接到指定集群的 kube-apiserver 从而实现对于资源的相关操作。</p>
+<ul>
+<li><strong>RESTClient</strong>：<strong>client-go 中最基础的客户端</strong>，其它 client 都基于 RESTClient 实现，RESTClient 实现了 RESTful 风格的 API 请求封装，可以实现对任意 Kubernetes 资源（包括内置资源及 CRDs）的 RESTful 风格交互，如 Post() / Delete() / Put() / Get()，同时支持 Json 和 protobuf；</li>
+<li><strong>ClientSet</strong>：<strong>与 Kubernetes 内置资源对象交互最常用的 Client</strong>，强调，只能处理 Kubernetes 内置资源，不包括 CRD 自定义资源，使用时需要指定 Group、指定 Version，然后根据 Resource 获取。ClientSet 的操作代码是通过 client-gen 代码生成器自动生成的；</li>
+<li><strong>DynamicClient</strong>：<strong>DynamicClient 能处理包括 CRD 自定义资源在内的任意 kubernetes 资源</strong>。但是要注意，DynamicClient 返回的对象是一个 map[string]interface{}，如果一个 controller 中需要控制所有的 API，可以使用dynamic client，DynamicClient 只支持JSON；</li>
+<li><strong>DiscoveryClient</strong>：用于发现 kube-apiserver 支持的 Group / Version / Resource 信息；</li>
+</ul>
+<h2 id="client-go-客户端初始化">client-go 客户端初始化</h2>
+<h3 id="kubeconfig-配置信息">kubeconfig 配置信息</h3>
+<p>client-go 想要访问 kube-apiserver 进行交互操作，首先要配置相关的连接及身份认证等信息，配置信息由 kubeconfig 文件提供，默认情况下集群的 kubeconfig 文件存放路径在：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">$HOME/.kube/config
+</code></pre></div><p>以本人的测试集群的 kubeconfig 文件为例：</p>
+<pre><code>apiVersion: v1
+kind: Config
+clusters:
+  - cluster:
+      name: kubernetes
+      server: https://node01:6443
+      certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJ...
+contexts:
+  - context:
+      cluster: kubernetes
+      user: kubernetes-admin
+      name: kubernetes-admin@kubernetes
+      current-context: kubernetes-admin@kubernetes
+users:
+  - name: kubernetes-admin
+    user:
+      client-certificate-data: LS0tLS1CRUdJTiBDM4akND...
+      client-key-data: LS0tLS1CFURSBLRVktLS0tLQpNS...
+</code></pre><p>其中主要包含了如下信息：</p>
+<ul>
+<li>apiVersion：配置文件资源的版本</li>
+<li>kind：配置文件资源的种类，即 Config</li>
+<li>clusters：定义 Kubernetes 集群相关信息
+<ul>
+<li>cluster：定义每一个集群的名称、kube-apiserver 地址、证书信息；</li>
+</ul>
+</li>
+<li>contexts：集群上下文环境
+<ul>
+<li>context：定义具体每个集群的命令空间及用户信息，用于将请求发送到指定的集群；</li>
+</ul>
+</li>
+<li>users：定义用户身份验证信息，客户端凭据；</li>
+</ul>
+<p>client-go 读取 kubeconfig 配置信息生成 config 对象：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#f92672">...</span>
+<span style="color:#a6e22e">config</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">clientcmd</span>.<span style="color:#a6e22e">BuildConfigFromFlags</span>(<span style="color:#e6db74">&#34;&#34;</span>,<span style="color:#e6db74">&#34;./configs/kubeconfig.conf&#34;</span>)
+<span style="color:#f92672">...</span>
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">kubeconfig</span>, <span style="color:#a6e22e">_</span> = <span style="color:#a6e22e">ioutil</span>.<span style="color:#a6e22e">ReadFile</span>(<span style="color:#e6db74">&#34;./configs/kubeconfig.conf&#34;</span>)
+<span style="color:#a6e22e">restConf</span>, <span style="color:#a6e22e">_</span> = <span style="color:#a6e22e">clientcmd</span>.<span style="color:#a6e22e">RESTConfigFromKubeConfig</span>(<span style="color:#a6e22e">kubeconfig</span>)
+</code></pre></div><p><strong>由 config 对象进一步生成需要的 client 对象，之后才能与 kube-apiserver 通信进行资源的交互操作</strong>，每种 client 对象都有自己的生成方式。</p>
+<h2 id="常用的-client-初始化及资源操作示例">常用的 Client 初始化及资源操作示例</h2>
+<p>介绍一下 RESTClient / ClientSet / DynamicClient 三种 Client 的用法，DiscoveryClient 暂不做介绍</p>
+<h3 id="restclient">RESTClient</h3>
+<p><strong>RESTClient 初始化</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">config</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">clientcmd</span>.<span style="color:#a6e22e">BuildConfigFromFlags</span>(<span style="color:#e6db74">&#34;&#34;</span>,<span style="color:#e6db74">&#34;./configs/kubeconfig.conf&#34;</span>)
+<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
+  panic(<span style="color:#a6e22e">err</span>)
+}
+
+<span style="color:#a6e22e">config</span>.<span style="color:#a6e22e">APIPath</span> = <span style="color:#e6db74">&#34;api&#34;</span>
+<span style="color:#a6e22e">config</span>.<span style="color:#a6e22e">GroupVersion</span> = <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">corev1</span>.<span style="color:#a6e22e">SchemeGroupVersion</span>
+<span style="color:#a6e22e">config</span>.<span style="color:#a6e22e">NegotiatedSerializer</span> = <span style="color:#a6e22e">scheme</span>.<span style="color:#a6e22e">Codecs</span>
+
+<span style="color:#a6e22e">restClient</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">rest</span>.<span style="color:#a6e22e">RESTClient</span>(<span style="color:#a6e22e">config</span>)
+<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
+  panic(<span style="color:#a6e22e">err</span>)
+}
+</code></pre></div><p><strong>RESTClient 资源操作示例</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">pods</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">corev1</span>.<span style="color:#a6e22e">PodList</span>{}
+<span style="color:#a6e22e">err</span> = <span style="color:#a6e22e">restClient</span>.<span style="color:#a6e22e">Get</span>()
+                .<span style="color:#a6e22e">Namespace</span>(<span style="color:#e6db74">&#34;yingchi&#34;</span>)
+                .<span style="color:#a6e22e">Resource</span>(<span style="color:#e6db74">&#34;pods&#34;</span>)
+								.<span style="color:#a6e22e">VersionedParams</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">metav1</span>.<span style="color:#a6e22e">ListOptions</span>{}, <span style="color:#a6e22e">scheme</span>.<span style="color:#a6e22e">ParameterCodec</span>)
+                .<span style="color:#a6e22e">Do</span>()
+                .<span style="color:#a6e22e">Into</span>(<span style="color:#a6e22e">pods</span>)
+<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+  panic(<span style="color:#a6e22e">err</span>)
+}
+</code></pre></div><h3 id="clientset">ClientSet</h3>
+<p>client-go 中最常用的 client 对象，原因就是 ClientSet 相比 RESTClient 封装的更加易用，尤其是仅仅是去操作 Kubernetes 内置资源时，ClientSet 应该是首选 Client 对象。ClientSet 在 RESTClient 基础上封装了对 Version 和 Resource 的管理方法，每个 Resource 都可以理解为一个 client，这也是 ClientSet 名称的由来。</p>
+<p><strong>ClientSet 初始化</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">config</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">clientcmd</span>.<span style="color:#a6e22e">BuildConfigFromFlags</span>(<span style="color:#e6db74">&#34;&#34;</span>,<span style="color:#e6db74">&#34;./configs/kubeconfig.conf&#34;</span>)
+<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
+  panic(<span style="color:#a6e22e">err</span>)
+}
+
+<span style="color:#a6e22e">clientSet</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">kubernetes</span>.<span style="color:#a6e22e">NewForConfig</span>(<span style="color:#a6e22e">config</span>)
+<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
+  panic(<span style="color:#a6e22e">err</span>)
+}
+</code></pre></div><p><strong>ClientSet 资源操作示例</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">pods</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">clientSet</span>.<span style="color:#a6e22e">CoreV1</span>()
+                      .<span style="color:#a6e22e">Pods</span>(<span style="color:#e6db74">&#34;yingchi&#34;</span>)
+                      .<span style="color:#a6e22e">List</span>(<span style="color:#a6e22e">metav1</span>.<span style="color:#a6e22e">ListOptions</span>{})
+<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
+  panic(<span style="color:#a6e22e">err</span>)
+}
+</code></pre></div><h3 id="dynamicclient">DynamicClient</h3>
+<p>DynamicClient 也是基于 RESTClient 封装的一种动态客户端，与 ClientSet 不同的是，<strong>DynamicClient 能处理包括 CRD 自定义资源在内的任意 kubernetes 资源</strong>。</p>
+<p>能处理 CRD 的原因是 DynamicClient 内部实现了 Unstructured，用于处理非结构化的或者说未知结构的数据结构，这是处理 CRD 类型资源的关键，而 ClientSet 内部的数据都是结构化的，即知道每种 Resource 和 Version 对应的具体资源数据类型。</p>
+<p>需要注意的是，DynamicClient 不是类型安全的，使用 DynamicClient 对资源进行交互时尤其要注意指针问题，操作不当可能会导致程序崩溃。</p>
+<p><strong>DynamicClient 初始化</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">config</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">clientcmd</span>.<span style="color:#a6e22e">BuildConfigFromFlags</span>(<span style="color:#e6db74">&#34;&#34;</span>, <span style="color:#e6db74">&#34;./configs/kubeconfig.conf&#34;</span>)
+<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
+  panic(<span style="color:#a6e22e">err</span>)
+}
+
+<span style="color:#a6e22e">dynamicClient</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">dynamic</span>.<span style="color:#a6e22e">NewForConfig</span>(<span style="color:#a6e22e">config</span>)
+<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
+  panic(<span style="color:#a6e22e">err</span>)
+}
+</code></pre></div><p><strong>DynamicClient 资源操作示例</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">resource</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">schema</span>.<span style="color:#a6e22e">GroupVersionResource</span>{
+  <span style="color:#a6e22e">Version</span>: <span style="color:#e6db74">&#34;v1&#34;</span>,
+  <span style="color:#a6e22e">Resource</span>: <span style="color:#e6db74">&#34;pods&#34;</span>
+}
+
+<span style="color:#a6e22e">obj</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">dynamicClient</span>.<span style="color:#a6e22e">Resource</span>(<span style="color:#a6e22e">resource</span>)
+                        .<span style="color:#a6e22e">Namespace</span>(<span style="color:#e6db74">&#34;yingchi&#34;</span>)
+                        .<span style="color:#a6e22e">List</span>(<span style="color:#a6e22e">metav1</span>.<span style="color:#a6e22e">ListOptions</span>{})
+<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
+  panic(<span style="color:#a6e22e">err</span>)
+}
+
+<span style="color:#a6e22e">pods</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">corev1</span>.<span style="color:#a6e22e">PodList</span>{}
+<span style="color:#a6e22e">err</span> = <span style="color:#a6e22e">runtime</span>.<span style="color:#a6e22e">DefaultUnstructuredConverter</span>
+							.<span style="color:#a6e22e">FromUnstructured</span>(<span style="color:#a6e22e">obj</span>.<span style="color:#a6e22e">UnstructuredContent</span>(), <span style="color:#a6e22e">pods</span>)
+</code></pre></div><h2 id="informer-机制">Informer 机制</h2>
+<p>Client-go 包中一个相对较为高端的设计在于 Informer 的设计，如果想要资源交互更优雅的模式，就要用到 Informer 的机制。</p>
+<p>通过之前的例子我们知道可以直接通过 Kubernetes API 交互，但是考虑一点就是交互的形式，<strong>Informer设计为List/Watch 的方式</strong>。Informer 在初始化的时先通过 List 去从 Kubernetes API 中取出资源的全部 object 对象，并同时缓存，然后后面通过 Watch 的机制去监控资源，这样的话，通过 Informer 及其缓存，我们就可以直接和Informer 交互而不是每次都和 Kubernetes API 交互，避免了轮询 kube-apiserver 等方式对 apiserver 带来的访问压力。</p>
+<p>Informer 提供了事件 handler 机制，并会触发回调，这样上层应用如 Controller 就可以基于异步回调的方式进行具体业务逻辑的处理。因为 Informer 通过 List、Watch 机制可以监控到所有资源的所有事件，因此只要给Informe r添加 ResourceEventHandler 实例的回调函数实例取实现 <code>OnAdd(obj interface{})</code>  <code>OnUpdate(oldObj, newObj interface{})</code>和 <code>OnDelete(obj interface{})</code>这三个方法，就可以处理好资源的创建、更新和删除操作。Kubernetes 中各种controller都会用到Informer。</p>
+<p>Informer 是 client-go 中比较精髓的</p>
+<h2 id="参考">参考</h2>
+<ul>
+<li>
+<p>《Kubernetes 源码剖析》郑东旭</p>
+</li>
+<li>
+<p><a href="https://github.com/kubernetes/sample-controller/blob/master/docs/controller-client-go.md">https://github.com/kubernetes/sample-controller/blob/master/docs/controller-client-go.md</a></p>
+</li>
+<li>
+<p><a href="https://www.jianshu.com/p/d17f70369c35">https://www.jianshu.com/p/d17f70369c35</a></p>
+</li>
+<li>
+<p><a href="https://links.jianshu.com/go?to=https%3A%2F%2Fwww.martin-helmich.de%2Fen%2Fblog%2Fkubernetes-crd-client.html">Accessing Kubernetes CRDs from the client-go package</a></p>
+</li>
+<li>
+<p><a href="https://links.jianshu.com/go?to=https%3A%2F%2Fgithub.com%2Fkubernetes%2Fsample-controller%2Fblob%2Fmaster%2Fdocs%2Fcontroller-client-go.md">client-go under the hood</a></p>
+</li>
+<li>
+<p><a href="https://links.jianshu.com/go?to=https%3A%2F%2Fblog.openshift.com%2Fkubernetes-deep-dive-code-generation-customresources%2F">Kubernetes Deep Dive: Code Generation for CustomResources</a></p>
+</li>
+<li>
+<p><a href="https://links.jianshu.com/go?to=https%3A%2F%2Fblog.csdn.net%2Fqq_21816375%2Farticle%2Fdetails%2F78240638%3FlocationNum%3D8%26fps%3D1">kubernetes client-go</a></p>
+</li>
+<li>
+<p><a href="https://links.jianshu.com/go?to=https%3A%2F%2Fwww.kubernetes.org.cn%2F2693.html">Kubernetes Informer 详解</a></p>
+</li>
+<li>
+<p><a href="https://links.jianshu.com/go?to=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzU1OTAzNzc5MQ%3D%3D%26mid%3D2247484052%26idx%3D1%26sn%3Dcec9f4a1ee0d21c5b2c51bd147b8af59%26chksm%3Dfc1c2ea4cb6ba7b283eef5ac4a45985437c648361831bc3e6dd5f38053be1968b3389386e415%26scene%3D21%23wechat_redirect">如何用 client-go 拓展 Kubernetes 的 API</a></p>
+</li>
+<li>
+<p><a href="https://links.jianshu.com/go?to=https%3A%2F%2Francher.com%2Fusing-kubernetes-api-go-kubecon-2017-session-recap%2F">Using Kubernetes API from Go</a></p>
+</li>
+</ul>
+
+        </div>
+
+        
+
+        
+<br>
+<div class="heading">Tags:</div>
+<div class="field is-grouped is-grouped-multiline">
+  <div class="control">
+    <a href="/tags/kubernetes">
+      <span class="tag">Kubernetes</span>
+    </a>
+  </div>
+</div>
+
+      </div>
+
+    </section>
+
+    <section class="section">
+
+      
+      <script src="https://utteranc.es/client.js"
+        repo = "yingchi1994/HugoComments"
+        issue-term = "pathname"
+        theme = "github-light"
+        crossorigin="anonymous"
+        async>
+      </script>
+      <br>
+      
+      
+      <div class="container">
+  <div class="level">
+
+    <div class="level-left">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/5/what-is-cloud-native.html">
+            <span class="icon is-small"><i class="fa fa-chevron-left"></i></span>
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Cloud Native 云原生 | 概念解读
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Cloud Native 云原生 | 概念解读
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Cloud Native 云原生 | 概念解读
+            </span>
+            <span class="is-hidden-tablet">
+              Cloud Native 云原生 | 概念解读
+            </span>
+            
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <div class="level-right">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/5/linux-iptables.html">
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Linux Netfilter/iptables 学习
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Linux Netfilter/iptables 学习
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Linux Netfilter/iptables 学习
+            </span>
+            <span class="is-hidden-tablet">
+              Linux Netfilter/iptables 学习
+            </span>
+            
+            <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+          </a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+      <br>
+
+      
+      
+
+      <br>
+      
+      
+      
+<div class="container">
+  <nav class="panel">
+    <p class="panel-heading">Related</p>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/5/linux-iptables.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Linux Netfilter/iptables 学习&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-3.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes &amp; Docker 网络原理（三）&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-2.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes &amp; Docker 网络原理（二）&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-1.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes &amp; Docker 网络原理（一）&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-resources.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>理解 Kubernetes 的 Resource 设计概念&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes 架构浅析&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>Kubernetes Rolling Update 滚动升级&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>记一次 Kubeadm 部署 k8s &#43; Flannel&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2019/10/network-devices.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>网络模型学习基础：各层网络设备概念&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+  </nav>
+</div>
+
+    </section>
+
+    <footer class="footer" 
+style="text-align: center; background-color: #ffffff;">
+  <div class="container">
+    <span style="font-size: small;">
+      <a href="https://yingchi.io/">yingchi.io</a>
+       © 2018-2020</span>
+    <span style="font-size: small;"> Joey.Jiang | 
+      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
+  </div>
+</footer>
+
+  </body>
+
+</html>
+<style>
+
+body {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.container{
+  width: 800px;
+}
+
+.title-custom {
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.subtitle-custom {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.content-custom {
+    color: #000;
+    font-size: 16px;
+}
+
+.content-custom blockquote {
+    margin-bottom: 15px;
+    padding: 15px 0 15px 25px;
+    background: rgb(245, 246, 247);
+    border-left: 10px solid rgb(229, 232, 236);
+    border-radius: 5px;
+}
+
+.content-custom strong {
+    color: rgb(91, 127, 194);
+}
+
+.content-custom em {
+    font-style: normal;
+    font-weight: bold;
+}
+
+.content-custom p {
+    margin: 0 10px;
+}
+
+.content-custom ul{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+    list-style-type: square;
+}
+
+.content-custom ul ul{
+    margin: 0px;
+    list-style-type: circle;
+    padding: 0;
+}
+
+.content-custom ol{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+}
+
+.content-custom li {
+    margin: 5px 40px;
+}
+
+.content-custom img {
+    margin: 20px auto !important;
+    text-align: center;
+    clear: both;
+    display: block;
+    margin: auto;
+    width: 80%;
+}
+
+
+
+.content-custom pre{
+    color: rgb(224, 235, 247);
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgb(85, 94, 104);
+    background-color: rgb(85, 94, 104) !important;
+}
+
+.content-custom h1 {
+    font-size: 25px;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+    padding: 15px;
+     
+    border-bottom: 3px solid #555;
+}
+.content-custom h2 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 40px 0 20px 0;
+    padding: 10px;
+     
+    border-bottom: 2px solid #555;
+}
+.content-custom h3 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 16px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+.content-custom h4 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 10px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+
+ 
+@media screen and (max-width: 960px){
+
+  body{
+    overflow-x: hidden;
+  }
+
+  .container{
+    width: 100%;
+  }
+
+  .content-custom img {
+    width: 100%;
+  }
+
+  .title-custom {
+    font-size: 22px;
+  }
+}
+
+
+</style>

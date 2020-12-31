@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <title>记一次 Kubeadm 部署 k8s &#43; Flannel</title>
+  <meta name="author" content="YINGCHI_Joey" />
+  <meta name="description"
+        content="
+以 master 节点的配置为例记录一下在 CentOS 7.0 上使用 kubeadm 部署 kubernetes 集群 &#43; Flannel 插件的过程
+
+一、基础环境配置
+安装 wget
+yum install -y wget
+配置 YUM 软件源
+
+配置阿里镜像源
+
+wget -O /etc/yum.repos.d/CentOS-Base.repo..."/>
+
+
+  <meta name="generator" content="Hugo 0.71.1" />
+
+  
+  <meta itemprop="name" content="记一次 Kubeadm 部署 k8s &#43; Flannel"/>
+  <meta itemprop="description"
+        content="
+以 master 节点的配置为例记录一下在 CentOS 7.0 上使用 kubeadm 部署 kubernetes 集群 &#43; Flannel 插件的过程
+
+一、基础环境配置
+安装 wget
+yum install -y wget
+配置 YUM 软件源
+
+配置阿里镜像源
+
+wget -O /etc/yum.repos.d/CentOS-Base.repo..."/>
+  <meta itemprop="image"
+        content=""/>
+
+  
+  <meta property="og:title" content="记一次 Kubeadm 部署 k8s &#43; Flannel"/>
+  <meta property="og:type"
+        content="article"/>
+  <meta property="og:url" content="https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html"/>
+  <meta property="og:image"
+        content=""/>
+  <meta property="og:description"
+        content="
+以 master 节点的配置为例记录一下在 CentOS 7.0 上使用 kubeadm 部署 kubernetes 集群 &#43; Flannel 插件的过程
+
+一、基础环境配置
+安装 wget
+yum install -y wget
+配置 YUM 软件源
+
+配置阿里镜像源
+
+wget -O /etc/yum.repos.d/CentOS-Base.repo..."/>
+  <meta property="og:site_name" content="Yingchi Blog"/>
+  <meta property="article:published_time"
+        content="2020-04-03T14:51:38&#43;08:00"/>
+  <meta property="article:section" content="posts"/>
+  <meta property="article:tag" content="kubernetes"/>
+
+  
+  
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:site"
+        content=""/>
+  <meta name="twitter:title" content="记一次 Kubeadm 部署 k8s &#43; Flannel"/>
+  <meta name="twitter:description"
+        content="
+以 master 节点的配置为例记录一下在 CentOS 7.0 上使用 kubeadm 部署 kubernetes 集群 &#43; Flannel 插件的过程
+
+一、基础环境配置
+安装 wget
+yum install -y wget
+配置 YUM 软件源
+
+配置阿里镜像源
+
+wget -O /etc/yum.repos.d/CentOS-Base.repo..."/>
+  <meta name="twitter:creator"
+        content=""/>
+  <meta name="twitter:image:src"
+        content=""/>
+
+  
+
+  
+  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
+  
+  
+
+  
+  
+  
+  
+  <script>
+  	var _mtac = {};
+  	(function() {
+  		var mta = document.createElement("script");
+  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
+  		mta.setAttribute("name", "MTAH5");
+  		mta.setAttribute("sid", "500724862");
+
+  		var s = document.getElementsByTagName("script")[0];
+  		s.parentNode.insertBefore(mta, s);
+  	})();
+</script>
+</head>
+
+
+  <body style="min-height:100vh;display:flex;flex-direction:column">
+
+    <section>
+  <nav style="text-align: center; margin-top: 30px;">
+    <div>
+        <a class="custom-title" href="/">
+          
+          <img class="logo" src="/logo.png"/>
+        </a>
+    </div>
+  </nav>
+
+</section>
+
+<style>
+  .custom-title{
+    color: rgb(87, 87, 87);
+    font-size: 25px;
+    font-weight: bold;
+    text-decoration: none;
+  }
+
+  .logo{
+    width: 190px;
+  }
+</style>
+
+    <section class="section" style="flex:1">
+
+      
+      <div class="container">
+        
+        <p class="title-custom">记一次 Kubeadm 部署 k8s &#43; Flannel</p>
+        <p class="subtitle-custom">Apr 3, 2020</p>
+
+        
+
+        
+        
+        <div class="content-custom">
+          <blockquote>
+<p>以 master 节点的配置为例记录一下在 CentOS 7.0 上使用 kubeadm 部署 kubernetes 集群 + Flannel 插件的过程</p>
+</blockquote>
+<h3 id="一基础环境配置">一、基础环境配置</h3>
+<h4 id="安装-wget">安装 wget</h4>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">yum install -y wget
+</code></pre></div><h4 id="配置-yum-软件源">配置 YUM 软件源</h4>
+<ol>
+<li>配置阿里镜像源</li>
+</ol>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+</code></pre></div><ol start="2">
+<li>配置 kubernetes 源</li>
+</ol>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">vi /etc/yum.repos.d/kubernetes.repo
+</code></pre></div><pre><code>[kubernetes]
+name=Kubernetes
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
+https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+</code></pre><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">yum clean all
+yum makecache fast
+</code></pre></div><h4 id="常用软件安装">常用软件安装</h4>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">yum install -y net-tools
+yum install -y vim
+</code></pre></div><h4 id="安装-docker">安装 Docker</h4>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -O/etc/yum.repos.d/docker-ce.repo
+yum -y install docker-ce
+systemctl start docker
+systemctl enable docker
+</code></pre></div><h4 id="配置时间同步">配置时间同步</h4>
+<p>不然后面 Flannel 安装时会出现证书错误</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">yum install ntpdate -y
+ntpdate cn.pool.ntp.org
+</code></pre></div><h4 id="安装-kubeadmkubelet-和-kubectl">安装 kubeadm，kubelet 和 kubectl</h4>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">yum install -y kubectl-1.18.0 kubeadm-1.18.0 kubelet-1.18.0 --nogpgcheck
+</code></pre></div><h4 id="关闭防火墙">关闭防火墙</h4>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">systemctl stop firewalld
+systemctl disable firewalld
+</code></pre></div><h4 id="禁用-selinux">禁用 SELinux</h4>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">setenforce <span style="color:#ae81ff">0</span>
+vi /etc/selinux/config
+SELINUX<span style="color:#f92672">=</span>disabled
+</code></pre></div><h4 id="关闭-swap">关闭 swap</h4>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">vim /etc/fstab  <span style="color:#75715e"># 永久关闭 注释swap那一行</span>
+</code></pre></div><h4 id="创建-etcsysctldk8sconf-文件添加如下内容">创建 /etc/sysctl.d/k8s.conf 文件，添加如下内容：</h4>
+<pre><code>net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+</code></pre><h4 id="配置-hosts-文件">配置 hosts 文件</h4>
+<p>根据个人集群规划配置 /etc/hosts</p>
+<pre><code>192.168.99.101 node01
+192.168.99.102 node02
+192.168.99.103 node03
+</code></pre><h3 id="二master-节点部署">二、Master 节点部署</h3>
+<h4 id="生成配置文件">生成配置文件</h4>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">kubeadm config print init-defaults ClusterConfiguration &gt; kubeadm.yaml
+</code></pre></div><h4 id="修改配置文件">修改配置文件</h4>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">vim kubeadm.yaml
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">apiVersion</span>: kubeadm.k8s.io/v1beta2
+<span style="color:#66d9ef">bootstrapTokens</span>:
+- <span style="color:#66d9ef">groups</span>:
+  - system:bootstrappers:kubeadm:default-node-token
+  <span style="color:#66d9ef">token</span>: abcdef.0123456789abcdef
+  <span style="color:#66d9ef">ttl</span>: 24h0m0s
+  <span style="color:#66d9ef">usages</span>:
+  - signing
+  - authentication
+<span style="color:#66d9ef">kind</span>: InitConfiguration
+<span style="color:#66d9ef">localAPIEndpoint</span>:
+  <span style="color:#66d9ef">advertiseAddress</span>: <span style="color:#ae81ff">192.168.99.101</span>  <span style="color:#75715e"># 配置 master 节点地址</span>
+  <span style="color:#66d9ef">bindPort</span>: <span style="color:#ae81ff">6443</span>
+<span style="color:#66d9ef">nodeRegistration</span>:
+  <span style="color:#66d9ef">criSocket</span>: /var/run/dockershim.sock
+  <span style="color:#66d9ef">name</span>: node01  <span style="color:#75715e"># 节点名</span>
+
+---
+<span style="color:#66d9ef">apiServer</span>:
+  <span style="color:#66d9ef">timeoutForControlPlane</span>: 4m0s
+<span style="color:#66d9ef">apiVersion</span>: kubeadm.k8s.io/v1beta2
+<span style="color:#66d9ef">certificatesDir</span>: /etc/kubernetes/pki
+<span style="color:#66d9ef">clusterName</span>: kubernetes
+<span style="color:#66d9ef">controllerManager</span>: {}
+<span style="color:#66d9ef">dns</span>:
+  <span style="color:#66d9ef">type</span>: CoreDNS
+<span style="color:#66d9ef">etcd</span>:
+  <span style="color:#66d9ef">local</span>:
+    <span style="color:#66d9ef">dataDir</span>: /var/lib/etcd
+<span style="color:#66d9ef">imageRepository</span>: registry.aliyuncs.com/google_containers    <span style="color:#75715e"># 配置阿里云镜像地址</span>
+<span style="color:#66d9ef">kind</span>: ClusterConfiguration
+<span style="color:#66d9ef">kubernetesVersion</span>: v1<span style="color:#ae81ff">.18.0</span>  <span style="color:#75715e"># 配置 kubernetes 版本</span>
+<span style="color:#66d9ef">networking</span>:
+  <span style="color:#66d9ef">dnsDomain</span>: cluster.local
+  <span style="color:#66d9ef">podSubnet</span>: <span style="color:#ae81ff">10.244.0.0</span>/<span style="color:#ae81ff">16</span>  <span style="color:#75715e"># 配置 Pod 子网</span>
+  <span style="color:#66d9ef">serviceSubnet</span>: <span style="color:#ae81ff">10.96.0.0</span>/<span style="color:#ae81ff">12</span>
+<span style="color:#66d9ef">scheduler</span>: {}
+</code></pre></div><h4 id="执行-kubeadm-初始化">执行 kubeadm 初始化</h4>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">kubeadm init --config kubeadm.yaml --ignore-preflight-errors<span style="color:#f92672">=</span>Swap
+</code></pre></div><p>初始化后保存好最后一行和 join token 相关的日志，后面 Worker 节点加入集群会用到</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">kubeadm join 192.168.204.101:6443 --token abcdef.0123456789abcdef <span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span>    --discovery-token-ca-cert-hash sha256:c8fc8a67017...5b09d8aa1104
+</code></pre></div><p>根据日志中的要求执行如下命令：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown <span style="color:#66d9ef">$(</span>id -u<span style="color:#66d9ef">)</span>:<span style="color:#66d9ef">$(</span>id -g<span style="color:#66d9ef">)</span> $HOME/.kube/config
+</code></pre></div><p>检查 Pod 的运行情况：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">kubectl get pods -A
+</code></pre></div><pre><code>NAMESPACE     NAME                               READY   STATUS    RESTARTS   AGE
+kube-system   coredns-7ff77c879f-5zv6l           1/1     Pending   0          43m
+kube-system   coredns-7ff77c879f-p94cx           1/1     Pending   0          43m
+kube-system   etcd-practice                      1/1     Running   0          43m
+kube-system   kube-apiserver-practice            1/1     Running   0          43m
+kube-system   kube-controller-manager-practice   1/1     Running   0          43m
+kube-system   kube-flannel-ds-amd64-6vffj        1/1     Running   0          33m
+kube-system   kube-proxy-dnp4l                   1/1     Running   0          43m
+kube-system   kube-scheduler-practice            1/1     Running   0          43m
+</code></pre><p>发现 coredns 处于 <strong>Pending</strong> 状态，无法成功运行，这是因为集群还没有安装网络插件，接下来我们安装 Flannel</p>
+<h4 id="flannel-网络插件安装">Flannel 网络插件安装</h4>
+<p>准备 kube-flannel-rbac.yml  kube-flannel.yml 两个文件，国内被墙可能无法 wget 下来，这里直接手动准备文件，我是从本机用 SS 翻墙下载好 scp -r 到 Linux 服务器上的</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">kubectl apply -f kube-fannel-rbac.yml
+kubectl apply -f kube-flannel.yml
+</code></pre></div><p>(文末附 kube-flannel-rbac.yml  kube-flannel.yml 两个文件)</p>
+<p><strong>Flannel 安装好后，检查 Pod 运行情况</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">kubectl get pods -A
+</code></pre></div><pre><code>NAMESPACE     NAME                               READY   STATUS    RESTARTS   AGE
+kube-system   coredns-7ff77c879f-5zv6l           1/1     Running   0          43m
+kube-system   coredns-7ff77c879f-p94cx           1/1     Running   0          43m
+kube-system   etcd-practice                      1/1     Running   0          43m
+kube-system   kube-apiserver-practice            1/1     Running   0          43m
+kube-system   kube-controller-manager-practice   1/1     Running   0          43m
+kube-system   kube-flannel-ds-amd64-6vffj        1/1     Running   0          33m
+kube-system   kube-proxy-dnp4l                   1/1     Running   0          43m
+kube-system   kube-scheduler-practice            1/1     Running   0          43m
+</code></pre><p>注意：<strong>coredns 一直 pending 的话，子节点加入就好了，因为主节点有 taints，无法调度</strong></p>
+<h3 id="三worker-节点加入">三、Worker 节点加入</h3>
+<p>worker 节点的环境配置参考 master 即可，只不过最后的 kubeadm 通过 join 而不是 Init 加入集群，加入集群的命令在上面 master 节点初始化集群后已经回显给出，在 worker 节点运行即可：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">kubeadm join 192.168.204.101:6443 --token abcdef.0123456789abcdef <span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span>    --discovery-token-ca-cert-hash sha256:c8fc8a67017...5b09d8aa1104 --ignore-preflight-errors<span style="color:#f92672">=</span>Swap
+</code></pre></div><p>注意加上 <code>--ignore-preflight-errors=Swap</code>，否则可能会报错</p>
+<p>可以加入 <code>--v=2</code> 命令查看 join 过程详情，便于排查故障</p>
+<h4 id="给-node-打上-worker-标签">给 Node 打上 Worker 标签</h4>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">kubectl label node node02 node-role.kubernetes.io/worker<span style="color:#f92672">=</span>worker
+kubectl label node node03 node-role.kubernetes.io/worker<span style="color:#f92672">=</span>worker
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">NAME     STATUS     ROLES    AGE     VERSION
+node01   NotReady   master   8m22s   v1.18.0
+node02   NotReady   worker   3m56s   v1.18.0
+node03   NotReady   worker   3m54s   v1.18.0
+</code></pre></div><hr>
+<h2 id="故障排除">故障排除</h2>
+<h4 id="1-提示-error-filecontent--proc-sys-net-bridge-bridge-nf-call-iptables-procsysnetbridgebridge-nf-call-iptables-contents-are-not-set-to-1">1. 提示 [ERROR FileContent&ndash;proc-sys-net-bridge-bridge-nf-call-iptables]: /proc/sys/net/bridge/bridge-nf-call-iptables contents are not set to 1</h4>
+<p>解决方式：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">echo <span style="color:#ae81ff">1</span> &gt; /proc/sys/net/bridge/bridge-nf-call-iptables
+echo <span style="color:#ae81ff">1</span> &gt; /proc/sys/net/bridge/bridge-nf-call-ip6tables
+</code></pre></div><h4 id="2-master-初始化时报-kubelet-check-initial-timeout-of-40s-passed">2. master 初始化时报 [kubelet-check] Initial timeout of 40s passed</h4>
+<p>解决方式：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">swapoff -a    <span style="color:#75715e"># will turn off the swap</span> 
+kubeadm reset
+systemctl daemon-reload
+systemctl restart kubelet
+iptables -F <span style="color:#f92672">&amp;&amp;</span> iptables -t nat -F <span style="color:#f92672">&amp;&amp;</span> iptables -t mangle -F <span style="color:#f92672">&amp;&amp;</span> iptables -X  <span style="color:#75715e"># will reset iptables</span>
+</code></pre></div><p>这是在 Stack Overflow 上找到的解决方案：</p>
+<p><a href="https://stackoverflow.com/questions/53525975/kubernetes-error-uploading-crisocket-timed-out-waiting-for-the-condition">https://stackoverflow.com/questions/53525975/kubernetes-error-uploading-crisocket-timed-out-waiting-for-the-condition</a></p>
+<h4 id="3-worker-节点-join-时-preflight-running-pre-flight-checks-之后卡住--v2-输出过程日志发现connect-no-route-to-host">3. worker 节点 join 时 [preflight] Running pre-flight checks 之后卡住，&ndash;v=2 输出过程日志发现：connect: no route to host</h4>
+<p>问题说明：iptables 防火墙问题</p>
+<p>解决方式：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">systemctl stop kubelet
+systemctl stop docker
+iptables --flush
+iptables -tnat --flush
+systemctl start kubelet
+systemctl start docker
+</code></pre></div><h4 id="4-coredns-一直-pending">4. coredns 一直 pending</h4>
+<p>子节点加入就好了，因为主节点有 taints，无法调度</p>
+<hr>
+<h2 id="附">附</h2>
+<p><strong>kube-flannel-rbac.yml</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#75715e"># Create the clusterrole and clusterrolebinding:</span>
+<span style="color:#75715e"># $ kubectl create -f kube-flannel-rbac.yml</span>
+<span style="color:#75715e"># Create the pod using the same namespace used by the flannel serviceaccount:</span>
+<span style="color:#75715e"># $ kubectl create --namespace kube-system -f kube-flannel.yml</span>
+---
+<span style="color:#66d9ef">kind</span>: ClusterRole
+<span style="color:#66d9ef">apiVersion</span>: rbac.authorization.k8s.io/v1beta1
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: flannel
+<span style="color:#66d9ef">rules</span>:
+  - <span style="color:#66d9ef">apiGroups</span>:
+      - <span style="color:#e6db74">&#34;&#34;</span>
+    <span style="color:#66d9ef">resources</span>:
+      - pods
+    <span style="color:#66d9ef">verbs</span>:
+      - get
+  - <span style="color:#66d9ef">apiGroups</span>:
+      - <span style="color:#e6db74">&#34;&#34;</span>
+    <span style="color:#66d9ef">resources</span>:
+      - nodes
+    <span style="color:#66d9ef">verbs</span>:
+      - list
+      - watch
+  - <span style="color:#66d9ef">apiGroups</span>:
+      - <span style="color:#e6db74">&#34;&#34;</span>
+    <span style="color:#66d9ef">resources</span>:
+      - nodes/status
+    <span style="color:#66d9ef">verbs</span>:
+      - patch
+---
+<span style="color:#66d9ef">kind</span>: ClusterRoleBinding
+<span style="color:#66d9ef">apiVersion</span>: rbac.authorization.k8s.io/v1beta1
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: flannel
+<span style="color:#66d9ef">roleRef</span>:
+  <span style="color:#66d9ef">apiGroup</span>: rbac.authorization.k8s.io
+  <span style="color:#66d9ef">kind</span>: ClusterRole
+  <span style="color:#66d9ef">name</span>: flannel
+<span style="color:#66d9ef">subjects</span>:
+- <span style="color:#66d9ef">kind</span>: ServiceAccount
+  <span style="color:#66d9ef">name</span>: flannel
+  <span style="color:#66d9ef">namespace</span>: kube-system
+</code></pre></div><p><strong>kube-flannel.yml</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">apiVersion</span>: policy/v1beta1
+<span style="color:#66d9ef">kind</span>: PodSecurityPolicy
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: psp.flannel.unprivileged
+  <span style="color:#66d9ef">annotations</span>:
+    <span style="color:#66d9ef">seccomp.security.alpha.kubernetes.io/allowedProfileNames</span>: docker/default
+    <span style="color:#66d9ef">seccomp.security.alpha.kubernetes.io/defaultProfileName</span>: docker/default
+    <span style="color:#66d9ef">apparmor.security.beta.kubernetes.io/allowedProfileNames</span>: runtime/default
+    <span style="color:#66d9ef">apparmor.security.beta.kubernetes.io/defaultProfileName</span>: runtime/default
+<span style="color:#66d9ef">spec</span>:
+  <span style="color:#66d9ef">privileged</span>: <span style="color:#66d9ef">false</span>
+  <span style="color:#66d9ef">volumes</span>:
+    - configMap
+    - secret
+    - emptyDir
+    - hostPath
+  <span style="color:#66d9ef">allowedHostPaths</span>:
+    - <span style="color:#66d9ef">pathPrefix</span>: <span style="color:#e6db74">&#34;/etc/cni/net.d&#34;</span>
+    - <span style="color:#66d9ef">pathPrefix</span>: <span style="color:#e6db74">&#34;/etc/kube-flannel&#34;</span>
+    - <span style="color:#66d9ef">pathPrefix</span>: <span style="color:#e6db74">&#34;/run/flannel&#34;</span>
+  <span style="color:#66d9ef">readOnlyRootFilesystem</span>: <span style="color:#66d9ef">false</span>
+  <span style="color:#75715e"># Users and groups</span>
+  <span style="color:#66d9ef">runAsUser</span>:
+    <span style="color:#66d9ef">rule</span>: RunAsAny
+  <span style="color:#66d9ef">supplementalGroups</span>:
+    <span style="color:#66d9ef">rule</span>: RunAsAny
+  <span style="color:#66d9ef">fsGroup</span>:
+    <span style="color:#66d9ef">rule</span>: RunAsAny
+  <span style="color:#75715e"># Privilege Escalation</span>
+  <span style="color:#66d9ef">allowPrivilegeEscalation</span>: <span style="color:#66d9ef">false</span>
+  <span style="color:#66d9ef">defaultAllowPrivilegeEscalation</span>: <span style="color:#66d9ef">false</span>
+  <span style="color:#75715e"># Capabilities</span>
+  <span style="color:#66d9ef">allowedCapabilities</span>: [<span style="color:#e6db74">&#39;NET_ADMIN&#39;</span>]
+  <span style="color:#66d9ef">defaultAddCapabilities</span>: []
+  <span style="color:#66d9ef">requiredDropCapabilities</span>: []
+  <span style="color:#75715e"># Host namespaces</span>
+  <span style="color:#66d9ef">hostPID</span>: <span style="color:#66d9ef">false</span>
+  <span style="color:#66d9ef">hostIPC</span>: <span style="color:#66d9ef">false</span>
+  <span style="color:#66d9ef">hostNetwork</span>: <span style="color:#66d9ef">true</span>
+  <span style="color:#66d9ef">hostPorts</span>:
+  - <span style="color:#66d9ef">min</span>: <span style="color:#ae81ff">0</span>
+    <span style="color:#66d9ef">max</span>: <span style="color:#ae81ff">65535</span>
+  <span style="color:#75715e"># SELinux</span>
+  <span style="color:#66d9ef">seLinux</span>:
+    <span style="color:#75715e"># SELinux is unused in CaaSP</span>
+    <span style="color:#66d9ef">rule</span>: <span style="color:#e6db74">&#39;RunAsAny&#39;</span>
+---
+<span style="color:#66d9ef">kind</span>: ClusterRole
+<span style="color:#66d9ef">apiVersion</span>: rbac.authorization.k8s.io/v1beta1
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: flannel
+<span style="color:#66d9ef">rules</span>:
+  - <span style="color:#66d9ef">apiGroups</span>: [<span style="color:#e6db74">&#39;extensions&#39;</span>]
+    <span style="color:#66d9ef">resources</span>: [<span style="color:#e6db74">&#39;podsecuritypolicies&#39;</span>]
+    <span style="color:#66d9ef">verbs</span>: [<span style="color:#e6db74">&#39;use&#39;</span>]
+    <span style="color:#66d9ef">resourceNames</span>: [<span style="color:#e6db74">&#39;psp.flannel.unprivileged&#39;</span>]
+  - <span style="color:#66d9ef">apiGroups</span>:
+      - <span style="color:#e6db74">&#34;&#34;</span>
+    <span style="color:#66d9ef">resources</span>:
+      - pods
+    <span style="color:#66d9ef">verbs</span>:
+      - get
+  - <span style="color:#66d9ef">apiGroups</span>:
+      - <span style="color:#e6db74">&#34;&#34;</span>
+    <span style="color:#66d9ef">resources</span>:
+      - nodes
+    <span style="color:#66d9ef">verbs</span>:
+      - list
+      - watch
+  - <span style="color:#66d9ef">apiGroups</span>:
+      - <span style="color:#e6db74">&#34;&#34;</span>
+    <span style="color:#66d9ef">resources</span>:
+      - nodes/status
+    <span style="color:#66d9ef">verbs</span>:
+      - patch
+---
+<span style="color:#66d9ef">kind</span>: ClusterRoleBinding
+<span style="color:#66d9ef">apiVersion</span>: rbac.authorization.k8s.io/v1beta1
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: flannel
+<span style="color:#66d9ef">roleRef</span>:
+  <span style="color:#66d9ef">apiGroup</span>: rbac.authorization.k8s.io
+  <span style="color:#66d9ef">kind</span>: ClusterRole
+  <span style="color:#66d9ef">name</span>: flannel
+<span style="color:#66d9ef">subjects</span>:
+- <span style="color:#66d9ef">kind</span>: ServiceAccount
+  <span style="color:#66d9ef">name</span>: flannel
+  <span style="color:#66d9ef">namespace</span>: kube-system
+---
+<span style="color:#66d9ef">apiVersion</span>: v1
+<span style="color:#66d9ef">kind</span>: ServiceAccount
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: flannel
+  <span style="color:#66d9ef">namespace</span>: kube-system
+---
+<span style="color:#66d9ef">kind</span>: ConfigMap
+<span style="color:#66d9ef">apiVersion</span>: v1
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: kube-flannel-cfg
+  <span style="color:#66d9ef">namespace</span>: kube-system
+  <span style="color:#66d9ef">labels</span>:
+    <span style="color:#66d9ef">tier</span>: node
+    <span style="color:#66d9ef">app</span>: flannel
+<span style="color:#66d9ef">data</span>:
+  <span style="color:#66d9ef">cni-conf.json</span>: <span style="color:#e6db74">|
+</span><span style="color:#e6db74">    {</span>
+      <span style="color:#66d9ef">&#34;name&#34;: </span><span style="color:#e6db74">&#34;cbr0&#34;</span>,
+      <span style="color:#66d9ef">&#34;cniVersion&#34;: </span><span style="color:#e6db74">&#34;0.3.1&#34;</span>,
+      <span style="color:#66d9ef">&#34;plugins&#34;: </span>[
+        {
+          <span style="color:#66d9ef">&#34;type&#34;: </span><span style="color:#e6db74">&#34;flannel&#34;</span>,
+          <span style="color:#66d9ef">&#34;delegate&#34;: </span>{
+            <span style="color:#66d9ef">&#34;hairpinMode&#34;: </span><span style="color:#66d9ef">true</span>,
+            <span style="color:#66d9ef">&#34;isDefaultGateway&#34;: </span><span style="color:#66d9ef">true</span>
+          }
+        },
+        {
+          <span style="color:#66d9ef">&#34;type&#34;: </span><span style="color:#e6db74">&#34;portmap&#34;</span>,
+          <span style="color:#66d9ef">&#34;capabilities&#34;: </span>{
+            <span style="color:#66d9ef">&#34;portMappings&#34;: </span><span style="color:#66d9ef">true</span>
+          }
+        }
+      ]
+    }
+  <span style="color:#66d9ef">net-conf.json</span>: <span style="color:#e6db74">|
+</span><span style="color:#e6db74">    {</span>
+      <span style="color:#66d9ef">&#34;Network&#34;: </span><span style="color:#e6db74">&#34;10.244.0.0/16&#34;</span>,
+      <span style="color:#66d9ef">&#34;Backend&#34;: </span>{
+        <span style="color:#66d9ef">&#34;Type&#34;: </span><span style="color:#e6db74">&#34;vxlan&#34;</span>
+      }
+    }
+---
+<span style="color:#66d9ef">apiVersion</span>: apps/v1
+<span style="color:#66d9ef">kind</span>: DaemonSet
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: kube-flannel-ds-amd64
+  <span style="color:#66d9ef">namespace</span>: kube-system
+  <span style="color:#66d9ef">labels</span>:
+    <span style="color:#66d9ef">tier</span>: node
+    <span style="color:#66d9ef">app</span>: flannel
+<span style="color:#66d9ef">spec</span>:
+  <span style="color:#66d9ef">selector</span>:
+    <span style="color:#66d9ef">matchLabels</span>:
+      <span style="color:#66d9ef">app</span>: flannel
+  <span style="color:#66d9ef">template</span>:
+    <span style="color:#66d9ef">metadata</span>:
+      <span style="color:#66d9ef">labels</span>:
+        <span style="color:#66d9ef">tier</span>: node
+        <span style="color:#66d9ef">app</span>: flannel
+    <span style="color:#66d9ef">spec</span>:
+      <span style="color:#66d9ef">affinity</span>:
+        <span style="color:#66d9ef">nodeAffinity</span>:
+          <span style="color:#66d9ef">requiredDuringSchedulingIgnoredDuringExecution</span>:
+            <span style="color:#66d9ef">nodeSelectorTerms</span>:
+              - <span style="color:#66d9ef">matchExpressions</span>:
+                  - <span style="color:#66d9ef">key</span>: kubernetes.io/os
+                    <span style="color:#66d9ef">operator</span>: In
+                    <span style="color:#66d9ef">values</span>:
+                      - linux
+                  - <span style="color:#66d9ef">key</span>: kubernetes.io/arch
+                    <span style="color:#66d9ef">operator</span>: In
+                    <span style="color:#66d9ef">values</span>:
+                      - amd64
+      <span style="color:#66d9ef">hostNetwork</span>: <span style="color:#66d9ef">true</span>
+      <span style="color:#66d9ef">tolerations</span>:
+      - <span style="color:#66d9ef">operator</span>: Exists
+        <span style="color:#66d9ef">effect</span>: NoSchedule
+      <span style="color:#66d9ef">serviceAccountName</span>: flannel
+      <span style="color:#66d9ef">initContainers</span>:
+      - <span style="color:#66d9ef">name</span>: install-cni
+        <span style="color:#66d9ef">image</span>: quay.io/coreos/flannel:v0<span style="color:#ae81ff">.12.0</span>-amd64
+        <span style="color:#66d9ef">command</span>:
+        - cp
+        <span style="color:#66d9ef">args</span>:
+        - -f
+        - /etc/kube-flannel/cni-conf.json
+        - /etc/cni/net.d/<span style="color:#ae81ff">10</span>-flannel.conflist
+        <span style="color:#66d9ef">volumeMounts</span>:
+        - <span style="color:#66d9ef">name</span>: cni
+          <span style="color:#66d9ef">mountPath</span>: /etc/cni/net.d
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">mountPath</span>: /etc/kube-flannel/
+      <span style="color:#66d9ef">containers</span>:
+      - <span style="color:#66d9ef">name</span>: kube-flannel
+        <span style="color:#66d9ef">image</span>: quay.io/coreos/flannel:v0<span style="color:#ae81ff">.12.0</span>-amd64
+        <span style="color:#66d9ef">command</span>:
+        - /opt/bin/flanneld
+        <span style="color:#66d9ef">args</span>:
+        - --ip-masq
+        - --kube-subnet-mgr
+        <span style="color:#66d9ef">resources</span>:
+          <span style="color:#66d9ef">requests</span>:
+            <span style="color:#66d9ef">cpu</span>: <span style="color:#e6db74">&#34;100m&#34;</span>
+            <span style="color:#66d9ef">memory</span>: <span style="color:#e6db74">&#34;50Mi&#34;</span>
+          <span style="color:#66d9ef">limits</span>:
+            <span style="color:#66d9ef">cpu</span>: <span style="color:#e6db74">&#34;100m&#34;</span>
+            <span style="color:#66d9ef">memory</span>: <span style="color:#e6db74">&#34;50Mi&#34;</span>
+        <span style="color:#66d9ef">securityContext</span>:
+          <span style="color:#66d9ef">privileged</span>: <span style="color:#66d9ef">false</span>
+          <span style="color:#66d9ef">capabilities</span>:
+            <span style="color:#66d9ef">add</span>: [<span style="color:#e6db74">&#34;NET_ADMIN&#34;</span>]
+        <span style="color:#66d9ef">env</span>:
+        - <span style="color:#66d9ef">name</span>: POD_NAME
+          <span style="color:#66d9ef">valueFrom</span>:
+            <span style="color:#66d9ef">fieldRef</span>:
+              <span style="color:#66d9ef">fieldPath</span>: metadata.name
+        - <span style="color:#66d9ef">name</span>: POD_NAMESPACE
+          <span style="color:#66d9ef">valueFrom</span>:
+            <span style="color:#66d9ef">fieldRef</span>:
+              <span style="color:#66d9ef">fieldPath</span>: metadata.namespace
+        <span style="color:#66d9ef">volumeMounts</span>:
+        - <span style="color:#66d9ef">name</span>: run
+          <span style="color:#66d9ef">mountPath</span>: /run/flannel
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">mountPath</span>: /etc/kube-flannel/
+      <span style="color:#66d9ef">volumes</span>:
+        - <span style="color:#66d9ef">name</span>: run
+          <span style="color:#66d9ef">hostPath</span>:
+            <span style="color:#66d9ef">path</span>: /run/flannel
+        - <span style="color:#66d9ef">name</span>: cni
+          <span style="color:#66d9ef">hostPath</span>:
+            <span style="color:#66d9ef">path</span>: /etc/cni/net.d
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">configMap</span>:
+            <span style="color:#66d9ef">name</span>: kube-flannel-cfg
+---
+<span style="color:#66d9ef">apiVersion</span>: apps/v1
+<span style="color:#66d9ef">kind</span>: DaemonSet
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: kube-flannel-ds-arm64
+  <span style="color:#66d9ef">namespace</span>: kube-system
+  <span style="color:#66d9ef">labels</span>:
+    <span style="color:#66d9ef">tier</span>: node
+    <span style="color:#66d9ef">app</span>: flannel
+<span style="color:#66d9ef">spec</span>:
+  <span style="color:#66d9ef">selector</span>:
+    <span style="color:#66d9ef">matchLabels</span>:
+      <span style="color:#66d9ef">app</span>: flannel
+  <span style="color:#66d9ef">template</span>:
+    <span style="color:#66d9ef">metadata</span>:
+      <span style="color:#66d9ef">labels</span>:
+        <span style="color:#66d9ef">tier</span>: node
+        <span style="color:#66d9ef">app</span>: flannel
+    <span style="color:#66d9ef">spec</span>:
+      <span style="color:#66d9ef">affinity</span>:
+        <span style="color:#66d9ef">nodeAffinity</span>:
+          <span style="color:#66d9ef">requiredDuringSchedulingIgnoredDuringExecution</span>:
+            <span style="color:#66d9ef">nodeSelectorTerms</span>:
+              - <span style="color:#66d9ef">matchExpressions</span>:
+                  - <span style="color:#66d9ef">key</span>: kubernetes.io/os
+                    <span style="color:#66d9ef">operator</span>: In
+                    <span style="color:#66d9ef">values</span>:
+                      - linux
+                  - <span style="color:#66d9ef">key</span>: kubernetes.io/arch
+                    <span style="color:#66d9ef">operator</span>: In
+                    <span style="color:#66d9ef">values</span>:
+                      - arm64
+      <span style="color:#66d9ef">hostNetwork</span>: <span style="color:#66d9ef">true</span>
+      <span style="color:#66d9ef">tolerations</span>:
+      - <span style="color:#66d9ef">operator</span>: Exists
+        <span style="color:#66d9ef">effect</span>: NoSchedule
+      <span style="color:#66d9ef">serviceAccountName</span>: flannel
+      <span style="color:#66d9ef">initContainers</span>:
+      - <span style="color:#66d9ef">name</span>: install-cni
+        <span style="color:#66d9ef">image</span>: quay.io/coreos/flannel:v0<span style="color:#ae81ff">.12.0</span>-arm64
+        <span style="color:#66d9ef">command</span>:
+        - cp
+        <span style="color:#66d9ef">args</span>:
+        - -f
+        - /etc/kube-flannel/cni-conf.json
+        - /etc/cni/net.d/<span style="color:#ae81ff">10</span>-flannel.conflist
+        <span style="color:#66d9ef">volumeMounts</span>:
+        - <span style="color:#66d9ef">name</span>: cni
+          <span style="color:#66d9ef">mountPath</span>: /etc/cni/net.d
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">mountPath</span>: /etc/kube-flannel/
+      <span style="color:#66d9ef">containers</span>:
+      - <span style="color:#66d9ef">name</span>: kube-flannel
+        <span style="color:#66d9ef">image</span>: quay.io/coreos/flannel:v0<span style="color:#ae81ff">.12.0</span>-arm64
+        <span style="color:#66d9ef">command</span>:
+        - /opt/bin/flanneld
+        <span style="color:#66d9ef">args</span>:
+        - --ip-masq
+        - --kube-subnet-mgr
+        <span style="color:#66d9ef">resources</span>:
+          <span style="color:#66d9ef">requests</span>:
+            <span style="color:#66d9ef">cpu</span>: <span style="color:#e6db74">&#34;100m&#34;</span>
+            <span style="color:#66d9ef">memory</span>: <span style="color:#e6db74">&#34;50Mi&#34;</span>
+          <span style="color:#66d9ef">limits</span>:
+            <span style="color:#66d9ef">cpu</span>: <span style="color:#e6db74">&#34;100m&#34;</span>
+            <span style="color:#66d9ef">memory</span>: <span style="color:#e6db74">&#34;50Mi&#34;</span>
+        <span style="color:#66d9ef">securityContext</span>:
+          <span style="color:#66d9ef">privileged</span>: <span style="color:#66d9ef">false</span>
+          <span style="color:#66d9ef">capabilities</span>:
+             <span style="color:#66d9ef">add</span>: [<span style="color:#e6db74">&#34;NET_ADMIN&#34;</span>]
+        <span style="color:#66d9ef">env</span>:
+        - <span style="color:#66d9ef">name</span>: POD_NAME
+          <span style="color:#66d9ef">valueFrom</span>:
+            <span style="color:#66d9ef">fieldRef</span>:
+              <span style="color:#66d9ef">fieldPath</span>: metadata.name
+        - <span style="color:#66d9ef">name</span>: POD_NAMESPACE
+          <span style="color:#66d9ef">valueFrom</span>:
+            <span style="color:#66d9ef">fieldRef</span>:
+              <span style="color:#66d9ef">fieldPath</span>: metadata.namespace
+        <span style="color:#66d9ef">volumeMounts</span>:
+        - <span style="color:#66d9ef">name</span>: run
+          <span style="color:#66d9ef">mountPath</span>: /run/flannel
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">mountPath</span>: /etc/kube-flannel/
+      <span style="color:#66d9ef">volumes</span>:
+        - <span style="color:#66d9ef">name</span>: run
+          <span style="color:#66d9ef">hostPath</span>:
+            <span style="color:#66d9ef">path</span>: /run/flannel
+        - <span style="color:#66d9ef">name</span>: cni
+          <span style="color:#66d9ef">hostPath</span>:
+            <span style="color:#66d9ef">path</span>: /etc/cni/net.d
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">configMap</span>:
+            <span style="color:#66d9ef">name</span>: kube-flannel-cfg
+---
+<span style="color:#66d9ef">apiVersion</span>: apps/v1
+<span style="color:#66d9ef">kind</span>: DaemonSet
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: kube-flannel-ds-arm
+  <span style="color:#66d9ef">namespace</span>: kube-system
+  <span style="color:#66d9ef">labels</span>:
+    <span style="color:#66d9ef">tier</span>: node
+    <span style="color:#66d9ef">app</span>: flannel
+<span style="color:#66d9ef">spec</span>:
+  <span style="color:#66d9ef">selector</span>:
+    <span style="color:#66d9ef">matchLabels</span>:
+      <span style="color:#66d9ef">app</span>: flannel
+  <span style="color:#66d9ef">template</span>:
+    <span style="color:#66d9ef">metadata</span>:
+      <span style="color:#66d9ef">labels</span>:
+        <span style="color:#66d9ef">tier</span>: node
+        <span style="color:#66d9ef">app</span>: flannel
+    <span style="color:#66d9ef">spec</span>:
+      <span style="color:#66d9ef">affinity</span>:
+        <span style="color:#66d9ef">nodeAffinity</span>:
+          <span style="color:#66d9ef">requiredDuringSchedulingIgnoredDuringExecution</span>:
+            <span style="color:#66d9ef">nodeSelectorTerms</span>:
+              - <span style="color:#66d9ef">matchExpressions</span>:
+                  - <span style="color:#66d9ef">key</span>: kubernetes.io/os
+                    <span style="color:#66d9ef">operator</span>: In
+                    <span style="color:#66d9ef">values</span>:
+                      - linux
+                  - <span style="color:#66d9ef">key</span>: kubernetes.io/arch
+                    <span style="color:#66d9ef">operator</span>: In
+                    <span style="color:#66d9ef">values</span>:
+                      - arm
+      <span style="color:#66d9ef">hostNetwork</span>: <span style="color:#66d9ef">true</span>
+      <span style="color:#66d9ef">tolerations</span>:
+      - <span style="color:#66d9ef">operator</span>: Exists
+        <span style="color:#66d9ef">effect</span>: NoSchedule
+      <span style="color:#66d9ef">serviceAccountName</span>: flannel
+      <span style="color:#66d9ef">initContainers</span>:
+      - <span style="color:#66d9ef">name</span>: install-cni
+        <span style="color:#66d9ef">image</span>: quay.io/coreos/flannel:v0<span style="color:#ae81ff">.12.0</span>-arm
+        <span style="color:#66d9ef">command</span>:
+        - cp
+        <span style="color:#66d9ef">args</span>:
+        - -f
+        - /etc/kube-flannel/cni-conf.json
+        - /etc/cni/net.d/<span style="color:#ae81ff">10</span>-flannel.conflist
+        <span style="color:#66d9ef">volumeMounts</span>:
+        - <span style="color:#66d9ef">name</span>: cni
+          <span style="color:#66d9ef">mountPath</span>: /etc/cni/net.d
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">mountPath</span>: /etc/kube-flannel/
+      <span style="color:#66d9ef">containers</span>:
+      - <span style="color:#66d9ef">name</span>: kube-flannel
+        <span style="color:#66d9ef">image</span>: quay.io/coreos/flannel:v0<span style="color:#ae81ff">.12.0</span>-arm
+        <span style="color:#66d9ef">command</span>:
+        - /opt/bin/flanneld
+        <span style="color:#66d9ef">args</span>:
+        - --ip-masq
+        - --kube-subnet-mgr
+        <span style="color:#66d9ef">resources</span>:
+          <span style="color:#66d9ef">requests</span>:
+            <span style="color:#66d9ef">cpu</span>: <span style="color:#e6db74">&#34;100m&#34;</span>
+            <span style="color:#66d9ef">memory</span>: <span style="color:#e6db74">&#34;50Mi&#34;</span>
+          <span style="color:#66d9ef">limits</span>:
+            <span style="color:#66d9ef">cpu</span>: <span style="color:#e6db74">&#34;100m&#34;</span>
+            <span style="color:#66d9ef">memory</span>: <span style="color:#e6db74">&#34;50Mi&#34;</span>
+        <span style="color:#66d9ef">securityContext</span>:
+          <span style="color:#66d9ef">privileged</span>: <span style="color:#66d9ef">false</span>
+          <span style="color:#66d9ef">capabilities</span>:
+             <span style="color:#66d9ef">add</span>: [<span style="color:#e6db74">&#34;NET_ADMIN&#34;</span>]
+        <span style="color:#66d9ef">env</span>:
+        - <span style="color:#66d9ef">name</span>: POD_NAME
+          <span style="color:#66d9ef">valueFrom</span>:
+            <span style="color:#66d9ef">fieldRef</span>:
+              <span style="color:#66d9ef">fieldPath</span>: metadata.name
+        - <span style="color:#66d9ef">name</span>: POD_NAMESPACE
+          <span style="color:#66d9ef">valueFrom</span>:
+            <span style="color:#66d9ef">fieldRef</span>:
+              <span style="color:#66d9ef">fieldPath</span>: metadata.namespace
+        <span style="color:#66d9ef">volumeMounts</span>:
+        - <span style="color:#66d9ef">name</span>: run
+          <span style="color:#66d9ef">mountPath</span>: /run/flannel
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">mountPath</span>: /etc/kube-flannel/
+      <span style="color:#66d9ef">volumes</span>:
+        - <span style="color:#66d9ef">name</span>: run
+          <span style="color:#66d9ef">hostPath</span>:
+            <span style="color:#66d9ef">path</span>: /run/flannel
+        - <span style="color:#66d9ef">name</span>: cni
+          <span style="color:#66d9ef">hostPath</span>:
+            <span style="color:#66d9ef">path</span>: /etc/cni/net.d
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">configMap</span>:
+            <span style="color:#66d9ef">name</span>: kube-flannel-cfg
+---
+<span style="color:#66d9ef">apiVersion</span>: apps/v1
+<span style="color:#66d9ef">kind</span>: DaemonSet
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: kube-flannel-ds-ppc64le
+  <span style="color:#66d9ef">namespace</span>: kube-system
+  <span style="color:#66d9ef">labels</span>:
+    <span style="color:#66d9ef">tier</span>: node
+    <span style="color:#66d9ef">app</span>: flannel
+<span style="color:#66d9ef">spec</span>:
+  <span style="color:#66d9ef">selector</span>:
+    <span style="color:#66d9ef">matchLabels</span>:
+      <span style="color:#66d9ef">app</span>: flannel
+  <span style="color:#66d9ef">template</span>:
+    <span style="color:#66d9ef">metadata</span>:
+      <span style="color:#66d9ef">labels</span>:
+        <span style="color:#66d9ef">tier</span>: node
+        <span style="color:#66d9ef">app</span>: flannel
+    <span style="color:#66d9ef">spec</span>:
+      <span style="color:#66d9ef">affinity</span>:
+        <span style="color:#66d9ef">nodeAffinity</span>:
+          <span style="color:#66d9ef">requiredDuringSchedulingIgnoredDuringExecution</span>:
+            <span style="color:#66d9ef">nodeSelectorTerms</span>:
+              - <span style="color:#66d9ef">matchExpressions</span>:
+                  - <span style="color:#66d9ef">key</span>: kubernetes.io/os
+                    <span style="color:#66d9ef">operator</span>: In
+                    <span style="color:#66d9ef">values</span>:
+                      - linux
+                  - <span style="color:#66d9ef">key</span>: kubernetes.io/arch
+                    <span style="color:#66d9ef">operator</span>: In
+                    <span style="color:#66d9ef">values</span>:
+                      - ppc64le
+      <span style="color:#66d9ef">hostNetwork</span>: <span style="color:#66d9ef">true</span>
+      <span style="color:#66d9ef">tolerations</span>:
+      - <span style="color:#66d9ef">operator</span>: Exists
+        <span style="color:#66d9ef">effect</span>: NoSchedule
+      <span style="color:#66d9ef">serviceAccountName</span>: flannel
+      <span style="color:#66d9ef">initContainers</span>:
+      - <span style="color:#66d9ef">name</span>: install-cni
+        <span style="color:#66d9ef">image</span>: quay.io/coreos/flannel:v0<span style="color:#ae81ff">.12.0</span>-ppc64le
+        <span style="color:#66d9ef">command</span>:
+        - cp
+        <span style="color:#66d9ef">args</span>:
+        - -f
+        - /etc/kube-flannel/cni-conf.json
+        - /etc/cni/net.d/<span style="color:#ae81ff">10</span>-flannel.conflist
+        <span style="color:#66d9ef">volumeMounts</span>:
+        - <span style="color:#66d9ef">name</span>: cni
+          <span style="color:#66d9ef">mountPath</span>: /etc/cni/net.d
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">mountPath</span>: /etc/kube-flannel/
+      <span style="color:#66d9ef">containers</span>:
+      - <span style="color:#66d9ef">name</span>: kube-flannel
+        <span style="color:#66d9ef">image</span>: quay.io/coreos/flannel:v0<span style="color:#ae81ff">.12.0</span>-ppc64le
+        <span style="color:#66d9ef">command</span>:
+        - /opt/bin/flanneld
+        <span style="color:#66d9ef">args</span>:
+        - --ip-masq
+        - --kube-subnet-mgr
+        <span style="color:#66d9ef">resources</span>:
+          <span style="color:#66d9ef">requests</span>:
+            <span style="color:#66d9ef">cpu</span>: <span style="color:#e6db74">&#34;100m&#34;</span>
+            <span style="color:#66d9ef">memory</span>: <span style="color:#e6db74">&#34;50Mi&#34;</span>
+          <span style="color:#66d9ef">limits</span>:
+            <span style="color:#66d9ef">cpu</span>: <span style="color:#e6db74">&#34;100m&#34;</span>
+            <span style="color:#66d9ef">memory</span>: <span style="color:#e6db74">&#34;50Mi&#34;</span>
+        <span style="color:#66d9ef">securityContext</span>:
+          <span style="color:#66d9ef">privileged</span>: <span style="color:#66d9ef">false</span>
+          <span style="color:#66d9ef">capabilities</span>:
+             <span style="color:#66d9ef">add</span>: [<span style="color:#e6db74">&#34;NET_ADMIN&#34;</span>]
+        <span style="color:#66d9ef">env</span>:
+        - <span style="color:#66d9ef">name</span>: POD_NAME
+          <span style="color:#66d9ef">valueFrom</span>:
+            <span style="color:#66d9ef">fieldRef</span>:
+              <span style="color:#66d9ef">fieldPath</span>: metadata.name
+        - <span style="color:#66d9ef">name</span>: POD_NAMESPACE
+          <span style="color:#66d9ef">valueFrom</span>:
+            <span style="color:#66d9ef">fieldRef</span>:
+              <span style="color:#66d9ef">fieldPath</span>: metadata.namespace
+        <span style="color:#66d9ef">volumeMounts</span>:
+        - <span style="color:#66d9ef">name</span>: run
+          <span style="color:#66d9ef">mountPath</span>: /run/flannel
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">mountPath</span>: /etc/kube-flannel/
+      <span style="color:#66d9ef">volumes</span>:
+        - <span style="color:#66d9ef">name</span>: run
+          <span style="color:#66d9ef">hostPath</span>:
+            <span style="color:#66d9ef">path</span>: /run/flannel
+        - <span style="color:#66d9ef">name</span>: cni
+          <span style="color:#66d9ef">hostPath</span>:
+            <span style="color:#66d9ef">path</span>: /etc/cni/net.d
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">configMap</span>:
+            <span style="color:#66d9ef">name</span>: kube-flannel-cfg
+---
+<span style="color:#66d9ef">apiVersion</span>: apps/v1
+<span style="color:#66d9ef">kind</span>: DaemonSet
+<span style="color:#66d9ef">metadata</span>:
+  <span style="color:#66d9ef">name</span>: kube-flannel-ds-s390x
+  <span style="color:#66d9ef">namespace</span>: kube-system
+  <span style="color:#66d9ef">labels</span>:
+    <span style="color:#66d9ef">tier</span>: node
+    <span style="color:#66d9ef">app</span>: flannel
+<span style="color:#66d9ef">spec</span>:
+  <span style="color:#66d9ef">selector</span>:
+    <span style="color:#66d9ef">matchLabels</span>:
+      <span style="color:#66d9ef">app</span>: flannel
+  <span style="color:#66d9ef">template</span>:
+    <span style="color:#66d9ef">metadata</span>:
+      <span style="color:#66d9ef">labels</span>:
+        <span style="color:#66d9ef">tier</span>: node
+        <span style="color:#66d9ef">app</span>: flannel
+    <span style="color:#66d9ef">spec</span>:
+      <span style="color:#66d9ef">affinity</span>:
+        <span style="color:#66d9ef">nodeAffinity</span>:
+          <span style="color:#66d9ef">requiredDuringSchedulingIgnoredDuringExecution</span>:
+            <span style="color:#66d9ef">nodeSelectorTerms</span>:
+              - <span style="color:#66d9ef">matchExpressions</span>:
+                  - <span style="color:#66d9ef">key</span>: kubernetes.io/os
+                    <span style="color:#66d9ef">operator</span>: In
+                    <span style="color:#66d9ef">values</span>:
+                      - linux
+                  - <span style="color:#66d9ef">key</span>: kubernetes.io/arch
+                    <span style="color:#66d9ef">operator</span>: In
+                    <span style="color:#66d9ef">values</span>:
+                      - s390x
+      <span style="color:#66d9ef">hostNetwork</span>: <span style="color:#66d9ef">true</span>
+      <span style="color:#66d9ef">tolerations</span>:
+      - <span style="color:#66d9ef">operator</span>: Exists
+        <span style="color:#66d9ef">effect</span>: NoSchedule
+      <span style="color:#66d9ef">serviceAccountName</span>: flannel
+      <span style="color:#66d9ef">initContainers</span>:
+      - <span style="color:#66d9ef">name</span>: install-cni
+        <span style="color:#66d9ef">image</span>: quay.io/coreos/flannel:v0<span style="color:#ae81ff">.12.0</span>-s390x
+        <span style="color:#66d9ef">command</span>:
+        - cp
+        <span style="color:#66d9ef">args</span>:
+        - -f
+        - /etc/kube-flannel/cni-conf.json
+        - /etc/cni/net.d/<span style="color:#ae81ff">10</span>-flannel.conflist
+        <span style="color:#66d9ef">volumeMounts</span>:
+        - <span style="color:#66d9ef">name</span>: cni
+          <span style="color:#66d9ef">mountPath</span>: /etc/cni/net.d
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">mountPath</span>: /etc/kube-flannel/
+      <span style="color:#66d9ef">containers</span>:
+      - <span style="color:#66d9ef">name</span>: kube-flannel
+        <span style="color:#66d9ef">image</span>: quay.io/coreos/flannel:v0<span style="color:#ae81ff">.12.0</span>-s390x
+        <span style="color:#66d9ef">command</span>:
+        - /opt/bin/flanneld
+        <span style="color:#66d9ef">args</span>:
+        - --ip-masq
+        - --kube-subnet-mgr
+        <span style="color:#66d9ef">resources</span>:
+          <span style="color:#66d9ef">requests</span>:
+            <span style="color:#66d9ef">cpu</span>: <span style="color:#e6db74">&#34;100m&#34;</span>
+            <span style="color:#66d9ef">memory</span>: <span style="color:#e6db74">&#34;50Mi&#34;</span>
+          <span style="color:#66d9ef">limits</span>:
+            <span style="color:#66d9ef">cpu</span>: <span style="color:#e6db74">&#34;100m&#34;</span>
+            <span style="color:#66d9ef">memory</span>: <span style="color:#e6db74">&#34;50Mi&#34;</span>
+        <span style="color:#66d9ef">securityContext</span>:
+          <span style="color:#66d9ef">privileged</span>: <span style="color:#66d9ef">false</span>
+          <span style="color:#66d9ef">capabilities</span>:
+             <span style="color:#66d9ef">add</span>: [<span style="color:#e6db74">&#34;NET_ADMIN&#34;</span>]
+        <span style="color:#66d9ef">env</span>:
+        - <span style="color:#66d9ef">name</span>: POD_NAME
+          <span style="color:#66d9ef">valueFrom</span>:
+            <span style="color:#66d9ef">fieldRef</span>:
+              <span style="color:#66d9ef">fieldPath</span>: metadata.name
+        - <span style="color:#66d9ef">name</span>: POD_NAMESPACE
+          <span style="color:#66d9ef">valueFrom</span>:
+            <span style="color:#66d9ef">fieldRef</span>:
+              <span style="color:#66d9ef">fieldPath</span>: metadata.namespace
+        <span style="color:#66d9ef">volumeMounts</span>:
+        - <span style="color:#66d9ef">name</span>: run
+          <span style="color:#66d9ef">mountPath</span>: /run/flannel
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">mountPath</span>: /etc/kube-flannel/
+      <span style="color:#66d9ef">volumes</span>:
+        - <span style="color:#66d9ef">name</span>: run
+          <span style="color:#66d9ef">hostPath</span>:
+            <span style="color:#66d9ef">path</span>: /run/flannel
+        - <span style="color:#66d9ef">name</span>: cni
+          <span style="color:#66d9ef">hostPath</span>:
+            <span style="color:#66d9ef">path</span>: /etc/cni/net.d
+        - <span style="color:#66d9ef">name</span>: flannel-cfg
+          <span style="color:#66d9ef">configMap</span>:
+            <span style="color:#66d9ef">name</span>: kube-flannel-cfg
+</code></pre></div><h2 id="参考">参考</h2>
+<ul>
+<li>K8S安装部署在centos7下 <a href="https://www.cnblogs.com/niewx5201314/p/11663137.html">https://www.cnblogs.com/niewx5201314/p/11663137.html</a></li>
+<li>kubeadm join 超时  uploading crisocket: timed out waiting for the condition <a href="https://blog.csdn.net/gs80140/article/details/92798027">https://blog.csdn.net/gs80140/article/details/92798027</a></li>
+<li>kubeadm 安装kubetnetes(flannel) <a href="https://blog.csdn.net/qq_21816375/article/details/73691684">https://blog.csdn.net/qq_21816375/article/details/73691684</a></li>
+</ul>
+
+        </div>
+
+        
+
+        
+<br>
+<div class="heading">Tags:</div>
+<div class="field is-grouped is-grouped-multiline">
+  <div class="control">
+    <a href="/tags/kubernetes">
+      <span class="tag">Kubernetes</span>
+    </a>
+  </div>
+</div>
+
+      </div>
+
+    </section>
+
+    <section class="section">
+
+      
+      <script src="https://utteranc.es/client.js"
+        repo = "yingchi1994/HugoComments"
+        issue-term = "pathname"
+        theme = "github-light"
+        crossorigin="anonymous"
+        async>
+      </script>
+      <br>
+      
+      
+      <div class="container">
+  <div class="level">
+
+    <div class="level-left">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html">
+            <span class="icon is-small"><i class="fa fa-chevron-left"></i></span>
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Kubernetes 架构浅析
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Kubernetes 架构浅析
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Kubernetes 架构浅析
+            </span>
+            <span class="is-hidden-tablet">
+              Kubernetes 架构浅析
+            </span>
+            
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <div class="level-right">
+      <div class="level-item">
+        <p class="control has-addons">
+          <a class="button" href="https://blog.yingchi.io/posts/2020/3/go-channel.html">
+            <span class="is-hidden-touch is-hidden-desktop-only">
+              Go channel 原理与实践
+            </span>
+            <span class="is-hidden-touch is-hidden-widescreen">
+              Go channel 原理与实践
+            </span>
+            <span class="is-hidden-mobile is-hidden-desktop">
+              Go channel 原理与实践
+            </span>
+            <span class="is-hidden-tablet">
+              Go channel 原理与实践
+            </span>
+            
+            <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+          </a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+      <br>
+
+      
+      
+
+      <br>
+      
+      
+      
+<div class="container">
+  <nav class="panel">
+    <p class="panel-heading">Related</p>
+    <a class="panel-block" href="https://blog.yingchi.io/posts/2019/10/network-devices.html">
+      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
+      <span>&nbsp;</span>
+      <span>网络模型学习基础：各层网络设备概念&nbsp;
+      <div class="tag">Kubernetes</div>
+      </span>
+    </a>
+  </nav>
+</div>
+
+    </section>
+
+    <footer class="footer" 
+style="text-align: center; background-color: #ffffff;">
+  <div class="container">
+    <span style="font-size: small;">
+      <a href="https://yingchi.io/">yingchi.io</a>
+       © 2018-2020</span>
+    <span style="font-size: small;"> Joey.Jiang | 
+      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
+  </div>
+</footer>
+
+  </body>
+
+</html>
+<style>
+
+body {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.container{
+  width: 800px;
+}
+
+.title-custom {
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.subtitle-custom {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.content-custom {
+    color: #000;
+    font-size: 16px;
+}
+
+.content-custom blockquote {
+    margin-bottom: 15px;
+    padding: 15px 0 15px 25px;
+    background: rgb(245, 246, 247);
+    border-left: 10px solid rgb(229, 232, 236);
+    border-radius: 5px;
+}
+
+.content-custom strong {
+    color: rgb(91, 127, 194);
+}
+
+.content-custom em {
+    font-style: normal;
+    font-weight: bold;
+}
+
+.content-custom p {
+    margin: 0 10px;
+}
+
+.content-custom ul{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+    list-style-type: square;
+}
+
+.content-custom ul ul{
+    margin: 0px;
+    list-style-type: circle;
+    padding: 0;
+}
+
+.content-custom ol{
+    margin: 25px;
+    padding: 10px 0;
+    background: rgb(245, 246, 247);
+    border-radius: 5px;
+}
+
+.content-custom li {
+    margin: 5px 40px;
+}
+
+.content-custom img {
+    margin: 20px auto !important;
+    text-align: center;
+    clear: both;
+    display: block;
+    margin: auto;
+    width: 80%;
+}
+
+
+
+.content-custom pre{
+    color: rgb(224, 235, 247);
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgb(85, 94, 104);
+    background-color: rgb(85, 94, 104) !important;
+}
+
+.content-custom h1 {
+    font-size: 25px;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+    padding: 15px;
+     
+    border-bottom: 3px solid #555;
+}
+.content-custom h2 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 40px 0 20px 0;
+    padding: 10px;
+     
+    border-bottom: 2px solid #555;
+}
+.content-custom h3 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 16px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+.content-custom h4 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 10px 0 10px 0;
+    padding: 10px;
+     
+     
+}
+
+ 
+@media screen and (max-width: 960px){
+
+  body{
+    overflow-x: hidden;
+  }
+
+  .container{
+    width: 100%;
+  }
+
+  .content-custom img {
+    width: 100%;
+  }
+
+  .title-custom {
+    font-size: 22px;
+  }
+}
+
+
+</style>
