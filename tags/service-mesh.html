@@ -1,422 +1,288 @@
 <!DOCTYPE html>
-<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+<html lang="en" data-theme=""><head>
+    <title> Joey Jiang | service-mesh </title>
 
-  <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    
+    <meta charset="utf-8"><meta name="generator" content="Hugo 0.71.1" /><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="description" content="Infrastructure SRE / Golang / Python">
+    
+    <link rel="stylesheet"
+          href="https://blog.yingchi.io/css/style.min.8a9cc11a1afa7bd869914c587182281a374d06d6c3e09e330e86cfccf4908668.css"
+          integrity="sha256-ipzBGhr6e9hpkUxYcYIoGjdNBtbD4J4zDobPzPSQhmg="
+          crossorigin="anonymous"
+          type="text/css">
+    
+    <link rel="stylesheet"
+        href="https://blog.yingchi.io/css/markupHighlight.min.9755453ffb7bc4cd220f86ebb5922107b49f193cc62fc17e9785d27b33a8bf5b.css"
+        integrity="sha256-l1VFP/t7xM0iD4brtZIhB7SfGTzGL8F&#43;l4XSezOov1s="
+        crossorigin="anonymous"
+        type="text/css">
+    
+    <link rel="stylesheet" 
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" 
+    integrity="sha512-+4zCK9k+qNFUR5X+cKL9EIR+ZOhtIloNl9GIKS57V1MyNsYpYcUrUeQc9vNfzsWfV28IaLL3i96P9sdNyeRssA==" 
+    crossorigin="anonymous" />
 
-  <title>service-mesh</title>
-  <meta name="author" content="YINGCHI_Joey" />
-  <meta name="description"
-        content=""/>
+    
+    <link rel="shortcut icon" href="https://blog.yingchi.io/favicons/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://blog.yingchi.io/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://blog.yingchi.io/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://blog.yingchi.io/favicons/favicon-16x16.png">
 
+    <link rel="canonical" href="https://blog.yingchi.io/tags/service-mesh.html">
 
-  <meta name="generator" content="Hugo 0.71.1" />
-
-  
-  <meta itemprop="name" content="service-mesh"/>
-  <meta itemprop="description"
-        content=""/>
-  <meta itemprop="image"
-        content=""/>
-
-  
-  <meta property="og:title" content="service-mesh"/>
-  <meta property="og:type"
-        content="website"/>
-  <meta property="og:url" content="https://blog.yingchi.io/tags/service-mesh.html"/>
-  <meta property="og:image"
-        content=""/>
-  <meta property="og:description"
-        content=""/>
-  <meta property="og:site_name" content="Yingchi Blog"/>
-  <meta property="article:section" content="tags"/>
-
-  
-  
-  <meta name="twitter:card" content="summary"/>
-  <meta name="twitter:site"
-        content=""/>
-  <meta name="twitter:title" content="service-mesh"/>
-  <meta name="twitter:description"
-        content=""/>
-  <meta name="twitter:creator"
-        content=""/>
-  <meta name="twitter:image:src"
-        content=""/>
-
-  
+    
     <link rel="alternate" type="application/rss+xml" href="https://blog.yingchi.io/tags/service-mesh/index.xml" title="Yingchi Blog" />
+    
+    
+    
+    <script type="text/javascript"
+            src="https://blog.yingchi.io/js/anatole-header.min.d8599ee07b7d3f11bafbac30657ccc591e8d7fd36a9f580cd4c09e24e0e4a971.js"
+            integrity="sha256-2Fme4Ht9PxG6&#43;6wwZXzMWR6Nf9Nqn1gM1MCeJODkqXE="
+            crossorigin="anonymous"></script>
 
-  
-  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
-  
-  
 
-  
-  
-  
-  
-  <script>
-  	var _mtac = {};
-  	(function() {
-  		var mta = document.createElement("script");
-  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
-  		mta.setAttribute("name", "MTAH5");
-  		mta.setAttribute("sid", "500724862");
+    
+        
+        
+        <script type="text/javascript"
+                src="https://blog.yingchi.io/js/anatole-theme-switcher.min.e289e9ebb2a4e7a7f895859c8a2b0da2de1ec73f22cea58d8475aa0597023837.js"
+                integrity="sha256-4onp67Kk56f4lYWciisNot4exz8izqWNhHWqBZcCODc="
+                crossorigin="anonymous"></script>
+    
+    <meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://blog.yingchi.io/images/site-feature-image.png"/>
 
-  		var s = document.getElementsByTagName("script")[0];
-  		s.parentNode.insertBefore(mta, s);
-  	})();
-</script>
+<meta name="twitter:title" content="service-mesh"/>
+<meta name="twitter:description" content="Infrastructure SRE / Golang / Python"/>
+
 </head>
-
-
-  <body style="min-height:100vh;display:flex;flex-direction:column">
-
-    <nav class="navbar has-shadow is-white"
-     role="navigation" aria-label="main navigation">
-  <div class="container">
-
-    <div class="navbar-brand">
-      <a class="navbar-item" href="/">
-        <div class="title is-4">&nbsp;Yingchi Blog</div>
-      </a>
-
-      
-      <label class="button navbar-burger is-white" for="navbar-burger-state">
-        <span></span>                               
-        <span></span>
-        <span></span>
-      </label>
+<body><div class="sidebar animated fadeInDown ">
+    <div class="logo-title">
+        <div class="title">
+            <img src="https://blog.yingchi.io/images/profile.jpg" alt="profile picture">
+            <h2 title=""><a href="/">Yingchi&#39;s Blog</a></h2>
+            <div class="description">
+                <p>Infrastructure SRE / Golang / Python</p>
+            </div>
+        </div>
     </div>
-
+    <ul class="social-links">
+        
+            <li>
+                <a href="https://yingchi.io" rel="me" aria-label="Home">
+                    <i class="fa fa-home" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            <li>
+                <a href="https://github.com/yingchi1994" rel="me" aria-label="GitHub">
+                    <i class="fab fa-github" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            <li>
+                <a href="mailto:yingchi1994@gmail.com" rel="me" aria-label="e-mail">
+                    <i class="fas fa-envelope" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
+    <div class="tag-area">
+        
+<ul>
+  <li class="tag-list">
     
-    <input type="checkbox" id="navbar-burger-state"/>
-
-    <div class="navbar-menu">
-      <div class="navbar-end">
-      <a href="/posts.html"
-         class="navbar-item
-                ">Posts
-      </a>
-      </div>
-    </div>
-
-  </div>
-</nav>
-
-
-    <section class="section" style="flex:1">
-
-      
-      <div class="container" style="min-height:56vh">
-        <p class="title">Tag: service-mesh</p>
-          <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2020-06-22 / 
+    <a href="/tags/cloud-native.html">
+      <span>
+        <span class="tag-yingchi">
+          Cloud Native
+          [<span style="color:rgb(255, 223, 79);">1</span>]
         </span>
-        
-        <span>
-            <span class="title-tag">
-              <a href="/tags/service-mesh.html">
-                service-mesh
-              </a>
-            </span>
-            <span class="title-tag">
-              <a href="/tags/istio.html">
-                istio
-              </a>
-            </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/docker.html">
+      <span>
+        <span class="tag-yingchi">
+          Docker
+          [<span style="color:rgb(255, 223, 79);">2</span>]
         </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2020/6/istio-sidecar-proxy.html">Istio Sidecar 流量拦截机制分析</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
-    </div>
-  </article>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/golang.html">
+      <span>
+        <span class="tag-yingchi">
+          Golang
+          [<span style="color:rgb(255, 223, 79);">5</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/istio.html">
+      <span>
+        <span class="tag-yingchi">
+          Istio
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/kubernetes.html">
+      <span>
+        <span class="tag-yingchi">
+          Kubernetes
+          [<span style="color:rgb(255, 223, 79);">15</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/network.html">
+      <span>
+        <span class="tag-yingchi">
+          Network
+          [<span style="color:rgb(255, 223, 79);">4</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/note.html">
+      <span>
+        <span class="tag-yingchi">
+          Note
+          [<span style="color:rgb(255, 223, 79);">1</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/service-mesh.html">
+      <span>
+        <span class="tag-yingchi">
+          Service Mesh
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+</ul>
 
 </div>
 
 
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
 
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
 
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
-          <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2020-06-21 / 
-        </span>
-        
-        <span>
-            <span class="title-tag">
-              <a href="/tags/service-mesh.html">
-                service-mesh
-              </a>
-            </span>
-            <span class="title-tag">
-              <a href="/tags/istio.html">
-                istio
-              </a>
-            </span>
-        </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2020/6/istio-sidecar-injection.html">Istio Sidecar 注入机制</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
+    <div class="footer">
+        <div class="by_farbox">&copy; Joey Jiang  2021 </div>
     </div>
-  </article>
-
+</div>
+<div class="main">
+    <div class="page-top  animated fadeInDown ">
+    <a role="button" class="navbar-burger" data-target="navMenu" aria-label="menu" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+    </a>
+    <ul class="nav" id="navMenu">
+        
+        
+            
+            <li><a 
+                   href="/"
+                        
+                   title="">Home</a></li>
+        
+            
+            <li><a 
+                   href="/posts.html"
+                        
+                   title="">Posts</a></li>
+        
+            
+            <li><a 
+                   href="/tags.html"
+                        
+                   title="">Tags</a></li>
+        
+            
+            <li><a 
+                   href="/about.html"
+                        
+                   title="">About</a></li>
+        
+        
+        
+            <li class="theme-switch-item">
+                <a class="theme-switch" title="Switch Theme">
+                    <i class="fas fa-adjust fa-fw" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
 </div>
 
+    <div class="autopagerize_page_element">
+        <div class="content">
+    <div class="archive  animated fadeInDown ">
+        <ul class="list-with-title">
+            
+                <div class="listing-title">2020</div>
+                
+                    <ul class="listing">
+                        <div class="listing-item">
+                            <div class="listing-post"><a href="https://blog.yingchi.io/posts/2020/6/istio-sidecar-proxy.html" title="Istio Sidecar 流量拦截机制分析">Istio Sidecar 流量拦截机制分析</a>
+                                <div class="post-time"><span class="date">Jun 22</span></div>
+                            </div>
+                        </div>
+                    </ul>
+                
+                    <ul class="listing">
+                        <div class="listing-item">
+                            <div class="listing-post"><a href="https://blog.yingchi.io/posts/2020/6/istio-sidecar-injection.html" title="Istio Sidecar 注入机制">Istio Sidecar 注入机制</a>
+                                <div class="post-time"><span class="date">Jun 21</span></div>
+                            </div>
+                        </div>
+                    </ul>
+                
+            
+        </ul>
+    </div>
 
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
+        </div>
+    </div>
+</div>
 
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
-
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
-      </div>
-
-      <br>
-      <br>
-      <br>
-
-      
-      <div class="container">
-        <nav class="custom-pagination">
-
-  <span class="custom-pagination-list">
-
-    <span><a href="/tags/service-mesh.html" class="page-number-current">
-      1
-    </a></span>
-  </span>
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/jquery.min.86b1e8f819ee2d9099a783e50b49dff24282545fc40773861f9126b921532e4c.js"
+        integrity="sha256-hrHo&#43;BnuLZCZp4PlC0nf8kKCVF/EB3OGH5EmuSFTLkw="
+        crossorigin="anonymous"></script>
 
 
-  
-
-</nav>
-
-<style>
-  .custom-pagination{
-    width: 100%;
-    text-align: center;
-  }
-
-  .custom-pagination-list{
-    
-  }
-
-  .page-number{
-    color: grey;
-    text-decoration: none;
-    min-width: 2em;
-    justify-content: center;
-    margin: 10px;
-    padding: 5px;
-    text-align: center;
-  }
-
-  .page-number-current{
-    color: green;
-    font-weight: bold;
-    text-decoration: none;
-    min-width: 2em;
-    justify-content: center;
-    margin: 10px;
-    padding: 10px;
-    text-align: center;
-  }
-</style>
-
-      </div>
-
-    </section>
-
-    <footer class="footer" 
-style="text-align: center; background-color: #ffffff;">
-  <div class="container">
-    <span style="font-size: small;">
-      <a href="https://yingchi.io/">yingchi.io</a>
-       © 2018-2020</span>
-    <span style="font-size: small;"> Joey.Jiang | 
-      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
-  </div>
-</footer>
 
 
-  </body>
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/bundle.min.0f9c74cb78f13d1f15f33daff4037c70354f98acfbb97a6f61708966675c3cae.js"
+        integrity="sha256-D5x0y3jxPR8V8z2v9AN8cDVPmKz7uXpvYXCJZmdcPK4="
+        crossorigin="anonymous"></script>
+
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/medium-zoom.min.92f21c856129f84aeb719459b3e6ac621a3032fd7b180a18c04e1d12083f8aba.js"
+        integrity="sha256-kvIchWEp&#43;ErrcZRZs&#43;asYhowMv17GAoYwE4dEgg/iro="
+        crossorigin="anonymous"></script>
+</body>
 
 </html>

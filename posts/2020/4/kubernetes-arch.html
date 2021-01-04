@@ -1,125 +1,254 @@
 <!DOCTYPE html>
-<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+<html lang="en" data-theme=""><head>
+    <title> Joey Jiang | Kubernetes 架构浅析 </title>
 
-  <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    
+    <meta charset="utf-8"><meta name="generator" content="Hugo 0.71.1" /><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="description" content="Infrastructure SRE / Golang / Python">
+    
+    <link rel="stylesheet"
+          href="https://blog.yingchi.io/css/style.min.8a9cc11a1afa7bd869914c587182281a374d06d6c3e09e330e86cfccf4908668.css"
+          integrity="sha256-ipzBGhr6e9hpkUxYcYIoGjdNBtbD4J4zDobPzPSQhmg="
+          crossorigin="anonymous"
+          type="text/css">
+    
+    <link rel="stylesheet"
+        href="https://blog.yingchi.io/css/markupHighlight.min.9755453ffb7bc4cd220f86ebb5922107b49f193cc62fc17e9785d27b33a8bf5b.css"
+        integrity="sha256-l1VFP/t7xM0iD4brtZIhB7SfGTzGL8F&#43;l4XSezOov1s="
+        crossorigin="anonymous"
+        type="text/css">
+    
+    <link rel="stylesheet" 
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" 
+    integrity="sha512-+4zCK9k+qNFUR5X+cKL9EIR+ZOhtIloNl9GIKS57V1MyNsYpYcUrUeQc9vNfzsWfV28IaLL3i96P9sdNyeRssA==" 
+    crossorigin="anonymous" />
 
-  <title>Kubernetes 架构浅析</title>
-  <meta name="author" content="YINGCHI_Joey" />
-  <meta name="description"
-        content="前言
-Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发..."/>
+    
+    <link rel="shortcut icon" href="https://blog.yingchi.io/favicons/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://blog.yingchi.io/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://blog.yingchi.io/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://blog.yingchi.io/favicons/favicon-16x16.png">
+
+    <link rel="canonical" href="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html">
+
+    
+    
+    
+    
+    <script type="text/javascript"
+            src="https://blog.yingchi.io/js/anatole-header.min.d8599ee07b7d3f11bafbac30657ccc591e8d7fd36a9f580cd4c09e24e0e4a971.js"
+            integrity="sha256-2Fme4Ht9PxG6&#43;6wwZXzMWR6Nf9Nqn1gM1MCeJODkqXE="
+            crossorigin="anonymous"></script>
 
 
-  <meta name="generator" content="Hugo 0.71.1" />
+    
+        
+        
+        <script type="text/javascript"
+                src="https://blog.yingchi.io/js/anatole-theme-switcher.min.e289e9ebb2a4e7a7f895859c8a2b0da2de1ec73f22cea58d8475aa0597023837.js"
+                integrity="sha256-4onp67Kk56f4lYWciisNot4exz8izqWNhHWqBZcCODc="
+                crossorigin="anonymous"></script>
+    
+    <meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://blog.yingchi.io/images/site-feature-image.png"/>
 
-  
-  <meta itemprop="name" content="Kubernetes 架构浅析"/>
-  <meta itemprop="description"
-        content="前言
-Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发..."/>
-  <meta itemprop="image"
-        content=""/>
+<meta name="twitter:title" content="Kubernetes 架构浅析"/>
+<meta name="twitter:description" content="前言 Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发布了 Kubernetes，这是振奋人心的，随后巨硬、IBM、RedHat 一些大佬企业也加入 Kubernetes 社区添砖加瓦，项目日益成熟，社区非常活跃，如今的 Kubernetes 项目也已经成为了开源项目中最耀眼的其中之一。
+Kubernetes 的成功在于它填补了大规模容器集群的编排调度管理平台的空白，在此之前，大家都仿佛在云时代中做着石器时代的活，费时费力地部署管理自己的应用，虽然容器概念已经流行，但是还是用着最原始的方式去使用它们，虽然有一些技术框架，如 Docker Swarm 尝试改变这一现状，但是反响并不好，直到 Kubernetes 的出现，人们都惊呆了，原来 Kubernetes 与 Docker 与 微服务可以这么有机地结合？难以置信，它们虽然是不同的项目不同的设计思想，但是当融合在一起的时候是如此的完美。
+因此，我们的确有必要去学习去了解优秀的 Kubernetes，当然，学习它的架构实现，从宏观角度理解它的运转机制就是必不可少的环节。
+架构概述 Kubernetes 系统架构整体采用的是 C/S 的架构，即 Master 作为 Server，各个 Worker 节点作为 Client，在一个面向生产环境的集群中，通常可以采用多个 Master 节点实现 HA。
+然后从 Master 与 Worker 两种不同的节点类型来概述一下它们的「职责」
+Master Node 主要职责：  管理集群所有的 Node； 调度集群的 Pod； 管理集群的运行状态；  主要组件：  kube-apiserver: 负责处理资源的 CRUD 请求，提供 REST API 接口； kube-scheduler: 负责集群中 Pod 资源的调度（哪个 Pod 运行在 哪个 Node 上）； kube-controller-manager: 控制器管理器，自动化地管理集群状态（如自动扩容、滚动更新）；  Worker Node 主要职责：  管理容器的生命周期，网络，存储等； 监控上报 Pod 的运行状态；  主要组件：  kubelet: 管理容器的生命周期，与 Master 节点进行通信，可理解为 Kubernetes 在 Worker 节点的 Agent； kube-proxy: 负责 Kubernetes Service 组件的通信，原理是为当前节点 Pod 动态地生成 iptables 或 ipvs 规则，并且与 kube-apiserver 保持通信，一旦发现某一个 Service 的后端 Pod 改变，需要将改变保存在 kube-apiserver 中； container engine: 负责接收 kubelet 指令，对容器进行基础地管理；  组件浅析 [Master] kube-apiserver 顾名思义，「apiserver」即本质是提供 API，而且是 REST API，我们提到 REST API 总是会想到「资源」这个概念，没错，这里的 kube-apiserver 就是为 Kubernetes 集群中的各种资源提供 CRUD 的 REST API。"/>
 
-  
-  <meta property="og:title" content="Kubernetes 架构浅析"/>
-  <meta property="og:type"
-        content="article"/>
-  <meta property="og:url" content="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html"/>
-  <meta property="og:image"
-        content=""/>
-  <meta property="og:description"
-        content="前言
-Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发..."/>
-  <meta property="og:site_name" content="Yingchi Blog"/>
-  <meta property="article:published_time"
-        content="2020-04-05T21:03:12&#43;08:00"/>
-  <meta property="article:section" content="posts"/>
-  <meta property="article:tag" content="kubernetes"/>
-
-  
-  
-  <meta name="twitter:card" content="summary"/>
-  <meta name="twitter:site"
-        content=""/>
-  <meta name="twitter:title" content="Kubernetes 架构浅析"/>
-  <meta name="twitter:description"
-        content="前言
-Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发..."/>
-  <meta name="twitter:creator"
-        content=""/>
-  <meta name="twitter:image:src"
-        content=""/>
-
-  
-
-  
-  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
-  
-  
-
-  
-  
-  
-  
-  <script>
-  	var _mtac = {};
-  	(function() {
-  		var mta = document.createElement("script");
-  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
-  		mta.setAttribute("name", "MTAH5");
-  		mta.setAttribute("sid", "500724862");
-
-  		var s = document.getElementsByTagName("script")[0];
-  		s.parentNode.insertBefore(mta, s);
-  	})();
-</script>
 </head>
-
-
-  <body style="min-height:100vh;display:flex;flex-direction:column">
-
-    <section>
-  <nav style="text-align: center; margin-top: 30px;">
-    <div>
-        <a class="custom-title" href="/">
-          
-          <img class="logo" src="/logo.png"/>
-        </a>
+<body><div class="sidebar animated fadeInDown ">
+    <div class="logo-title">
+        <div class="title">
+            <img src="https://blog.yingchi.io/images/profile.jpg" alt="profile picture">
+            <h2 title=""><a href="/">Yingchi&#39;s Blog</a></h2>
+            <div class="description">
+                <p>Infrastructure SRE / Golang / Python</p>
+            </div>
+        </div>
     </div>
-  </nav>
-
-</section>
-
-<style>
-  .custom-title{
-    color: rgb(87, 87, 87);
-    font-size: 25px;
-    font-weight: bold;
-    text-decoration: none;
-  }
-
-  .logo{
-    width: 190px;
-  }
-</style>
-
-    <section class="section" style="flex:1">
-
-      
-      <div class="container">
+    <ul class="social-links">
         
-        <p class="title-custom">Kubernetes 架构浅析</p>
-        <p class="subtitle-custom">Apr 5, 2020</p>
+            <li>
+                <a href="https://yingchi.io" rel="me" aria-label="Home">
+                    <i class="fa fa-home" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            <li>
+                <a href="https://github.com/yingchi1994" rel="me" aria-label="GitHub">
+                    <i class="fab fa-github" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            <li>
+                <a href="mailto:yingchi1994@gmail.com" rel="me" aria-label="e-mail">
+                    <i class="fas fa-envelope" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
+    <div class="tag-area">
+        
+<ul>
+  <li class="tag-list">
+    
+    <a href="/tags/cloud-native.html">
+      <span>
+        <span class="tag-yingchi">
+          Cloud Native
+          [<span style="color:rgb(255, 223, 79);">1</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/docker.html">
+      <span>
+        <span class="tag-yingchi">
+          Docker
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/golang.html">
+      <span>
+        <span class="tag-yingchi">
+          Golang
+          [<span style="color:rgb(255, 223, 79);">5</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/istio.html">
+      <span>
+        <span class="tag-yingchi">
+          Istio
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/kubernetes.html">
+      <span>
+        <span class="tag-yingchi">
+          Kubernetes
+          [<span style="color:rgb(255, 223, 79);">15</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/network.html">
+      <span>
+        <span class="tag-yingchi">
+          Network
+          [<span style="color:rgb(255, 223, 79);">4</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/note.html">
+      <span>
+        <span class="tag-yingchi">
+          Note
+          [<span style="color:rgb(255, 223, 79);">1</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/service-mesh.html">
+      <span>
+        <span class="tag-yingchi">
+          Service Mesh
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+</ul>
 
-        
+</div>
 
+
+
+
+    <div class="footer">
+        <div class="by_farbox">&copy; Joey Jiang  2021 </div>
+    </div>
+</div>
+<div class="main">
+    <div class="page-top  animated fadeInDown ">
+    <a role="button" class="navbar-burger" data-target="navMenu" aria-label="menu" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+    </a>
+    <ul class="nav" id="navMenu">
         
         
-        <div class="content-custom">
-          <h2 id="前言">前言</h2>
+            
+            <li><a 
+                   href="/"
+                        
+                   title="">Home</a></li>
+        
+            
+            <li><a 
+                   href="/posts.html"
+                        
+                   title="">Posts</a></li>
+        
+            
+            <li><a 
+                   href="/tags.html"
+                        
+                   title="">Tags</a></li>
+        
+            
+            <li><a 
+                   href="/about.html"
+                        
+                   title="">About</a></li>
+        
+        
+        
+            <li class="theme-switch-item">
+                <a class="theme-switch" title="Switch Theme">
+                    <i class="fas fa-adjust fa-fw" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+    <div class="autopagerize_page_element">
+        <div class="content">
+    <div class="post  animated fadeInDown ">
+        <div class="post-content">
+            <div class="post-title">
+                <h3>Kubernetes 架构浅析</h3>
+                
+            </div>
+
+            <h2 id="前言">前言</h2>
 <p>Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发布了 Kubernetes，这是振奋人心的，随后巨硬、IBM、RedHat 一些大佬企业也加入 Kubernetes 社区添砖加瓦，项目日益成熟，社区非常活跃，如今的 Kubernetes 项目也已经成为了开源项目中最耀眼的其中之一。</p>
 <p>Kubernetes 的成功在于它填补了大规模容器集群的编排调度管理平台的空白，在此之前，大家都仿佛在云时代中做着石器时代的活，费时费力地部署管理自己的应用，虽然容器概念已经流行，但是还是用着最原始的方式去使用它们，虽然有一些技术框架，如 Docker Swarm 尝试改变这一现状，但是反响并不好，直到 Kubernetes 的出现，人们都惊呆了，原来 Kubernetes 与 Docker 与 微服务可以这么有机地结合？难以置信，它们虽然是不同的项目不同的设计思想，但是当融合在一起的时候是如此的完美。</p>
 <p>因此，我们的确有必要去学习去了解优秀的 Kubernetes，当然，学习它的架构实现，从宏观角度理解它的运转机制就是必不可少的环节。</p>
@@ -242,291 +371,40 @@ Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&helli
 <p><a href="https://my.oschina.net/u/1000241/blog/3022714">https://my.oschina.net/u/1000241/blog/3022714</a></p>
 </li>
 </ul>
+</div>
+        <div class="post-footer">
+            <div class="info">
+                
+                <span class="separator"><a class="tag" href="/tags/kubernetes/">kubernetes</a></span>
 
+            </div>
         </div>
 
         
-
-        
-<br>
-<div class="heading">Tags:</div>
-<div class="field is-grouped is-grouped-multiline">
-  <div class="control">
-    <a href="/tags/kubernetes">
-      <span class="tag">Kubernetes</span>
-    </a>
-  </div>
-</div>
-
-      </div>
-
-    </section>
-
-    <section class="section">
-
-      
-      <script src="https://utteranc.es/client.js"
-        repo = "yingchi1994/HugoComments"
-        issue-term = "pathname"
-        theme = "github-light"
-        crossorigin="anonymous"
-        async>
-      </script>
-      <br>
-      
-      
-      <div class="container">
-  <div class="level">
-
-    <div class="level-left">
-      <div class="level-item">
-        <p class="control has-addons">
-          <a class="button" href="https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html">
-            <span class="icon is-small"><i class="fa fa-chevron-left"></i></span>
-            <span class="is-hidden-touch is-hidden-desktop-only">
-              Kubernetes Rolling Update 滚动升级
-            </span>
-            <span class="is-hidden-touch is-hidden-widescreen">
-              Kubernetes Rolling Update 滚动升级
-            </span>
-            <span class="is-hidden-mobile is-hidden-desktop">
-              Kubernetes Rolling Update 滚动升级
-            </span>
-            <span class="is-hidden-tablet">
-              Kubernetes Rolling Update 滚动升级
-            </span>
-            
-          </a>
-        </p>
-      </div>
     </div>
 
-    <div class="level-right">
-      <div class="level-item">
-        <p class="control has-addons">
-          <a class="button" href="https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html">
-            <span class="is-hidden-touch is-hidden-desktop-only">
-              记一次 Kubeadm 部署 k8s + Flannel
-            </span>
-            <span class="is-hidden-touch is-hidden-widescreen">
-              记一次 Kubeadm 部署 k8s + Flannel
-            </span>
-            <span class="is-hidden-mobile is-hidden-desktop">
-              记一次 Kubeadm 部署 k8s + Flannel
-            </span>
-            <span class="is-hidden-tablet">
-              记一次 Kubeadm 部署 k8s + Flannel
-            </span>
-            
-            <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
-          </a>
-        </p>
-      </div>
+
+        </div>
     </div>
-
-  </div>
 </div>
 
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/jquery.min.86b1e8f819ee2d9099a783e50b49dff24282545fc40773861f9126b921532e4c.js"
+        integrity="sha256-hrHo&#43;BnuLZCZp4PlC0nf8kKCVF/EB3OGH5EmuSFTLkw="
+        crossorigin="anonymous"></script>
 
-      <br>
 
-      
-      
 
-      <br>
-      
-      
-      
-<div class="container">
-  <nav class="panel">
-    <p class="panel-heading">Related</p>
-    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html">
-      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
-      <span>&nbsp;</span>
-      <span>Kubernetes Rolling Update 滚动升级&nbsp;
-      <div class="tag">Kubernetes</div>
-      </span>
-    </a>
-    <a class="panel-block" href="https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html">
-      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
-      <span>&nbsp;</span>
-      <span>记一次 Kubeadm 部署 k8s &#43; Flannel&nbsp;
-      <div class="tag">Kubernetes</div>
-      </span>
-    </a>
-    <a class="panel-block" href="https://blog.yingchi.io/posts/2019/10/network-devices.html">
-      <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
-      <span>&nbsp;</span>
-      <span>网络模型学习基础：各层网络设备概念&nbsp;
-      <div class="tag">Kubernetes</div>
-      </span>
-    </a>
-  </nav>
-</div>
 
-    </section>
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/bundle.min.0f9c74cb78f13d1f15f33daff4037c70354f98acfbb97a6f61708966675c3cae.js"
+        integrity="sha256-D5x0y3jxPR8V8z2v9AN8cDVPmKz7uXpvYXCJZmdcPK4="
+        crossorigin="anonymous"></script>
 
-    <footer class="footer" 
-style="text-align: center; background-color: #ffffff;">
-  <div class="container">
-    <span style="font-size: small;">
-      <a href="https://yingchi.io/">yingchi.io</a>
-       © 2018-2020</span>
-    <span style="font-size: small;"> Joey.Jiang | 
-      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
-  </div>
-</footer>
-
-  </body>
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/medium-zoom.min.92f21c856129f84aeb719459b3e6ac621a3032fd7b180a18c04e1d12083f8aba.js"
+        integrity="sha256-kvIchWEp&#43;ErrcZRZs&#43;asYhowMv17GAoYwE4dEgg/iro="
+        crossorigin="anonymous"></script>
+</body>
 
 </html>
-<style>
-
-body {
-  max-width: 1160px;
-  margin: 0 auto;
-}
-
-.container{
-  width: 800px;
-}
-
-.title-custom {
-  text-align: center;
-  margin-bottom: 10px;
-  font-size: 30px;
-  font-weight: bold;
-}
-
-.subtitle-custom {
-  text-align: center;
-  margin-bottom: 20px;
-  font-size: 18px;
-}
-
-.content-custom {
-    color: #000;
-    font-size: 16px;
-}
-
-.content-custom blockquote {
-    margin-bottom: 15px;
-    padding: 15px 0 15px 25px;
-    background: rgb(245, 246, 247);
-    border-left: 10px solid rgb(229, 232, 236);
-    border-radius: 5px;
-}
-
-.content-custom strong {
-    color: rgb(91, 127, 194);
-}
-
-.content-custom em {
-    font-style: normal;
-    font-weight: bold;
-}
-
-.content-custom p {
-    margin: 0 10px;
-}
-
-.content-custom ul{
-    margin: 25px;
-    padding: 10px 0;
-    background: rgb(245, 246, 247);
-    border-radius: 5px;
-    list-style-type: square;
-}
-
-.content-custom ul ul{
-    margin: 0px;
-    list-style-type: circle;
-    padding: 0;
-}
-
-.content-custom ol{
-    margin: 25px;
-    padding: 10px 0;
-    background: rgb(245, 246, 247);
-    border-radius: 5px;
-}
-
-.content-custom li {
-    margin: 5px 40px;
-}
-
-.content-custom img {
-    margin: 20px auto !important;
-    text-align: center;
-    clear: both;
-    display: block;
-    margin: auto;
-    width: 80%;
-}
-
-
-
-.content-custom pre{
-    color: rgb(224, 235, 247);
-    margin: 10px;
-    padding: 10px 20px;
-    border-radius: 5px;
-    box-shadow: 0px 0px 10px rgb(85, 94, 104);
-    background-color: rgb(85, 94, 104) !important;
-}
-
-.content-custom h1 {
-    font-size: 25px;
-    font-weight: bold;
-    margin: 20px 0 10px 0;
-    padding: 15px;
-     
-    border-bottom: 3px solid #555;
-}
-.content-custom h2 {
-    font-size: 20px;
-    font-weight: bold;
-    margin: 40px 0 20px 0;
-    padding: 10px;
-     
-    border-bottom: 2px solid #555;
-}
-.content-custom h3 {
-    font-size: 18px;
-    font-weight: bold;
-    margin: 16px 0 10px 0;
-    padding: 10px;
-     
-     
-}
-.content-custom h4 {
-    font-size: 16px;
-    font-weight: bold;
-    margin: 10px 0 10px 0;
-    padding: 10px;
-     
-     
-}
-
- 
-@media screen and (max-width: 960px){
-
-  body{
-    overflow-x: hidden;
-  }
-
-  .container{
-    width: 100%;
-  }
-
-  .content-custom img {
-    width: 100%;
-  }
-
-  .title-custom {
-    font-size: 22px;
-  }
-}
-
-
-</style>

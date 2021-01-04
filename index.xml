@@ -6,10 +6,42 @@
     <description>Recent content on Yingchi Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Fri, 24 Jul 2020 23:41:26 +0800</lastBuildDate>
+    <lastBuildDate>Sat, 15 Aug 2020 14:21:43 +0800</lastBuildDate>
     
 	<atom:link href="https://blog.yingchi.io/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>个人介绍</title>
+      <link>https://blog.yingchi.io/about.html</link>
+      <pubDate>Mon, 04 Jan 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.yingchi.io/about.html</guid>
+      <description>蒋英驰   网易互娱基础架构 SRE 工程师
+  西北工业大学软件工程硕士
+  主要研究方向：云基础架构性能与稳定性优化；
+  专业技能
+ 掌握计算机专业相关基础知识，包括计算机网络、操作系统等；熟悉 TCP/IP 协议栈基本原理； 熟悉 GNU/Linux 操作系统，掌握大规模 Linux 服务集群的管理方法； 熟悉 SRE 技术体系，掌握云计算基础架构性能与稳定性优化基本方法； 掌握 Go、Python 编程语言，熟悉系统与脚本开发流程； 熟悉容器化相关概念，了解 Docker / Kubernetes 实现原理并掌握基本使用流程； 了解前后端开发框架 Gin / Vue 基本开发方法，可以快速开发 Web 运维工具； 了解服务网格概念，了解 Istio 服务治理的基本思想；    技能认证
+ CKA (Certificate Kubernetes Administrator) | Kubernetes 管理员认证 ACP (Alibaba Cloud Certified Professional) | 阿里巴巴云计算工程师认证 CET-6 (College English Test band-6) | 大学英语六级    联系方式</description>
+    </item>
+    
+    <item>
+      <title>理解 Golang Context 机制</title>
+      <link>https://blog.yingchi.io/posts/2020/8/go-context.html</link>
+      <pubDate>Sat, 15 Aug 2020 14:21:43 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/8/go-context.html</guid>
+      <description>&lt;p&gt;在使用 Golang 的一些框架的时候，比如 Gin，每一个请求的 Handler 方法总是需要传递进去一个 &lt;strong&gt;context&lt;/strong&gt; 对象，然后很多请求数据，比如请求参数，路径变量等都可以从中读出来，其实在这个使用过程中已经大体理解了这个 context 是个什么东西，但是对于其中的一些细节包括具体的使用方式还是缺乏了解，因此本文就针对 golang 里面的 context 概念进行简单的探讨。&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>循序渐进理解CNI机制与Flannel工作原理</title>
+      <link>https://blog.yingchi.io/posts/2020/8/k8s-flannel.html</link>
+      <pubDate>Wed, 12 Aug 2020 21:55:13 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/8/k8s-flannel.html</guid>
+      <description>&lt;p&gt;CNI，它的全称是 Container Network Interface，即容器网络的 API 接口。kubernetes 网络的发展方向是希望通过插件的方式来集成不同的网络方案， CNI 就是这一努力的结果。CNI 只专注解决容器网络连接和容器销毁时的资源释放，提供一套框架，所以 CNI 可以支持大量不同的网络模式，并且容易实现。&lt;/p&gt;</description>
+    </item>
     
     <item>
       <title>解读 kubernetes Controller Manager 工作原理</title>
@@ -17,14 +49,8 @@
       <pubDate>Fri, 24 Jul 2020 23:41:26 +0800</pubDate>
       
       <guid>https://blog.yingchi.io/posts/2020/7/k8s-cm-informer.html</guid>
-      <description>kubernetes master 节点最重要的三个组件是：kube-apiserver、kube-controller-manager、kube-scheduler，分别负责 kubernetes 集群的资源访问入口、集群状态管理、资源调度。
-这篇文章的主角就是其中的 kube-controller-manager 组件，分析一下它以及其核心组件 informer 是如何有效管理集群状态的。
-Controller Manager &amp;amp; Controller 工作原理概述 我们都知道 kubernetes 中管理资源的方式比较简单，通常就是写一个 YAML 清单，简单的可以通过 kubectl 命令直接解决，在这个过程中，我们定义了某个资源的「期望状态」，比如 YAML 清单文件中的 spec 字段，Deployment 的 YAML 中的 spec 字段可能定义了期望的 replicas，我们期望集群的某个 pod 的副本数维持在某个数量上，当我们提交清单给集群，kubernetes 会在一段时间内将集群中的某些资源调整至我们期望的状态；亦或是另一个场景，集群中某个 Pod 挂掉了，或者我们将 Pod 从某个 Worker Node 上驱逐了，然后我们没有做任何操作，Pod 又会自动重建，并且达到指定的副本数，这是很常见的场景。
-上面说的这些资源的状态管理是由谁实现的呢？没错，就是 Controller Manager，Controller Manager 是 Kubernetes 的灵魂组件之一，可以说通过定义资源期望状态实现集群资源编排管理的思想其底层就是依赖 Controller Manager 这个组件。
-Controller Manager 的作用简而言之：保证集群中各种资源的实际状态（status）和用户定义的期望状态（spec）一致。
-按照官方定义：kube-controller-manager 运行控制器，它们是处理集群中常规任务的后台线程。
-Controller Manager 就是集群内部的管理控制中心，刚才说 Controller Manager 的作用是保证集群中各种资源的实际状态和用户定义的期望状态一致，但是如果出现不一致的情况怎么办？是由 Controller Manager 自己来对各种资源进行调整吗？
-这时候就要说到 Controller 的概念了，之所以叫 Controller Manager，是因为 Controller Manager 由负责不同资源的多个 Controller 构成，如 Deployment Controller、Node Controller、Namespace Controller、Service Controller 等，这些 Controllers 各自明确分工负责集群内资源的管理。</description>
+      <description>&lt;p&gt;kubernetes master 节点最重要的三个组件是：kube-apiserver、kube-controller-manager、kube-scheduler，分别负责 kubernetes 集群的资源访问入口、集群状态管理、资源调度。&lt;/p&gt;
+&lt;p&gt;这篇文章的主角就是其中的 kube-controller-manager 组件，分析一下它以及其核心组件 informer 是如何有效管理集群状态的。&lt;/p&gt;</description>
     </item>
     
     <item>
@@ -33,14 +59,7 @@ Controller Manager 就是集群内部的管理控制中心，刚才说 Controlle
       <pubDate>Thu, 23 Jul 2020 21:15:06 +0800</pubDate>
       
       <guid>https://blog.yingchi.io/posts/2020/7/k8s-rbac.html</guid>
-      <description>之前在做 PaaS 平台开发时涉及到租户的权限管理，考虑到 Kubernetes 默认提供了 RBAC（基于角色的访问控制）机制，于是想如何利用好 Kubernetes 的 RBAC 来实现。但是开始学习这块儿知识的时候还是遇到了一些问题，比如 Role 和 ClusterRole，Role Binding 和 ClusterRoleBinding，很多概念是比较模糊的，随着后来深入的学习了解和实践才算理清它们之间的关系，这篇文章就是分享一下这期间学到的内容。
- 什么是 RBAC？ RBAC（基于角色的访问控制） RBAC，Role-Based Access Control，即基于角色的访问控制，通过自定义具有某些特定 Permission 的 Role，然后将 Role 和特定的 Subject（user，group，serviceaccounts&amp;hellip;)关联起来已达到权限控制的目的。
-RBAC 中有三个比较重要的概念：
- Role：角色，本质是一组规则权限的集合，注意：RBAC 中，Role 只声明授予权限，而不存在否定规则； Subject：被作用者，包括 user，group，通俗来讲就是认证机制中所识别的用户； RoleBinding：定义了“Role”和“Subject”的绑定关系，也就是将用户以及操作权限进行绑定；  RBAC 其实就是通过创建角色(Role），通过 RoleBinding 将被作用者（subject）和角色（Role）进行绑定。下图是 RBAC 中的几种绑定关系：
-Kubernetes RBAC 现在以 Kubernetes 的视角重新来看 RBAC 的实现。
-Kubernetes 中实现 RBAC 角色创建、角色绑定整个流程还是比较清晰的，RBAC 的配置都是以资源配置的形式呈现给管理员，我们只需要定义一些配置文件即可，当然在这其中会涉及到对一些配置的理解。首先来看 Kubernetes 中 RBAC 配置关系图：
-如图可知，实现 Kubernetes 的自定义 RBAC 过程，主要涉及到几个概念，其实一开始已经提到过了，这不过在 Kubernetes 中定义了更具体的概念，这是重点需要关注的。
-Subject 主体，kubernetes 中的 Subject 包括了 User、Group、Service Account，前两个好理解，Service Account 其实就是区别开 User Account 的，Kubernetes 中的资源也是可以当做一个 Subject 的，比如一个 Pod 需要操作集群资源时，它采用的就是 Service Account。</description>
+      <description>&lt;p&gt;之前在做 PaaS 平台开发时涉及到租户的权限管理，考虑到 Kubernetes 默认提供了 RBAC（基于角色的访问控制）机制，于是想如何利用好 Kubernetes 的 RBAC 来实现。但是开始学习这块儿知识的时候还是遇到了一些问题，比如 Role 和 ClusterRole，Role Binding 和 ClusterRoleBinding，很多概念是比较模糊的，随着后来深入的学习了解和实践才算理清它们之间的关系，这篇文章就是分享一下这期间学到的内容。&lt;/p&gt;</description>
     </item>
     
     <item>
@@ -49,12 +68,7 @@ Subject 主体，kubernetes 中的 Subject 包括了 User、Group、Service Acco
       <pubDate>Sun, 19 Jul 2020 19:54:22 +0800</pubDate>
       
       <guid>https://blog.yingchi.io/posts/2020/7/k8s-authn-authz.html</guid>
-      <description>kube-apiserver 是 kubernetes 的网关性质的组件，是 kubernetes 集群资源操作的唯一入口，因此像认证与授权等一些过程很明显是要基于这个组件实施。kubernetes 集群的所有操作基本上都是通过 apiserver 这个组件进行的，它提供 HTTP RESTful 形式的 API 供集群内外客户端调用。kubernetes 对于访问 API 来说提供了三个步骤的安全措施：认证、授权、准入控制，当用户使用 kubectl，client-go 或者 REST API 请求 apiserver 时，都要经过这三个步骤的校验。
- 认证解决的问题是识别用户的身份； 授权是明确用户具有哪些权限； 准入控制是作用于 kubernetes 中的资源对象。  Kubernetes API Server 认证机制（Authentication） 一旦TLS连接建立，请求就进入到身份认证阶段，在这一阶段，请求有效负载由一个或多个认证器模块检查。
-认证模块时管理员在集群创建过程中配置的，一个集群可能有多个认证模块配置，每个模块会依次尝试认证， 直到其中一个认证成功。
-在主流的认证模块中会包括客户端证书、密码、plain tokens、bootstrap tokens以及JWT tokens（用于service account）。客户端证书的使用是默认的并且是最常见的方案。
-kubernetes 目前所有的认证策略如下所示：
- X509 client certs Static Token File Bootstrap Tokens Static Password File Service Account Tokens OpenId Connect Tokens Webhook Token Authentication Authticating Proxy Anonymous requests User impersonation Client-go credential plugins  Kubernetes 常用认证机制 X509 client certs X509 client certs 认证方式是用在一些客户端访问 apiserver 以及集群组件之间访问时使用，比如 kubectl 请求 apiserver 时。</description>
+      <description>&lt;p&gt;kube-apiserver 是 kubernetes 的网关性质的组件，是 kubernetes 集群资源操作的唯一入口，因此像认证与授权等一些过程很明显是要基于这个组件实施。kubernetes 集群的所有操作基本上都是通过 apiserver 这个组件进行的，它提供 HTTP RESTful 形式的 API 供集群内外客户端调用。kubernetes 对于访问 API 来说提供了三个步骤的安全措施：认证、授权、准入控制，当用户使用 kubectl，client-go 或者 REST API 请求 apiserver 时，都要经过这三个步骤的校验。&lt;/p&gt;</description>
     </item>
     
     <item>
@@ -67,6 +81,19 @@ kubernetes 目前所有的认证策略如下所示：
  考试大纲 CNCF 官网中找到 CKA 认证考试页面 https://www.cncf.io/certification/cka/ 可以看到基本的考试大纲，分值分配情况。
 The online exam consists of a set of performance-based items (problems) to be solved in a command line and candidates have 3 hours to complete the tasks.
 The Certification focuses on the skills required to be a successful Kubernetes Administrator in industry today. This includes these general domains and their weights on the exam:</description>
+    </item>
+    
+    <item>
+      <title>浅析并发模型：共享内存/Actor/CSP</title>
+      <link>https://blog.yingchi.io/posts/2020/6/concurrent-pattern.html</link>
+      <pubDate>Thu, 25 Jun 2020 17:42:29 +0800</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts/2020/6/concurrent-pattern.html</guid>
+      <description>Golang 编程中，涉及到并发问题时，通常有以下两种解决方案：
+ 采用共享内存模型，利用 sync.Mutex / sync.RWMutex 等加锁、设置临界区解决数据并发访问问题； 采用消息通信模型，利用 channel 进行 goroutine 间通信，避开内存共享来解决。  官方推荐大家采用第二种方案，那么它究竟好在哪里呢？
+共享内存模型 所谓共享内存模型，就是我们在并发编程的时候，通过让多个并发执行实体（线程/Go程/协程/&amp;hellip;）去操作同一个共享变量，从而达到通信的目的。
+比如下面这个 Go 程序例子，全局变量 count 初始值 10000，然后开启 10000 个 Goroutine 去分别执行一次取 count 并 -1 的操作。
+package main import ( &amp;#34;fmt&amp;#34; &amp;#34;sync&amp;#34; ) var ( count = 10000 wg sync.WaitGroup ) func buy() { defer wg.Done() countReplica := count count = countReplica - 1 } func main() { for i := 0; i &amp;lt; 10000; i++ { wg.</description>
     </item>
     
     <item>
@@ -238,15 +265,6 @@ Master Node 主要职责：  管理集群所有的 Node； 调度集群的 Pod�
     </item>
     
     <item>
-      <title>Go channel 原理与实践</title>
-      <link>https://blog.yingchi.io/posts/2020/3/go-channel.html</link>
-      <pubDate>Thu, 19 Mar 2020 18:33:25 +0800</pubDate>
-      
-      <guid>https://blog.yingchi.io/posts/2020/3/go-channel.html</guid>
-      <description></description>
-    </item>
-    
-    <item>
       <title>Goroutine 并发模型</title>
       <link>https://blog.yingchi.io/posts/2020/3/go-goroutine.html</link>
       <pubDate>Sat, 14 Mar 2020 11:53:31 +0800</pubDate>
@@ -268,7 +286,7 @@ Master Node 主要职责：  管理集群所有的 Node； 调度集群的 Pod�
     </item>
     
     <item>
-      <title>HashTable 原理 &amp; Go Map 实现</title>
+      <title>哈希表原理 &amp; Go Map 实现</title>
       <link>https://blog.yingchi.io/posts/2020/3/go-map.html</link>
       <pubDate>Tue, 10 Mar 2020 11:23:08 +0800</pubDate>
       
@@ -320,6 +338,24 @@ arr1 := [3]int{0,1,2} arr2 := [...]string{&amp;#34;Joey&amp;#34;,&amp;#34;Sophie
 结合上面这两个概念，我们重新分析通过主干 Hub 连接两个局域网的方式，就能明白为什么这样会严重影响网络性能了。
 那么，还是针对连接两个机房的场景，我们期望既可以实现两个网络的互通，又能提高通信的效率，有没有好的方式呢？
 L2：Bridge（网桥）、Switch(交换机/多端口网桥) 现在到网络模型的第2层，也就是数据链路层，看一下这一层的网络设备。继续讨论之前的场景，这次我们不再采用主干 Hub 的方案，而是加入一个叫做 Bridge（网桥）的设备，狭义上的网桥其实是二端口网桥，如图。所谓 Bridge，我们很容易就能明白这是一个桥接设备，桥接的核心是延长，是扩大，因此，我们可以在某种程度上把它看做为一个智能的、高级的 Hub，智能高级的原因是它是工作在第二层的，在进行它的工作原理介绍之前，重新看一下我之前 L1 层对于 Hub 工作原理的描述，网络中流转的信息我在第一层中是以“信号”称呼的，因为第一层只能操作物理电信号，无非就是对电流的整型放大复制转发。</description>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>https://blog.yingchi.io/archives.html</link>
+      <pubDate>Tue, 28 May 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.yingchi.io/archives.html</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Contact</title>
+      <link>https://blog.yingchi.io/contact.html</link>
+      <pubDate>Fri, 08 Mar 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.yingchi.io/contact.html</guid>
+      <description></description>
     </item>
     
   </channel>

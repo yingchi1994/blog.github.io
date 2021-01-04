@@ -1,481 +1,429 @@
 <!DOCTYPE html>
-<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+<html lang="en" data-theme=""><head>
+    <title> Joey Jiang </title>
 
-  <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    
+    <meta charset="utf-8"><meta name="generator" content="Hugo 0.71.1" /><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="description" content="Infrastructure SRE / Golang / Python">
+    
+    <link rel="stylesheet"
+          href="https://blog.yingchi.io/css/style.min.8a9cc11a1afa7bd869914c587182281a374d06d6c3e09e330e86cfccf4908668.css"
+          integrity="sha256-ipzBGhr6e9hpkUxYcYIoGjdNBtbD4J4zDobPzPSQhmg="
+          crossorigin="anonymous"
+          type="text/css">
+    
+    <link rel="stylesheet"
+        href="https://blog.yingchi.io/css/markupHighlight.min.9755453ffb7bc4cd220f86ebb5922107b49f193cc62fc17e9785d27b33a8bf5b.css"
+        integrity="sha256-l1VFP/t7xM0iD4brtZIhB7SfGTzGL8F&#43;l4XSezOov1s="
+        crossorigin="anonymous"
+        type="text/css">
+    
+    <link rel="stylesheet" 
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" 
+    integrity="sha512-+4zCK9k+qNFUR5X+cKL9EIR+ZOhtIloNl9GIKS57V1MyNsYpYcUrUeQc9vNfzsWfV28IaLL3i96P9sdNyeRssA==" 
+    crossorigin="anonymous" />
 
-  <title>Yingchi Blog</title>
-  <meta name="author" content="YINGCHI_Joey" />
-  <meta name="description"
-        content=""/>
+    
+    <link rel="shortcut icon" href="https://blog.yingchi.io/favicons/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://blog.yingchi.io/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://blog.yingchi.io/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://blog.yingchi.io/favicons/favicon-16x16.png">
 
+    <link rel="canonical" href="https://blog.yingchi.io/">
 
-  <meta name="generator" content="Hugo 0.71.1" />
-
-  
-  <meta itemprop="name" content="Yingchi Blog"/>
-  <meta itemprop="description"
-        content=""/>
-  <meta itemprop="image"
-        content=""/>
-
-  
-  <meta property="og:title" content="Yingchi Blog"/>
-  <meta property="og:type"
-        content="website"/>
-  <meta property="og:url" content="https://blog.yingchi.io/"/>
-  <meta property="og:image"
-        content=""/>
-  <meta property="og:description"
-        content=""/>
-  <meta property="og:site_name" content="Yingchi Blog"/>
-  <meta property="article:section" content=""/>
-
-  
-  
-  <meta name="twitter:card" content="summary"/>
-  <meta name="twitter:site"
-        content=""/>
-  <meta name="twitter:title" content="Yingchi Blog"/>
-  <meta name="twitter:description"
-        content=""/>
-  <meta name="twitter:creator"
-        content=""/>
-  <meta name="twitter:image:src"
-        content=""/>
-
-  
+    
     <link rel="alternate" type="application/rss+xml" href="https://blog.yingchi.io/index.xml" title="Yingchi Blog" />
+    
+    
+    
+    <script type="text/javascript"
+            src="https://blog.yingchi.io/js/anatole-header.min.d8599ee07b7d3f11bafbac30657ccc591e8d7fd36a9f580cd4c09e24e0e4a971.js"
+            integrity="sha256-2Fme4Ht9PxG6&#43;6wwZXzMWR6Nf9Nqn1gM1MCeJODkqXE="
+            crossorigin="anonymous"></script>
 
-  
-  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
-  
-  
 
-  
-  
-  
-  
-  <script>
-  	var _mtac = {};
-  	(function() {
-  		var mta = document.createElement("script");
-  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
-  		mta.setAttribute("name", "MTAH5");
-  		mta.setAttribute("sid", "500724862");
+    
+        
+        
+        <script type="text/javascript"
+                src="https://blog.yingchi.io/js/anatole-theme-switcher.min.e289e9ebb2a4e7a7f895859c8a2b0da2de1ec73f22cea58d8475aa0597023837.js"
+                integrity="sha256-4onp67Kk56f4lYWciisNot4exz8izqWNhHWqBZcCODc="
+                crossorigin="anonymous"></script>
+    
+    <meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://blog.yingchi.io/images/site-feature-image.png"/>
 
-  		var s = document.getElementsByTagName("script")[0];
-  		s.parentNode.insertBefore(mta, s);
-  	})();
-</script>
+<meta name="twitter:title" content=""/>
+<meta name="twitter:description" content="Infrastructure SRE / Golang / Python"/>
+
 </head>
-
-
-  <body style="min-height:100vh;display:flex;flex-direction:column;">
-
-    
-
-    <section>
-  <nav style="text-align: center; margin-top: 30px;">
-    <div>
-        <a class="custom-title" href="/">
-          
-          <img class="logo" src="/logo.png"/>
-        </a>
+<body><div class="sidebar animated fadeInDown ">
+    <div class="logo-title">
+        <div class="title">
+            <img src="https://blog.yingchi.io/images/profile.jpg" alt="profile picture">
+            <h2 title=""><a href="/">Yingchi&#39;s Blog</a></h2>
+            <div class="description">
+                <p>Infrastructure SRE / Golang / Python</p>
+            </div>
+        </div>
     </div>
-  </nav>
-
-</section>
-
-<style>
-  .custom-title{
-    color: rgb(87, 87, 87);
-    font-size: 25px;
-    font-weight: bold;
-    text-decoration: none;
-  }
-
-  .logo{
-    width: 190px;
-  }
-</style>
-
-    
-    <div class="top-tag-list">
-      
-      
-      <aside class="menu" style="
-  text-align: center; 
-">
-    
-    <ul class="menu-list">
-      <li style="display: inline-block;">
+    <ul class="social-links">
         
-        <a style="padding: 3px;" href="/tags/cloud-native.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Cloud Native
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">1</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
+            <li>
+                <a href="https://yingchi.io" rel="me" aria-label="Home">
+                    <i class="fa fa-home" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
         
-        <a style="padding: 3px;" href="/tags/docker.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Docker
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">2</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
+            <li>
+                <a href="https://github.com/yingchi1994" rel="me" aria-label="GitHub">
+                    <i class="fab fa-github" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
         
-        <a style="padding: 3px;" href="/tags/golang.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Golang
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">4</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
+            <li>
+                <a href="mailto:yingchi1994@gmail.com" rel="me" aria-label="e-mail">
+                    <i class="fas fa-envelope" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
         
-        <a style="padding: 3px;" href="/tags/istio.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Istio
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">2</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
-        
-        <a style="padding: 3px;" href="/tags/kubernetes.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Kubernetes
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">14</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
-        
-        <a style="padding: 3px;" href="/tags/network.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Network
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">4</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
-        
-        <a style="padding: 3px;" href="/tags/note.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Note
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">1</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
-        
-        <a style="padding: 3px;" href="/tags/service-mesh.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Service Mesh
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">2</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
     </ul>
-</aside>
-
-<style>
-  .tag{
-    border: solid 1px #858484 !important;
-    background-color: #fff !important;
-  }
-</style>
-
-    </div>
-
-    <section style="flex:1;">
-
-      <div class="container">
-        <div class="columns" style="display: flex; justify-content: center;">
-
-          <div class="custom-column">
-            
-            <div style="min-height:30vh">
-                <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2019-10-27 / 
-        </span>
+    <div class="tag-area">
         
-        <span>
-            <span class="title-tag">
-              <a href="/tags/kubernetes.html">
-                kubernetes
-              </a>
-            </span>
-            <span class="title-tag">
-              <a href="/tags/docker.html">
-                docker
-              </a>
-            </span>
-            <span class="title-tag">
-              <a href="/tags/network.html">
-                network
-              </a>
-            </span>
+<ul>
+  <li class="tag-list">
+    
+    <a href="/tags/cloud-native.html">
+      <span>
+        <span class="tag-yingchi">
+          Cloud Native
+          [<span style="color:rgb(255, 223, 79);">1</span>]
         </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2019/10/network-devices.html">网络模型学习基础：各层网络设备概念</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
-    </div>
-  </article>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/docker.html">
+      <span>
+        <span class="tag-yingchi">
+          Docker
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/golang.html">
+      <span>
+        <span class="tag-yingchi">
+          Golang
+          [<span style="color:rgb(255, 223, 79);">5</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/istio.html">
+      <span>
+        <span class="tag-yingchi">
+          Istio
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/kubernetes.html">
+      <span>
+        <span class="tag-yingchi">
+          Kubernetes
+          [<span style="color:rgb(255, 223, 79);">15</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/network.html">
+      <span>
+        <span class="tag-yingchi">
+          Network
+          [<span style="color:rgb(255, 223, 79);">4</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/note.html">
+      <span>
+        <span class="tag-yingchi">
+          Note
+          [<span style="color:rgb(255, 223, 79);">1</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/service-mesh.html">
+      <span>
+        <span class="tag-yingchi">
+          Service Mesh
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+</ul>
 
 </div>
 
 
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
 
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
 
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
-            </div>
-
-            <br>
-            <br>
-            <br>
-
+    <div class="footer">
+        <div class="by_farbox">&copy; Joey Jiang  2021 </div>
+    </div>
+</div>
+<div class="main">
+    <div class="page-top  animated fadeInDown ">
+    <a role="button" class="navbar-burger" data-target="navMenu" aria-label="menu" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+    </a>
+    <ul class="nav" id="navMenu">
+        
+        
             
-            <nav class="custom-pagination">
+            <li><a class="current"
+                   href="/"
+                        
+                   title="">Home</a></li>
+        
+            
+            <li><a 
+                   href="/posts.html"
+                        
+                   title="">Posts</a></li>
+        
+            
+            <li><a 
+                   href="/tags.html"
+                        
+                   title="">Tags</a></li>
+        
+            
+            <li><a 
+                   href="/about.html"
+                        
+                   title="">About</a></li>
+        
+        
+        
+            <li class="theme-switch-item">
+                <a class="theme-switch" title="Switch Theme">
+                    <i class="fas fa-adjust fa-fw" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
+</div>
 
-  <span class="custom-pagination-list">
-    <span><a href="/" class="page-number">
-      1
-    </a></span>
-    <span><a href="/page/2.html" class="page-number">
-      2
-    </a></span>
+    <div class="autopagerize_page_element">
+        <div class="content">
 
-    <span><a href="/page/3.html" class="page-number-current">
-      3
-    </a></span>
-  </span>
+    <div class="post  animated fadeInDown ">
+        
+        <!-- raw HTML omitted -->
+<!-- raw HTML omitted -->
 
+    </div>
 
-  
-
-</nav>
-
-<style>
-  .custom-pagination{
-    width: 100%;
-    text-align: center;
-  }
-
-  .custom-pagination-list{
     
-  }
+    
 
-  .page-number{
-    color: grey;
-    text-decoration: none;
-    min-width: 2em;
-    justify-content: center;
-    margin: 10px;
-    padding: 5px;
-    text-align: center;
-  }
-
-  .page-number-current{
-    color: green;
-    font-weight: bold;
-    text-decoration: none;
-    min-width: 2em;
-    justify-content: center;
-    margin: 10px;
-    padding: 10px;
-    text-align: center;
-  }
-</style>
-
-          </div>
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2020/3/go-map.html">哈希表原理 &amp; Go Map 实现</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>Go Map 也就是所谓的“ HashTable ”数据结构，有些语言，比如 Python 中称作“字典”，但是无论如何都是一种东西。 HashTable 最重要的特点是：
+ 提供键值对形式的的存储结构，即提供键值之间的映射； 具有O(1)的读写性能  HashTable 的思想很简单，但是实现原理思路在不同的语言中都有着些许不同，本文主要针对 Go Map 这种 HashTable 的实现和相关问题展开讨论。
+基本原理 在讨论 Go 的 Map 之前，首先要熟悉 HashTable 的基本原理，当然这些都是上个世纪的知识点了，但是还是有必要深入理解透彻的。
+HashTable 的两个主要概念涉及到：Hash Function 和 冲突处理。
+Hash Function 前面说过 Hash Table 是存储键值对的数据结构，所以容易理解，所谓 Hash Function 就是将 key 映射到某个存储位置的函数。
+Hash Function 的选择非常重要，好的 Hash Function 可以确保 Hash 结果尽可能的均匀，最理想的情况是每一个不同的 key 都能映射到一个独立的存储索引位置上，但是，毕竟，这只是理想。
+比较实际的思想还是让 Hash Function 的结果能够尽可能的均匀分布即可，既然是尽可能均匀分布，那么就有冲突的风险，冲突很好理解：
+比如有个 Hash Function 是 key %3，那么对 key = 1/4/7 执行 hash 结果就是：</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Tue, Mar 10, 2020</span>
+                        <a class="tag-yingchi" href="/tags/golang/">golang
+                                </a>
+                    </div>
+                </div>
+            </div>
         </div>
+    
 
-      </div>
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2020/3/go-array-slice.html">Go Array 与 Slice 原理</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>数组 Array 几乎每个常见的编程语言都有数组这个概念，但是每个语言对于数组的定位都不一样，有的语言会把数组用作常用的基本的数据结构，比如 JavaScript，而 Golang 中的数组(Array)，更倾向定位于一种底层的数据结构，记录的是一段连续的内存空间数据。但是在 Go 语言中平时直接用数组的时候不多，大多数场景下我们都会直接选用更加灵活的切片(Slice)，我这里很谨慎地说“直接”用数组，因为里面有学问，稍后会说。在Go程序中经常看不到数组的一个很重要原因是，数组的大小是固定的&hellip; ，所以很多场景下我们无法直接给出数组的确定长度，因此才会选择长度“可变”的切片。变与不变是编程中一个恒久远的话题，牵扯到这个话题的往往是性能与灵活性两个关键词，这个话题很庞大，有机会会单独写一篇博客进行探讨。
+回到数组中，数组的声明形式：
+var arr [5]int var buffer [256]byte 初始化方式有两种，一种是显示声明长度，另一种是[...]T推断长度，注意，推断长度也是给出了长度，这个和之后 Slice 的[]T的声明方式是不一样的：
+arr1 := [3]int{0,1,2} arr2 := [...]string{&#34;Joey&#34;,&#34;Sophie&#34;} 第二种初始化属于语法糖，会经过编译器推导，得到数组长度，即最终转换成第一种，显然，两种方式在运行时是没有任何区别的。但是在编译期，Go 为不同类型不同结构的初始化方式进行了优化（不止是数组的初始化这一点上，其它一些代码同样如此），对于优化过程，可以简单概括为下面的话：
+ 如果数组中元素的个数小于或者等于 4 个，那么所有的变量会直接在栈上初始化； 如果数组元素大于 4 个，变量就会在静态存储区初始化然后拷贝到栈上，这些转换后的代码才会继续进入中间代码生成和机器码生成两个阶段，最后生成可以执行的二进制文件。  数组虽然比较重要，但是的概念其实比较简单，还有一个非常需要注意的点是，当你用到 Go 数组的时候，一定要注意一个避不开的问题，一定不要越界访问
+切片 Slice 及其与 Array 的关系 刚接触 Go 的一些学习者们肯定会混淆 Array 与 Slice 的用法，我想主要原因是受其它语言影响比较大，比如国内用 Java 的比较多，如果突然换到 Go，一定会对这个 slice 概念一头雾水。
+很多人仅仅知道 Slice 与 Array 的区别是：Slice 长度可变，如果仅仅是知道这个的话其实是很危险的，平时有一些错误的用法会直接把你整的找不着北，我们需要从底层了解这个语言特性。
+学习 slice，或者说区别 Slice 与 Array 的首要关键是记住下面几点：
+ Slice 不是 Array，它描述一个 Array； Slice 的本质是一个 Struct，携带一个数组指针，长度，容量，这是他长度可变的根本原因；  可以在 Go 源码中找到 sliceHeader 的定义：</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Thu, Mar 5, 2020</span>
+                        <a class="tag-yingchi" href="/tags/golang/">golang
+                                </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
 
-    </section>
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2019/10/network-devices.html">网络模型学习基础：各层网络设备概念</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>在学习研究诸如 kubernetes 网络或 Docker 网络等各种开源网络模型时，会涉及到各种或实际或虚拟的网络设备概念，例如各种虚拟网桥。因此必须对这些网络设备有充分的认识才可以进行接下来的学习。
+  根据 OSI 参考模型，网络分为七层，根据之后的学习需要，这里主要针对 L1、L2、L3 层的设备进行学习认识
+ L1：Hub（集线器/中继器） L1 层即“物理层”，作为网络的最底层，这一层的网络设备所做的事情比较单调，主要的作用就是实现物理上的网络连通，如下图几个终端节点，
+想要实现这几个节点的互连互通，可以连接到叫做 Hub（集线器）的设备上，如下图，这个设备的主要任务仅仅是把接收到的信号整型放大，从其它各个端口转发出去，因此也称之为“中继器”。
+以 Node0 为例展示一下节点发送网络信号的过程。如下图，Node0 向连接的 Hub 发出网络信号，Hub 接收到信号后，将其整型放大，然后转发给了 Node1、Node2、Node3。这其实就是最简单的一种星型的局域网架构。
+这个过程要注意两点核心：
+ Hub 仅仅对信号进行物理上的整型放大操作 Hub 转发时采用的是广播方式，向其它端口节点转发信号，无选择  然后我们再来看一个复杂一点的例子，假如两个机房各有一组终端节点连接到了各自的 Hub 上，各自组成了局域网，如下图。
+我们现在想把两个房间的网络互连起来，应该如何做？按照上面的思想，我们是否可以加入一个更高层级的 Hub（称之为主干 Hub），把各个机房的网络连接起来？如图
+答案是可行的，在这种情况下，通过中间这个主干 Hub的转发，我们可以将一个机房发出的信号转发到另一个机房，如图
+但是，虽然可行，我们应该有这样的疑问，这样做真的好吗？虽然两个机房的网络互通了，但是是否又增加了这个网络的负担呢？我们举一个简单的例子就可以发现问题所在，假如 Node0 仅仅是想将信号发送给 Node1，尽管从网络拓扑中看到他们挨得很近，仅仅通过一个 Hub 就可以转发到，但是由于 Hub 只能采用广播的方式转发，因此这个信号不仅被传到了 Node2 上，还通过刚加入的总集线器被传递到了另一个机房的所有节点中，当然这些都是无用功。
+说到这里，我们还要认识两个概念 —— 冲突域和广播域。其实很好理解，所谓冲突域，很多地方也叫碰撞域，顾名思义，就是在当网络中有一个信号在流转时，此时若有另一个节点向网络中发送信号，会引起干扰，也就是冲突或碰撞，这个受波及的范围就是冲突域，我们可以认为，L1 网络中靠类似 Hub 这种设备连接起来的物理网段都是属于一个冲突域，Hub 是无法隔离冲突域的，在 L2、L3 网络中均有能力隔离冲突域；另一个概念，广播域，广播域就是接收同样广播消息的集合，我们一般认为，广播域其实就是同一个网络的代名词，我们如今所使用的互联网，其实是通过 Router 这种网际交换设备连接不同网络而产生的。
+结合上面这两个概念，我们重新分析通过主干 Hub 连接两个局域网的方式，就能明白为什么这样会严重影响网络性能了。
+那么，还是针对连接两个机房的场景，我们期望既可以实现两个网络的互通，又能提高通信的效率，有没有好的方式呢？
+L2：Bridge（网桥）、Switch(交换机/多端口网桥) 现在到网络模型的第2层，也就是数据链路层，看一下这一层的网络设备。继续讨论之前的场景，这次我们不再采用主干 Hub 的方案，而是加入一个叫做 Bridge（网桥）的设备，狭义上的网桥其实是二端口网桥，如图。所谓 Bridge，我们很容易就能明白这是一个桥接设备，桥接的核心是延长，是扩大，因此，我们可以在某种程度上把它看做为一个智能的、高级的 Hub，智能高级的原因是它是工作在第二层的，在进行它的工作原理介绍之前，重新看一下我之前 L1 层对于 Hub 工作原理的描述，网络中流转的信息我在第一层中是以“信号”称呼的，因为第一层只能操作物理电信号，无非就是对电流的整型放大复制转发。</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Sun, Oct 27, 2019</span>
+                        <a class="tag-yingchi" href="/tags/kubernetes/">kubernetes
+                                </a><a class="tag-yingchi" href="/tags/docker/">docker
+                                </a><a class="tag-yingchi" href="/tags/network/">network
+                                </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+    <div class="pagination">
+        
 
-    <footer class="footer" 
-style="text-align: center; background-color: #ffffff;">
-  <div class="container">
-    <span style="font-size: small;">
-      <a href="https://yingchi.io/">yingchi.io</a>
-       © 2018-2020</span>
-    <span style="font-size: small;"> Joey.Jiang | 
-      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
-  </div>
-</footer>
+<ul class="pagination">
+    
+    <li class="page-item">
+        <a href="/" class="page-link" aria-label="First"><span aria-hidden="true">&laquo;&laquo;</span></a>
+    </li>
+    
+    <li class="page-item">
+    <a href="/page/2.html" class="page-link" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a>
+    </li>
+    
+    
+    
+    
+    
+    
+    
+        
+        
+    
+    
+    <li class="page-item"><a class="page-link" href="/">1</a></li>
+    
+    
+    
+    
+    
+    
+        
+        
+    
+    
+    <li class="page-item"><a class="page-link" href="/page/2.html">2</a></li>
+    
+    
+    
+    
+    
+    
+        
+        
+    
+    
+    <li class="page-item active"><a class="page-link" href="/page/3.html">3</a></li>
+    
+    
+    <li class="page-item disabled">
+    <a  class="page-link" aria-label="Next"><span aria-hidden="true">&raquo;</span></a>
+    </li>
+    
+    <li class="page-item">
+        <a href="/page/3.html" class="page-link" aria-label="Last"><span aria-hidden="true">&raquo;&raquo;</span></a>
+    </li>
+    
+</ul>
 
 
-  </body>
+    </div>
+
+
+
+
+
+
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/jquery.min.86b1e8f819ee2d9099a783e50b49dff24282545fc40773861f9126b921532e4c.js"
+        integrity="sha256-hrHo&#43;BnuLZCZp4PlC0nf8kKCVF/EB3OGH5EmuSFTLkw="
+        crossorigin="anonymous"></script>
+
+
+
+
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/bundle.min.0f9c74cb78f13d1f15f33daff4037c70354f98acfbb97a6f61708966675c3cae.js"
+        integrity="sha256-D5x0y3jxPR8V8z2v9AN8cDVPmKz7uXpvYXCJZmdcPK4="
+        crossorigin="anonymous"></script>
+
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/medium-zoom.min.92f21c856129f84aeb719459b3e6ac621a3032fd7b180a18c04e1d12083f8aba.js"
+        integrity="sha256-kvIchWEp&#43;ErrcZRZs&#43;asYhowMv17GAoYwE4dEgg/iro="
+        crossorigin="anonymous"></script>
+</body>
 
 </html>
-
-<style>
-  .custom-column{
-    justify-content: center;
-    width: 100%;
-    margin-top: 20px;
-  }
-
-  .top-tag-list{
-    width: 500px; 
-    margin: 0 auto; 
-    margin-top: 30px; 
-    margin-bottom: 10px;
-  }
-
-   
-@media screen and (max-width: 960px){
-  .top-tag-list{
-    width: 80%; 
-  }
-
-}
-
-
-</style>

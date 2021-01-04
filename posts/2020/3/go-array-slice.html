@@ -1,125 +1,257 @@
 <!DOCTYPE html>
-<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+<html lang="en" data-theme=""><head>
+    <title> Joey Jiang | Go Array 与 Slice 原理 </title>
 
-  <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    
+    <meta charset="utf-8"><meta name="generator" content="Hugo 0.71.1" /><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="description" content="Infrastructure SRE / Golang / Python">
+    
+    <link rel="stylesheet"
+          href="https://blog.yingchi.io/css/style.min.8a9cc11a1afa7bd869914c587182281a374d06d6c3e09e330e86cfccf4908668.css"
+          integrity="sha256-ipzBGhr6e9hpkUxYcYIoGjdNBtbD4J4zDobPzPSQhmg="
+          crossorigin="anonymous"
+          type="text/css">
+    
+    <link rel="stylesheet"
+        href="https://blog.yingchi.io/css/markupHighlight.min.9755453ffb7bc4cd220f86ebb5922107b49f193cc62fc17e9785d27b33a8bf5b.css"
+        integrity="sha256-l1VFP/t7xM0iD4brtZIhB7SfGTzGL8F&#43;l4XSezOov1s="
+        crossorigin="anonymous"
+        type="text/css">
+    
+    <link rel="stylesheet" 
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" 
+    integrity="sha512-+4zCK9k+qNFUR5X+cKL9EIR+ZOhtIloNl9GIKS57V1MyNsYpYcUrUeQc9vNfzsWfV28IaLL3i96P9sdNyeRssA==" 
+    crossorigin="anonymous" />
 
-  <title>Go Array 与 Slice 原理</title>
-  <meta name="author" content="YINGCHI_Joey" />
-  <meta name="description"
-        content="数组 Array
-几乎每个常见的编程语言都有数组这个概念，但是每个语言对于数组的定位都不一样，有的语言会把数组用作常用的基本的数据结构，比如 JavaScript，而 Golang 中的数组(Array)，更倾向定位于一种底层的数据结构，记录的是一段连续的内存空间数据。但是在 Go 语言中平时直接用数组的时候不多，大多数场景下我们都会直接选用更加灵活的切片(Slice)，我这里很谨慎地说“直接”用..."/>
+    
+    <link rel="shortcut icon" href="https://blog.yingchi.io/favicons/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://blog.yingchi.io/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://blog.yingchi.io/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://blog.yingchi.io/favicons/favicon-16x16.png">
+
+    <link rel="canonical" href="https://blog.yingchi.io/posts/2020/3/go-array-slice.html">
+
+    
+    
+    
+    
+    <script type="text/javascript"
+            src="https://blog.yingchi.io/js/anatole-header.min.d8599ee07b7d3f11bafbac30657ccc591e8d7fd36a9f580cd4c09e24e0e4a971.js"
+            integrity="sha256-2Fme4Ht9PxG6&#43;6wwZXzMWR6Nf9Nqn1gM1MCeJODkqXE="
+            crossorigin="anonymous"></script>
 
 
-  <meta name="generator" content="Hugo 0.71.1" />
+    
+        
+        
+        <script type="text/javascript"
+                src="https://blog.yingchi.io/js/anatole-theme-switcher.min.e289e9ebb2a4e7a7f895859c8a2b0da2de1ec73f22cea58d8475aa0597023837.js"
+                integrity="sha256-4onp67Kk56f4lYWciisNot4exz8izqWNhHWqBZcCODc="
+                crossorigin="anonymous"></script>
+    
+    <meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://blog.yingchi.io/images/site-feature-image.png"/>
 
-  
-  <meta itemprop="name" content="Go Array 与 Slice 原理"/>
-  <meta itemprop="description"
-        content="数组 Array
-几乎每个常见的编程语言都有数组这个概念，但是每个语言对于数组的定位都不一样，有的语言会把数组用作常用的基本的数据结构，比如 JavaScript，而 Golang 中的数组(Array)，更倾向定位于一种底层的数据结构，记录的是一段连续的内存空间数据。但是在 Go 语言中平时直接用数组的时候不多，大多数场景下我们都会直接选用更加灵活的切片(Slice)，我这里很谨慎地说“直接”用..."/>
-  <meta itemprop="image"
-        content=""/>
+<meta name="twitter:title" content="Go Array 与 Slice 原理"/>
+<meta name="twitter:description" content="数组 Array 几乎每个常见的编程语言都有数组这个概念，但是每个语言对于数组的定位都不一样，有的语言会把数组用作常用的基本的数据结构，比如 JavaScript，而 Golang 中的数组(Array)，更倾向定位于一种底层的数据结构，记录的是一段连续的内存空间数据。但是在 Go 语言中平时直接用数组的时候不多，大多数场景下我们都会直接选用更加灵活的切片(Slice)，我这里很谨慎地说“直接”用数组，因为里面有学问，稍后会说。在Go程序中经常看不到数组的一个很重要原因是，数组的大小是固定的&hellip; ，所以很多场景下我们无法直接给出数组的确定长度，因此才会选择长度“可变”的切片。变与不变是编程中一个恒久远的话题，牵扯到这个话题的往往是性能与灵活性两个关键词，这个话题很庞大，有机会会单独写一篇博客进行探讨。
+回到数组中，数组的声明形式：
+var arr [5]int var buffer [256]byte 初始化方式有两种，一种是显示声明长度，另一种是[...]T推断长度，注意，推断长度也是给出了长度，这个和之后 Slice 的[]T的声明方式是不一样的：
+arr1 := [3]int{0,1,2} arr2 := [...]string{&#34;Joey&#34;,&#34;Sophie&#34;} 第二种初始化属于语法糖，会经过编译器推导，得到数组长度，即最终转换成第一种，显然，两种方式在运行时是没有任何区别的。但是在编译期，Go 为不同类型不同结构的初始化方式进行了优化（不止是数组的初始化这一点上，其它一些代码同样如此），对于优化过程，可以简单概括为下面的话：
+ 如果数组中元素的个数小于或者等于 4 个，那么所有的变量会直接在栈上初始化； 如果数组元素大于 4 个，变量就会在静态存储区初始化然后拷贝到栈上，这些转换后的代码才会继续进入中间代码生成和机器码生成两个阶段，最后生成可以执行的二进制文件。  数组虽然比较重要，但是的概念其实比较简单，还有一个非常需要注意的点是，当你用到 Go 数组的时候，一定要注意一个避不开的问题，一定不要越界访问
+切片 Slice 及其与 Array 的关系 刚接触 Go 的一些学习者们肯定会混淆 Array 与 Slice 的用法，我想主要原因是受其它语言影响比较大，比如国内用 Java 的比较多，如果突然换到 Go，一定会对这个 slice 概念一头雾水。
+很多人仅仅知道 Slice 与 Array 的区别是：Slice 长度可变，如果仅仅是知道这个的话其实是很危险的，平时有一些错误的用法会直接把你整的找不着北，我们需要从底层了解这个语言特性。
+学习 slice，或者说区别 Slice 与 Array 的首要关键是记住下面几点：
+ Slice 不是 Array，它描述一个 Array； Slice 的本质是一个 Struct，携带一个数组指针，长度，容量，这是他长度可变的根本原因；  可以在 Go 源码中找到 sliceHeader 的定义："/>
 
-  
-  <meta property="og:title" content="Go Array 与 Slice 原理"/>
-  <meta property="og:type"
-        content="article"/>
-  <meta property="og:url" content="https://blog.yingchi.io/posts/2020/3/go-array-slice.html"/>
-  <meta property="og:image"
-        content=""/>
-  <meta property="og:description"
-        content="数组 Array
-几乎每个常见的编程语言都有数组这个概念，但是每个语言对于数组的定位都不一样，有的语言会把数组用作常用的基本的数据结构，比如 JavaScript，而 Golang 中的数组(Array)，更倾向定位于一种底层的数据结构，记录的是一段连续的内存空间数据。但是在 Go 语言中平时直接用数组的时候不多，大多数场景下我们都会直接选用更加灵活的切片(Slice)，我这里很谨慎地说“直接”用..."/>
-  <meta property="og:site_name" content="Yingchi Blog"/>
-  <meta property="article:published_time"
-        content="2020-03-05T19:42:31&#43;08:00"/>
-  <meta property="article:section" content="posts"/>
-  <meta property="article:tag" content="golang"/>
-
-  
-  
-  <meta name="twitter:card" content="summary"/>
-  <meta name="twitter:site"
-        content=""/>
-  <meta name="twitter:title" content="Go Array 与 Slice 原理"/>
-  <meta name="twitter:description"
-        content="数组 Array
-几乎每个常见的编程语言都有数组这个概念，但是每个语言对于数组的定位都不一样，有的语言会把数组用作常用的基本的数据结构，比如 JavaScript，而 Golang 中的数组(Array)，更倾向定位于一种底层的数据结构，记录的是一段连续的内存空间数据。但是在 Go 语言中平时直接用数组的时候不多，大多数场景下我们都会直接选用更加灵活的切片(Slice)，我这里很谨慎地说“直接”用..."/>
-  <meta name="twitter:creator"
-        content=""/>
-  <meta name="twitter:image:src"
-        content=""/>
-
-  
-
-  
-  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
-  
-  
-
-  
-  
-  
-  
-  <script>
-  	var _mtac = {};
-  	(function() {
-  		var mta = document.createElement("script");
-  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
-  		mta.setAttribute("name", "MTAH5");
-  		mta.setAttribute("sid", "500724862");
-
-  		var s = document.getElementsByTagName("script")[0];
-  		s.parentNode.insertBefore(mta, s);
-  	})();
-</script>
 </head>
-
-
-  <body style="min-height:100vh;display:flex;flex-direction:column">
-
-    <section>
-  <nav style="text-align: center; margin-top: 30px;">
-    <div>
-        <a class="custom-title" href="/">
-          
-          <img class="logo" src="/logo.png"/>
-        </a>
+<body><div class="sidebar animated fadeInDown ">
+    <div class="logo-title">
+        <div class="title">
+            <img src="https://blog.yingchi.io/images/profile.jpg" alt="profile picture">
+            <h2 title=""><a href="/">Yingchi&#39;s Blog</a></h2>
+            <div class="description">
+                <p>Infrastructure SRE / Golang / Python</p>
+            </div>
+        </div>
     </div>
-  </nav>
-
-</section>
-
-<style>
-  .custom-title{
-    color: rgb(87, 87, 87);
-    font-size: 25px;
-    font-weight: bold;
-    text-decoration: none;
-  }
-
-  .logo{
-    width: 190px;
-  }
-</style>
-
-    <section class="section" style="flex:1">
-
-      
-      <div class="container">
+    <ul class="social-links">
         
-        <p class="title-custom">Go Array 与 Slice 原理</p>
-        <p class="subtitle-custom">Mar 5, 2020</p>
+            <li>
+                <a href="https://yingchi.io" rel="me" aria-label="Home">
+                    <i class="fa fa-home" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            <li>
+                <a href="https://github.com/yingchi1994" rel="me" aria-label="GitHub">
+                    <i class="fab fa-github" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            <li>
+                <a href="mailto:yingchi1994@gmail.com" rel="me" aria-label="e-mail">
+                    <i class="fas fa-envelope" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
+    <div class="tag-area">
+        
+<ul>
+  <li class="tag-list">
+    
+    <a href="/tags/cloud-native.html">
+      <span>
+        <span class="tag-yingchi">
+          Cloud Native
+          [<span style="color:rgb(255, 223, 79);">1</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/docker.html">
+      <span>
+        <span class="tag-yingchi">
+          Docker
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/golang.html">
+      <span>
+        <span class="tag-yingchi">
+          Golang
+          [<span style="color:rgb(255, 223, 79);">5</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/istio.html">
+      <span>
+        <span class="tag-yingchi">
+          Istio
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/kubernetes.html">
+      <span>
+        <span class="tag-yingchi">
+          Kubernetes
+          [<span style="color:rgb(255, 223, 79);">15</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/network.html">
+      <span>
+        <span class="tag-yingchi">
+          Network
+          [<span style="color:rgb(255, 223, 79);">4</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/note.html">
+      <span>
+        <span class="tag-yingchi">
+          Note
+          [<span style="color:rgb(255, 223, 79);">1</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/service-mesh.html">
+      <span>
+        <span class="tag-yingchi">
+          Service Mesh
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+</ul>
 
-        
+</div>
 
+
+
+
+    <div class="footer">
+        <div class="by_farbox">&copy; Joey Jiang  2021 </div>
+    </div>
+</div>
+<div class="main">
+    <div class="page-top  animated fadeInDown ">
+    <a role="button" class="navbar-burger" data-target="navMenu" aria-label="menu" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+    </a>
+    <ul class="nav" id="navMenu">
         
         
-        <div class="content-custom">
-          <h2 id="数组-array">数组 Array</h2>
+            
+            <li><a 
+                   href="/"
+                        
+                   title="">Home</a></li>
+        
+            
+            <li><a 
+                   href="/posts.html"
+                        
+                   title="">Posts</a></li>
+        
+            
+            <li><a 
+                   href="/tags.html"
+                        
+                   title="">Tags</a></li>
+        
+            
+            <li><a 
+                   href="/about.html"
+                        
+                   title="">About</a></li>
+        
+        
+        
+            <li class="theme-switch-item">
+                <a class="theme-switch" title="Switch Theme">
+                    <i class="fas fa-adjust fa-fw" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+    <div class="autopagerize_page_element">
+        <div class="content">
+    <div class="post  animated fadeInDown ">
+        <div class="post-content">
+            <div class="post-title">
+                <h3>Go Array 与 Slice 原理</h3>
+                
+            </div>
+
+            <h2 id="数组-array">数组 Array</h2>
 <p>几乎每个常见的编程语言都有数组这个概念，但是每个语言对于数组的定位都不一样，有的语言会把数组用作常用的基本的数据结构，比如 JavaScript，而 Golang 中的<strong>数组(Array)</strong>，更倾向定位于一种底层的数据结构，记录的是<strong>一段连续的内存空间数据</strong>。但是在 Go 语言中平时<strong>直接</strong>用数组的时候不多，大多数场景下我们都会直接选用更加灵活的<strong>切片(Slice)</strong>，我这里很谨慎地说“直接”用数组，因为里面有学问，稍后会说。在Go程序中经常看不到数组的一个很重要原因是，<strong>数组的大小是固定的</strong>&hellip; ，所以很多场景下我们无法直接给出数组的确定长度，因此才会选择长度“可变”的切片。<strong>变与不变</strong>是编程中一个恒久远的话题，牵扯到这个话题的往往是<strong>性能</strong>与<strong>灵活性</strong>两个关键词，这个话题很庞大，有机会会单独写一篇博客进行探讨。</p>
 <p>回到数组中，数组的声明形式：</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">arr</span> [<span style="color:#ae81ff">5</span>]<span style="color:#66d9ef">int</span>
@@ -233,265 +365,40 @@ sli2: [3 0 0 2 2 2 2], len: 7, cap: 8
 <p>触发扩容机制后，新的 slice 底层数组改变，因此对其底层数组元素的修改不会影响到之前相关的 slice，因为两个 slice 的底层数组已经不是同一个。</p>
 </li>
 </ul>
+</div>
+        <div class="post-footer">
+            <div class="info">
+                
+                <span class="separator"><a class="tag" href="/tags/golang/">golang</a></span>
 
+            </div>
         </div>
 
         
-
-        
-<br>
-<div class="heading">Tags:</div>
-<div class="field is-grouped is-grouped-multiline">
-  <div class="control">
-    <a href="/tags/golang">
-      <span class="tag">Golang</span>
-    </a>
-  </div>
-</div>
-
-      </div>
-
-    </section>
-
-    <section class="section">
-
-      
-      <script src="https://utteranc.es/client.js"
-        repo = "yingchi1994/HugoComments"
-        issue-term = "pathname"
-        theme = "github-light"
-        crossorigin="anonymous"
-        async>
-      </script>
-      <br>
-      
-      
-      <div class="container">
-  <div class="level">
-
-    <div class="level-left">
-      <div class="level-item">
-        <p class="control has-addons">
-          <a class="button" href="https://blog.yingchi.io/posts/2020/3/go-map.html">
-            <span class="icon is-small"><i class="fa fa-chevron-left"></i></span>
-            <span class="is-hidden-touch is-hidden-desktop-only">
-              HashTable 原理 &amp; Go Map 实现
-            </span>
-            <span class="is-hidden-touch is-hidden-widescreen">
-              HashTable 原理 &amp; Go Map 实现
-            </span>
-            <span class="is-hidden-mobile is-hidden-desktop">
-              HashTable 原理 &amp; Go Map 实现
-            </span>
-            <span class="is-hidden-tablet">
-              HashTable 原理 &amp; Go Map 实现
-            </span>
-            
-          </a>
-        </p>
-      </div>
     </div>
 
-    <div class="level-right">
-      <div class="level-item">
-        <p class="control has-addons">
-          <a class="button" href="https://blog.yingchi.io/posts/2019/10/network-devices.html">
-            <span class="is-hidden-touch is-hidden-desktop-only">
-              网络模型学习基础：各层网络设备概念
-            </span>
-            <span class="is-hidden-touch is-hidden-widescreen">
-              网络模型学习基础：各层网络设备概念
-            </span>
-            <span class="is-hidden-mobile is-hidden-desktop">
-              网络模型学习基础：各层网络设备概念
-            </span>
-            <span class="is-hidden-tablet">
-              网络模型学习基础：各层网络设备概念
-            </span>
-            
-            <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
-          </a>
-        </p>
-      </div>
-    </div>
 
-  </div>
+        </div>
+    </div>
 </div>
 
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/jquery.min.86b1e8f819ee2d9099a783e50b49dff24282545fc40773861f9126b921532e4c.js"
+        integrity="sha256-hrHo&#43;BnuLZCZp4PlC0nf8kKCVF/EB3OGH5EmuSFTLkw="
+        crossorigin="anonymous"></script>
 
-      <br>
 
-      
-      
 
-      <br>
-      
-      
-      
 
-    </section>
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/bundle.min.0f9c74cb78f13d1f15f33daff4037c70354f98acfbb97a6f61708966675c3cae.js"
+        integrity="sha256-D5x0y3jxPR8V8z2v9AN8cDVPmKz7uXpvYXCJZmdcPK4="
+        crossorigin="anonymous"></script>
 
-    <footer class="footer" 
-style="text-align: center; background-color: #ffffff;">
-  <div class="container">
-    <span style="font-size: small;">
-      <a href="https://yingchi.io/">yingchi.io</a>
-       © 2018-2020</span>
-    <span style="font-size: small;"> Joey.Jiang | 
-      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
-  </div>
-</footer>
-
-  </body>
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/medium-zoom.min.92f21c856129f84aeb719459b3e6ac621a3032fd7b180a18c04e1d12083f8aba.js"
+        integrity="sha256-kvIchWEp&#43;ErrcZRZs&#43;asYhowMv17GAoYwE4dEgg/iro="
+        crossorigin="anonymous"></script>
+</body>
 
 </html>
-<style>
-
-body {
-  max-width: 1160px;
-  margin: 0 auto;
-}
-
-.container{
-  width: 800px;
-}
-
-.title-custom {
-  text-align: center;
-  margin-bottom: 10px;
-  font-size: 30px;
-  font-weight: bold;
-}
-
-.subtitle-custom {
-  text-align: center;
-  margin-bottom: 20px;
-  font-size: 18px;
-}
-
-.content-custom {
-    color: #000;
-    font-size: 16px;
-}
-
-.content-custom blockquote {
-    margin-bottom: 15px;
-    padding: 15px 0 15px 25px;
-    background: rgb(245, 246, 247);
-    border-left: 10px solid rgb(229, 232, 236);
-    border-radius: 5px;
-}
-
-.content-custom strong {
-    color: rgb(91, 127, 194);
-}
-
-.content-custom em {
-    font-style: normal;
-    font-weight: bold;
-}
-
-.content-custom p {
-    margin: 0 10px;
-}
-
-.content-custom ul{
-    margin: 25px;
-    padding: 10px 0;
-    background: rgb(245, 246, 247);
-    border-radius: 5px;
-    list-style-type: square;
-}
-
-.content-custom ul ul{
-    margin: 0px;
-    list-style-type: circle;
-    padding: 0;
-}
-
-.content-custom ol{
-    margin: 25px;
-    padding: 10px 0;
-    background: rgb(245, 246, 247);
-    border-radius: 5px;
-}
-
-.content-custom li {
-    margin: 5px 40px;
-}
-
-.content-custom img {
-    margin: 20px auto !important;
-    text-align: center;
-    clear: both;
-    display: block;
-    margin: auto;
-    width: 80%;
-}
-
-
-
-.content-custom pre{
-    color: rgb(224, 235, 247);
-    margin: 10px;
-    padding: 10px 20px;
-    border-radius: 5px;
-    box-shadow: 0px 0px 10px rgb(85, 94, 104);
-    background-color: rgb(85, 94, 104) !important;
-}
-
-.content-custom h1 {
-    font-size: 25px;
-    font-weight: bold;
-    margin: 20px 0 10px 0;
-    padding: 15px;
-     
-    border-bottom: 3px solid #555;
-}
-.content-custom h2 {
-    font-size: 20px;
-    font-weight: bold;
-    margin: 40px 0 20px 0;
-    padding: 10px;
-     
-    border-bottom: 2px solid #555;
-}
-.content-custom h3 {
-    font-size: 18px;
-    font-weight: bold;
-    margin: 16px 0 10px 0;
-    padding: 10px;
-     
-     
-}
-.content-custom h4 {
-    font-size: 16px;
-    font-weight: bold;
-    margin: 10px 0 10px 0;
-    padding: 10px;
-     
-     
-}
-
- 
-@media screen and (max-width: 960px){
-
-  body{
-    overflow-x: hidden;
-  }
-
-  .container{
-    width: 100%;
-  }
-
-  .content-custom img {
-    width: 100%;
-  }
-
-  .title-custom {
-    font-size: 22px;
-  }
-}
-
-
-</style>

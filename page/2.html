@@ -1,1494 +1,603 @@
 <!DOCTYPE html>
-<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+<html lang="en" data-theme=""><head>
+    <title> Joey Jiang </title>
 
-  <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    
+    <meta charset="utf-8"><meta name="generator" content="Hugo 0.71.1" /><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="description" content="Infrastructure SRE / Golang / Python">
+    
+    <link rel="stylesheet"
+          href="https://blog.yingchi.io/css/style.min.8a9cc11a1afa7bd869914c587182281a374d06d6c3e09e330e86cfccf4908668.css"
+          integrity="sha256-ipzBGhr6e9hpkUxYcYIoGjdNBtbD4J4zDobPzPSQhmg="
+          crossorigin="anonymous"
+          type="text/css">
+    
+    <link rel="stylesheet"
+        href="https://blog.yingchi.io/css/markupHighlight.min.9755453ffb7bc4cd220f86ebb5922107b49f193cc62fc17e9785d27b33a8bf5b.css"
+        integrity="sha256-l1VFP/t7xM0iD4brtZIhB7SfGTzGL8F&#43;l4XSezOov1s="
+        crossorigin="anonymous"
+        type="text/css">
+    
+    <link rel="stylesheet" 
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" 
+    integrity="sha512-+4zCK9k+qNFUR5X+cKL9EIR+ZOhtIloNl9GIKS57V1MyNsYpYcUrUeQc9vNfzsWfV28IaLL3i96P9sdNyeRssA==" 
+    crossorigin="anonymous" />
 
-  <title>Yingchi Blog</title>
-  <meta name="author" content="YINGCHI_Joey" />
-  <meta name="description"
-        content=""/>
+    
+    <link rel="shortcut icon" href="https://blog.yingchi.io/favicons/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://blog.yingchi.io/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://blog.yingchi.io/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://blog.yingchi.io/favicons/favicon-16x16.png">
 
+    <link rel="canonical" href="https://blog.yingchi.io/">
 
-  <meta name="generator" content="Hugo 0.71.1" />
-
-  
-  <meta itemprop="name" content="Yingchi Blog"/>
-  <meta itemprop="description"
-        content=""/>
-  <meta itemprop="image"
-        content=""/>
-
-  
-  <meta property="og:title" content="Yingchi Blog"/>
-  <meta property="og:type"
-        content="website"/>
-  <meta property="og:url" content="https://blog.yingchi.io/"/>
-  <meta property="og:image"
-        content=""/>
-  <meta property="og:description"
-        content=""/>
-  <meta property="og:site_name" content="Yingchi Blog"/>
-  <meta property="article:section" content=""/>
-
-  
-  
-  <meta name="twitter:card" content="summary"/>
-  <meta name="twitter:site"
-        content=""/>
-  <meta name="twitter:title" content="Yingchi Blog"/>
-  <meta name="twitter:description"
-        content=""/>
-  <meta name="twitter:creator"
-        content=""/>
-  <meta name="twitter:image:src"
-        content=""/>
-
-  
+    
     <link rel="alternate" type="application/rss+xml" href="https://blog.yingchi.io/index.xml" title="Yingchi Blog" />
+    
+    
+    
+    <script type="text/javascript"
+            src="https://blog.yingchi.io/js/anatole-header.min.d8599ee07b7d3f11bafbac30657ccc591e8d7fd36a9f580cd4c09e24e0e4a971.js"
+            integrity="sha256-2Fme4Ht9PxG6&#43;6wwZXzMWR6Nf9Nqn1gM1MCeJODkqXE="
+            crossorigin="anonymous"></script>
 
-  
-  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
-  
-  
 
-  
-  
-  
-  
-  <script>
-  	var _mtac = {};
-  	(function() {
-  		var mta = document.createElement("script");
-  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
-  		mta.setAttribute("name", "MTAH5");
-  		mta.setAttribute("sid", "500724862");
+    
+        
+        
+        <script type="text/javascript"
+                src="https://blog.yingchi.io/js/anatole-theme-switcher.min.e289e9ebb2a4e7a7f895859c8a2b0da2de1ec73f22cea58d8475aa0597023837.js"
+                integrity="sha256-4onp67Kk56f4lYWciisNot4exz8izqWNhHWqBZcCODc="
+                crossorigin="anonymous"></script>
+    
+    <meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://blog.yingchi.io/images/site-feature-image.png"/>
 
-  		var s = document.getElementsByTagName("script")[0];
-  		s.parentNode.insertBefore(mta, s);
-  	})();
-</script>
+<meta name="twitter:title" content=""/>
+<meta name="twitter:description" content="Infrastructure SRE / Golang / Python"/>
+
 </head>
-
-
-  <body style="min-height:100vh;display:flex;flex-direction:column;">
-
-    
-
-    <section>
-  <nav style="text-align: center; margin-top: 30px;">
-    <div>
-        <a class="custom-title" href="/">
-          
-          <img class="logo" src="/logo.png"/>
-        </a>
-    </div>
-  </nav>
-
-</section>
-
-<style>
-  .custom-title{
-    color: rgb(87, 87, 87);
-    font-size: 25px;
-    font-weight: bold;
-    text-decoration: none;
-  }
-
-  .logo{
-    width: 190px;
-  }
-</style>
-
-    
-    <div class="top-tag-list">
-      
-      
-      <aside class="menu" style="
-  text-align: center; 
-">
-    
-    <ul class="menu-list">
-      <li style="display: inline-block;">
-        
-        <a style="padding: 3px;" href="/tags/cloud-native.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Cloud Native
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">1</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
-        
-        <a style="padding: 3px;" href="/tags/docker.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Docker
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">2</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
-        
-        <a style="padding: 3px;" href="/tags/golang.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Golang
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">4</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
-        
-        <a style="padding: 3px;" href="/tags/istio.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Istio
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">2</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
-        
-        <a style="padding: 3px;" href="/tags/kubernetes.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Kubernetes
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">14</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
-        
-        <a style="padding: 3px;" href="/tags/network.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Network
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">4</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
-        
-        <a style="padding: 3px;" href="/tags/note.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Note
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">1</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-      <li style="display: inline-block;">
-        
-        <a style="padding: 3px;" href="/tags/service-mesh.html">
-          <span class="tags has-addons">
-            <span class="tag">
-              Service Mesh
-              <span style="
-              margin-left: 5px; 
-              font-weight: bold;
-              color: rgb(85, 99, 143);">2</span>
-            </span>
-            
-          </span>
-        </a>
-      </li>
-    </ul>
-</aside>
-
-<style>
-  .tag{
-    border: solid 1px #858484 !important;
-    background-color: #fff !important;
-  }
-</style>
-
-    </div>
-
-    <section style="flex:1;">
-
-      <div class="container">
-        <div class="columns" style="display: flex; justify-content: center;">
-
-          <div class="custom-column">
-            
-            <div style="min-height:30vh">
-                <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2020-04-12 / 
-        </span>
-        
-        <span>
-            <span class="title-tag">
-              <a href="/tags/kubernetes.html">
-                kubernetes
-              </a>
-            </span>
-            <span class="title-tag">
-              <a href="/tags/network.html">
-                network
-              </a>
-            </span>
-        </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-2.html">Kubernetes &amp; Docker 网络原理（二）</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
-    </div>
-  </article>
-
-</div>
-
-
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
-
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
-
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
-                <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2020-04-11 / 
-        </span>
-        
-        <span>
-            <span class="title-tag">
-              <a href="/tags/kubernetes.html">
-                kubernetes
-              </a>
-            </span>
-            <span class="title-tag">
-              <a href="/tags/docker.html">
-                docker
-              </a>
-            </span>
-            <span class="title-tag">
-              <a href="/tags/network.html">
-                network
-              </a>
-            </span>
-        </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-1.html">Kubernetes &amp; Docker 网络原理（一）</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
-    </div>
-  </article>
-
-</div>
-
-
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
-
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
-
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
-                <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2020-04-07 / 
-        </span>
-        
-        <span>
-            <span class="title-tag">
-              <a href="/tags/kubernetes.html">
-                kubernetes
-              </a>
-            </span>
-        </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2020/4/kubernetes-resources.html">理解 Kubernetes 的 Resource 设计概念</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
-    </div>
-  </article>
-
-</div>
-
-
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
-
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
-
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
-                <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2020-04-05 / 
-        </span>
-        
-        <span>
-            <span class="title-tag">
-              <a href="/tags/kubernetes.html">
-                kubernetes
-              </a>
-            </span>
-        </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html">Kubernetes Rolling Update 滚动升级</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
-    </div>
-  </article>
-
-</div>
-
-
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
-
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
-
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
-                <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2020-04-05 / 
-        </span>
-        
-        <span>
-            <span class="title-tag">
-              <a href="/tags/kubernetes.html">
-                kubernetes
-              </a>
-            </span>
-        </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html">Kubernetes 架构浅析</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
-    </div>
-  </article>
-
-</div>
-
-
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
-
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
-
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
-                <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2020-04-03 / 
-        </span>
-        
-        <span>
-            <span class="title-tag">
-              <a href="/tags/kubernetes.html">
-                kubernetes
-              </a>
-            </span>
-        </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html">记一次 Kubeadm 部署 k8s &#43; Flannel</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
-    </div>
-  </article>
-
-</div>
-
-
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
-
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
-
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
-                <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2020-03-19 / 
-        </span>
-        
-        <span>
-            <span class="title-tag">
-              <a href="/tags/golang.html">
-                golang
-              </a>
-            </span>
-        </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2020/3/go-channel.html">Go channel 原理与实践</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
-    </div>
-  </article>
-
-</div>
-
-
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
-
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
-
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
-                <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2020-03-14 / 
-        </span>
-        
-        <span>
-            <span class="title-tag">
-              <a href="/tags/golang.html">
-                golang
-              </a>
-            </span>
-        </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2020/3/go-goroutine.html">Goroutine 并发模型</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
-    </div>
-  </article>
-
-</div>
-
-
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
-
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
-
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
-                <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2020-03-10 / 
-        </span>
-        
-        <span>
-            <span class="title-tag">
-              <a href="/tags/golang.html">
-                golang
-              </a>
-            </span>
-        </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2020/3/go-map.html">HashTable 原理 &amp; Go Map 实现</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
-    </div>
-  </article>
-
-</div>
-
-
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
-
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
-
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
-                <div class="post-list">
-
-  <article>
-    <div style="margin-top: 10px; width: 100%;">
-      <div class="post-metadata">
-        <span>
-          2020-03-05 / 
-        </span>
-        
-        <span>
-            <span class="title-tag">
-              <a href="/tags/golang.html">
-                golang
-              </a>
-            </span>
-        </span>
-      </div>
-      
-      <div class="post-title">
-        <a style="
-        margin: 15px 0;
-        font-size: 1rem; 
-        font-weight: 500;
-        color: #000;
-        text-decoration: none;" 
-        href="https://blog.yingchi.io/posts/2020/3/go-array-slice.html">Go Array 与 Slice 原理</a>
-
-      </div>
-      
-      <div class="post-date">
-        
-      </div>
-      
-      
-  
-    </div>
-  </article>
-
-</div>
-
-
-<style>
-.post-list{
-  width: 550px; 
-  margin: 0 auto; 
-  padding-left: 100px;
-   
-}
-
-.post-metadata{
-  color: rgb(99, 106, 112);
-  font-size: 5px;
-}
-
-.title-tag{
-  margin-bottom: 2px;
-}
-.title-tag a{
-  text-decoration: none !important;
-  color: rgb(92, 113, 131);
-}
-
-.post-date{
-    font-size: small; 
-     
-     
-     
-    float: right;
-}
-
-.divide{
-  font-size: small; 
-  display: inline-block;
-  width: 1%;
-  text-align: center;
-  margin-left: 4px;
-}
-
-.post-title{
-  display: inline-block;
-   
-  text-align: left;
-  margin-bottom: 3px;
-}
-
-@media screen and (max-width: 520px){
-    .post-list{
-      width: 80%;
-      padding-left: 0px;
-    }
-
-    .title-tag{
-      display: none;
-    }
-
-    .post-date{
-        display: none;
-         
-    }
-
-    .divide{
-        display: none;
-    }
-
-    .post-title{
-        width: 100%;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-}
-</style>
-
+<body><div class="sidebar animated fadeInDown ">
+    <div class="logo-title">
+        <div class="title">
+            <img src="https://blog.yingchi.io/images/profile.jpg" alt="profile picture">
+            <h2 title=""><a href="/">Yingchi&#39;s Blog</a></h2>
+            <div class="description">
+                <p>Infrastructure SRE / Golang / Python</p>
             </div>
-
-            <br>
-            <br>
-            <br>
-
-            
-            <nav class="custom-pagination">
-
-  <span class="custom-pagination-list">
-    <span><a href="/" class="page-number">
-      1
-    </a></span>
-
-    <span><a href="/page/2.html" class="page-number-current">
-      2
-    </a></span>
-    <span><a href="/page/3.html" class="page-number">
-      3
-    </a></span>
-  </span>
-
-
-  
-
-</nav>
-
-<style>
-  .custom-pagination{
-    width: 100%;
-    text-align: center;
-  }
-
-  .custom-pagination-list{
-    
-  }
-
-  .page-number{
-    color: grey;
-    text-decoration: none;
-    min-width: 2em;
-    justify-content: center;
-    margin: 10px;
-    padding: 5px;
-    text-align: center;
-  }
-
-  .page-number-current{
-    color: green;
-    font-weight: bold;
-    text-decoration: none;
-    min-width: 2em;
-    justify-content: center;
-    margin: 10px;
-    padding: 10px;
-    text-align: center;
-  }
-</style>
-
-          </div>
         </div>
+    </div>
+    <ul class="social-links">
+        
+            <li>
+                <a href="https://yingchi.io" rel="me" aria-label="Home">
+                    <i class="fa fa-home" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            <li>
+                <a href="https://github.com/yingchi1994" rel="me" aria-label="GitHub">
+                    <i class="fab fa-github" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            <li>
+                <a href="mailto:yingchi1994@gmail.com" rel="me" aria-label="e-mail">
+                    <i class="fas fa-envelope" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
+    <div class="tag-area">
+        
+<ul>
+  <li class="tag-list">
+    
+    <a href="/tags/cloud-native.html">
+      <span>
+        <span class="tag-yingchi">
+          Cloud Native
+          [<span style="color:rgb(255, 223, 79);">1</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/docker.html">
+      <span>
+        <span class="tag-yingchi">
+          Docker
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/golang.html">
+      <span>
+        <span class="tag-yingchi">
+          Golang
+          [<span style="color:rgb(255, 223, 79);">5</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/istio.html">
+      <span>
+        <span class="tag-yingchi">
+          Istio
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/kubernetes.html">
+      <span>
+        <span class="tag-yingchi">
+          Kubernetes
+          [<span style="color:rgb(255, 223, 79);">15</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/network.html">
+      <span>
+        <span class="tag-yingchi">
+          Network
+          [<span style="color:rgb(255, 223, 79);">4</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/note.html">
+      <span>
+        <span class="tag-yingchi">
+          Note
+          [<span style="color:rgb(255, 223, 79);">1</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/service-mesh.html">
+      <span>
+        <span class="tag-yingchi">
+          Service Mesh
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+</ul>
 
-      </div>
-
-    </section>
-
-    <footer class="footer" 
-style="text-align: center; background-color: #ffffff;">
-  <div class="container">
-    <span style="font-size: small;">
-      <a href="https://yingchi.io/">yingchi.io</a>
-       © 2018-2020</span>
-    <span style="font-size: small;"> Joey.Jiang | 
-      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
-  </div>
-</footer>
+</div>
 
 
-  </body>
+
+
+    <div class="footer">
+        <div class="by_farbox">&copy; Joey Jiang  2021 </div>
+    </div>
+</div>
+<div class="main">
+    <div class="page-top  animated fadeInDown ">
+    <a role="button" class="navbar-burger" data-target="navMenu" aria-label="menu" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+    </a>
+    <ul class="nav" id="navMenu">
+        
+        
+            
+            <li><a class="current"
+                   href="/"
+                        
+                   title="">Home</a></li>
+        
+            
+            <li><a 
+                   href="/posts.html"
+                        
+                   title="">Posts</a></li>
+        
+            
+            <li><a 
+                   href="/tags.html"
+                        
+                   title="">Tags</a></li>
+        
+            
+            <li><a 
+                   href="/about.html"
+                        
+                   title="">About</a></li>
+        
+        
+        
+            <li class="theme-switch-item">
+                <a class="theme-switch" title="Switch Theme">
+                    <i class="fas fa-adjust fa-fw" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+    <div class="autopagerize_page_element">
+        <div class="content">
+
+    <div class="post  animated fadeInDown ">
+        
+        <!-- raw HTML omitted -->
+<!-- raw HTML omitted -->
+
+    </div>
+
+    
+    
+
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2020/5/client-go.html">client-go 初步认识与实践</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>最近本人的一个容器应用管理平台项目需要实现对接 Kubernetes 平台并进行一些相关资源的操作，查阅了官方文档、GitHub 以及相关技术文章，发现有个叫做 client-go 的 go 语言库是非常适合做 Kubernetes 二次开发的，于是就边实践，边学习，对 client-go 这个库有了一定程度的了解。对于其中比较复杂的设计，如 informer 部分，之后有时间的话会结合 kube-controller-manager 相关机制的研究学习过程加以介绍分享。
+ client-go 是 Kubernetes 项目所采用的编程式交互客户端库，官方从2016年8月份开始，资源交互操作相关的核心源码，也就是 client-go 抽取出来，独立出来作为一个项目。也就是现在所用到的 Kubernetes 内部都是集成有 client-go 的，因此对于这个库的编码质量应该是值得放心的。
+client-go 所谓编程式交互客户端库说白了就是可以通过写一些 Go 代码实现对kubernetes集群中资源对象（包括deployment、service、ingress、replicaSet、pod、namespace、node等）的增删改查操作。
+源码简介 源码目录简述  discovery：通过Kubernetes API 进行服务发现； kubernetes：提供 ClientSet 客户端，可以对 Kubernetes 内置资源对象进行操作； dynamic：提供 DynamicClient 客户端，可以实现对任意 Kubernetes 资源对象操作； rest：提供 RESTClient 客户端，可以实现对 kube-apiserver 执行 REST 请求实现资源操作； scale：提供 ScaleClient 客户端，主要用于 Deployment 等资源的扩缩容； listers：为 Kubernetes 资源提供 Lister 功能，对 Get / List 请求提供只读的缓存数据； informers：提供每种 Kubernetes 资源的 Informer 实现； transport：用于提供安全的 TCP 连接； tools/cache：提供常用工具；提供 Client 查询和缓存机制，以缓解 kube-apiserver 压力； util：提供常用方法；  Client 对象 学习 client-go 进行 kubernetes 二次开发的很大一部分工作是学会熟练使用它的几种 client，client-go 有如下 4 种 client 客户端对象，通过 kubeconfig 配置信息连接到指定集群的 kube-apiserver 从而实现对于资源的相关操作。</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Sat, May 23, 2020</span>
+                        <a class="tag-yingchi" href="/tags/kubernetes/">kubernetes
+                                </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2020/5/linux-iptables.html">Linux Netfilter/iptables 学习</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>Linux 网络协议栈非常高效，同时比较复杂。如果我们希望在数据的处理过程中对关心的数据进行一些操作，则该怎么做呢？Linux 提供了一套机制来为用户实现自定义的数据包处理过程。在 Linux 网络协议栈中有一组回调函数挂接点，通过这些挂接点挂接的钩子函数可以在 Linux 网络栈处理数据包的过程中对数据包进行一些操作，例如过滤、修改、丢弃等。整个挂接点技术叫作 Netfilter 和 iptables。
+Netfilter 与 iptables 不是两个独立的组件，Netfilter 是一个位于内核空间的防火墙框架，而 iptables 可以认为是一个位于用户空间的客户端。
+Netfilter 的核心功能就是数据包过滤、数据包修改、网络地址转换（NAT）
+基础概念 规则概念 iptables 最核心的概念是 Rules，即规则，一句话概括其工作逻辑就是“对于匹配到规则的数据包执行预先指定好的逻辑”。这里涉及到几个概念，首先是匹配，从字面上很好理解，匹配就是看对不对的上号，对于 iptables 而言，它面对的是数据包，因此它要匹配的自然是与数据包相关的信息，比如源地址、目的地址、传输协议、服务类型，只有当这些可以匹配的时候，才执行一些规则逻辑，比如放行、拒绝、丢弃等。
+五链 或许你对 iptables 具体是做什么的，怎么工作的并不熟悉，但是当你听到一个内行来讲 iptables 的时候，他一定会提到“四表五链”，那么什么是 iptables 的四表无链？他们又有什么作用呢？
+首先说“链”，这里的链指的是“规则链”，即在 iptables 的工作过程中，并不是只通过一条规则来处理数据包的，而是有许多规则，这些规则按照一定的顺序排列起来，报文经过 iptables 时就要对着一些规则一条一条进行匹配，执行相应的动作，我们把这种一系列的规则看作是一种串联，则称为是“链”。
+比如以其中一条称作 PREROUTING 的链来看，它的内部结构是这样的：
+数据包会在这条链里经过很多条的规则匹配，如果该数据包不符合链中任一条规则，iptables就会根据预先定义的默认策略来处理数据包。
+在 iptables 中存在着如下五条链：
+ PREROUTING 链：路由选择前； INPUT 链：路由目的地为本机； FORWARD 链：路由目的地非本机，转发； OUTPUT 链：本机发出数据包； POSTROUTING 链：路由选择后；  四表 知道了五链之后，接下来看四表，如果说链是表现的是一系列规则的执行顺序关系，那么表则是表现的一系列规则的功能逻辑关系，我们把具有相同功能的规则集合称为“表”，因为我们会发现有时在不同的链上执行的规则它们之间是有内在关联的，或是对数据的过滤，或是对报文数据的修改等等，iptables 为我们提供了如下的规则分类：
+ Filter 表：iptables 默认表，负责包过滤，防火墙功能； NAT 表：负责网络地址转换功能，对应内核模块； Mangle 表：主要负责修改数据包，对应内核模块； Raw 表：优先级最高，关闭 NAT 表启用的连接追踪机制；  注意这些表是有优先级之分的，优先级高到低：raw&ndash;&gt;mangle&ndash;&gt;nat&ndash;&gt;filter</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Thu, May 14, 2020</span>
+                        <a class="tag-yingchi" href="/tags/kubernetes/">kubernetes
+                                </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2020/4/docker-k8s-network-3.html">Kubernetes &amp; Docker 网络原理（三）</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>Service 通信 kube-proxy 运行机制 为了支持集群的水平扩展、高可用性，Kubernetes抽象出了Service的概念。Service是对一组Pod的抽象，它会根据访问策略（如负载均衡策略）来访问这组Pod。 Kubernetes在创建服务时会为服务分配一个虚拟的IP地址，客户端通过访问这个虚拟的IP地址来访问服务，服务则负责将请求转发到后端的Pod上。起到一个类似于反向代理的作用，但是它和普通的反向代理还是有一些不同：首先，它的Service 的 IP 地址，也就是所谓的 ClusterIP 是虚拟的，想从外面访问还需要一些技巧；其次，它的部署和启停是由Kubernetes统一自动管理的。
+Service 和 Pod 一样，其实仅仅是一个抽象的概念，背后的运作机制是依赖于 kube-proxy 组件实现的。
+在 Kubernetes 集群的每个 Node 上都会运行一个 kube-proxy 服务进程，我们可以把这个进程看作 Service 的透明代理兼负载均衡器，其核心功能是将到某个 Service 的访问请求转发到后端的多个 Pod 实例上。此外，Service的Cluster IP与 NodePort 等概念是 kube-proxy 服务通过iptables的NAT转换实现的，kube-proxy 在运行过程中动态创建与 Service 相关的 iptables 规则，这些规则实现了将访问服务（Cluster IP或NodePort）的请求负载分发到后端 Pod 的功能。由于 iptables 机制针对的是本地的 kube-proxy 端口，所以在每个 Node 上都要运行 kube-proxy 组件，这样一来，在 Kubernetes 集群内部，我们可以在任意 Node 上发起对 Service 的访问请求。综上所述，由于 kube-proxy 的作用，在 Service 的调用过程中客户端无须关心后端有几个 Pod，中间过程的通信、负载均衡及故障恢复都是透明的。
+kube-proxy 运行模式 kube-proxy 的具体运行模式其实是随着 Kubernetes 版本的演进有着较大的变化的，整体上分为以下几个模式的演化：
+ userspace (用户空间代理)模式 iptables 模式 IPVS 模式  userspace 模式</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Mon, Apr 13, 2020</span>
+                        <a class="tag-yingchi" href="/tags/kubernetes/">kubernetes
+                                </a><a class="tag-yingchi" href="/tags/network/">network
+                                </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2020/4/docker-k8s-network-2.html">Kubernetes &amp; Docker 网络原理（二）</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>Kubernetes Pod 间通信 之前的文章中主要关于 Docker 的网络实现进行了介绍和探讨，对于 Docker 网络而言，其最大的局限性在于跨主机的容器通信方案上存在空白，而 Kubernetes 作为适合大规模分布式集群的容器编排平台，其在网络实现层面上主要解决的问题就包括了如下几点：
+ 容器间通信； Pod 间通信； Pod 与 Service 通信； 集群内外通信；  这篇博文主要针对 Kubernetes 的容器间通信和 Pod 间通信进行介绍和探讨，之后再通过单独一篇文章去探讨 Pod 与 Service 的通信，也就是 kube-proxy 工作原理和 Service 机制相关。
+容器间通信 学习 Kubernetes 的容器间通信方案之前要理解 Kubernetes 中的 Pod 概念，Pod 是 Kubernetes 中最基本的调度单位，而不是 Docker 容器，Pod 的本意是豆荚，可以将容器理解为豆荚中的豆子，一个 Pod 可以包含多个有关联关系的容器，之后讨论的 Pod 与 Service 的通信也是从 Pod 层面而言的。这是必须要提前认识的概念，但是在底层，还是涉及到容器之间的通信，毕竟 Pod 只是一个抽象概念。
+同一个 Pod 内的容器不会跨主机通信，它们共享同一个 Network Namesapce 空间，共享同一个 Linux 协议栈。所以对于网络的各类操作，因此可以把一个 Pod 视作一个独立的「主机」，内部的容器可以用 localhost 地址访问彼此的端口。这么做的结果是简单、安全和高效，也能减小将已经存在的程序从物理机或者虚拟机移植到容器下运行的难度。
+如图，Node 上运行着一个 Pod 实例，Pod 内部的容器共享同一个 Network Namespace，因此容器1和容器2之间的通信非常简单，就可以通过直接的本地 IPC 方式通信，对于网络应用，可以直接通过 localhost 访问指定端口通信。因此对于一些传统程序想要移植到 Pod 中，几乎不需要做太多的修改。</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Sun, Apr 12, 2020</span>
+                        <a class="tag-yingchi" href="/tags/kubernetes/">kubernetes
+                                </a><a class="tag-yingchi" href="/tags/network/">network
+                                </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2020/4/docker-k8s-network-1.html">Kubernetes &amp; Docker 网络原理（一）</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>Docker 网络实现 平时在进行 Kubernetes 开发和运维的时候，接触到的最多的概念应该就是 Docker 与 Kubernetes 的网络概念了，尤其是 Kubernetes，各种各样的 IP，Port，有时候会混淆，因此有必要对 Docker 和 Kubernetes 的底层网络实现进行学习。这篇文章呢就先针对 Docker 的网络实现进行一下分析介绍。
+Docker 网络基础 Docker 的网络实现主要利用到的还是 Linux 网络相关的技术，如 Network Namespace、Veth 设备对、网桥、iptables、路由。
+Network Namespace 基本原理 作用可以用一句话概括：
+实现 Linux 网络虚拟化，即容器间网络协议栈层面的隔离
+通过 Network Namespace 技术就可以实现不同的 Docker 容器拥有自己完全隔离的网络环境，就像各自拥有自己独立的网卡一样。不同的 Network Namespace 下默认是不可以直接通信的。
+Linux 的 Network Namespace 中可以有自己独立的路由表及独立的 iptables 设置来提供包转发、NAT 及 IP 包过滤等操作。为了隔离出独立的协议栈，需要纳入命名空间的元素有进程、套接字、网络设备等。进程创建的套接字必须属于某个命名空间，套接字的操作也必须在命名空间中进行。同样，网络设备也必须属于某个命名空间。因为网络设备属于公共资源，所以可以通过修改属性实现在命名空间之间移动。
+Linux 的网络协议栈是非常复杂的，这里因为毕竟不是做系统底层开发，所以争取从概念层面对于 Linux 的 Network Namespace 这种网络隔离机制进行理解：
+通过查阅相关书籍知道，Linux 网络协议栈为了支持 Namespace 这种隔离机制，方法就是让一些与网络协议栈相关的全局变量称为一个 Network Namespace 变量的成员，协议栈函数调用时指定 Namespace 参数，这个就是 Linux 实现 Network Namespace 的核心原理，通过这种方式，实现一些协议栈全局变量的私有化，保证有效的隔离。</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Sat, Apr 11, 2020</span>
+                        <a class="tag-yingchi" href="/tags/kubernetes/">kubernetes
+                                </a><a class="tag-yingchi" href="/tags/docker/">docker
+                                </a><a class="tag-yingchi" href="/tags/network/">network
+                                </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2020/4/kubernetes-resources.html">理解 Kubernetes 的 Resource 设计概念</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>Kubernetes 是一个完全以资源为中心的容器编排平台，这一点从 kube-apiserver 对外暴露的 REST API 设计上其实就能很明显地感受到。Kubernetes 的生态系统围绕着诸多组件资源的控制维护而运作，因此也可以认为它本质上是一个「资源控制系统」
+ Group / Version / Resource 针对于资源这一概念，如果在一个庞大而复杂的容器编排平台上仅设计这么一个简单的「资源」语义显然是有点单薄，或者说表达力过于欠缺，因此对于资源这么一个概念，在 Kubernetes 上又进行了分组和版本话，于是就有了我们平时运维与开发中常见到的一些术语：Group / Version / Resource / Kind，分别代表的意义：资源组 / 资源版本 / 资源 / 资源种类。
+他们之间的关系是这样的：
+ Kubernetes 系统支持多个 Group(资源组)； 每个 Group 支持多个资源版本(Version)； 每个资源版本又支持多种资源(Resource)，部分资源还拥有自己的子资源； Kind 与 Resource 属于同一级概念，Kind 用于描述 Resource 的种类；  定位一个资源的完整形式如下：
+&lt;GROUP&gt;/&lt;VERSION&gt;/&lt;RESOURCE&gt;[/&lt;SUBSOURCE&gt;] 以 Deployment 为例：apps/v1/deployments/status
+在 Kubernetes 中还有一种描述资源的概念叫做「资源对象」(Resource Object)，其描述形式为：
+&lt;GROUP&gt;/&lt;VERSION&gt;, Kind=&lt;RESOURCE_NAME&gt; 以 Deployment 为例：apps/v1, Kind=Deployment
+资源概念的一些基本特点：
+ 每个资源都有一定数量的操作方法，称为 Verbs，如 create / delete / update / get / list / watch &hellip;（8种）； 每个资源 Version 至少有两种，包括一个面向用户请求的外部版本，还有 api-server 内部使用的内部版本； Kubernetes 资源整体上分为内置资源以及 Custom Resources 自定义资源，其中 CR 通过 CRD 自定义资源定义实现；  Group 资源组，Kubenetes API Server 也称为 APIGroup，其有如下特点：</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Tue, Apr 7, 2020</span>
+                        <a class="tag-yingchi" href="/tags/kubernetes/">kubernetes
+                                </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2020/4/kubernetes-rolling-update.html">Kubernetes Rolling Update 滚动升级</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>用户希望应用程序始终可用，而开发人员则需要每天多次部署它们的新版本。在 Kubernetes 中，这些是通过滚动更新（Rolling Updates）完成的。 滚动更新 允许通过使用新的实例逐步更新 Pod 实例，零停机进行 Deployment 更新。
+ Kubernetes Rolling Update 基本概念 概念 当集群中的某个服务需要升级时，传统的做法是，先将要更新的服务下线，业务停止后再更新版本和配置，然后重新启动并提供服务。这种方式很明显的一个问题就是：会导致服务较长时间不可用，并且在大规模服务场景下会产生极大的工作量。
+滚动更新就是针对多实例服务的一种不中断服务的更新升级方式。一般情况下，对于多实例服务，滚动更新采用对各个实例逐个进行单独更新而非同一时刻对所有实例进行全部更新的方式。
+对于 kubernetes 集群部署的 service 来说，rolling update 就是指一次仅更新一个pod，并逐个进行更新，而不是在同一时刻将该 service 下面的所有 pod 全部停止，然后更新为新版本后再全部上线，rolling update 方式可以避免业务中断。
+特点 优点：
+ 业务不中断，用户体验影响较小，较平滑 相对于蓝绿部署，更加节约资源——它不需要运行两个集群、两倍的实例数  滚动更新也并不是银弹，有很多问题需要考虑到，比如：因为是逐步更新，那么我们在上线代码的时候，就会短暂出现新老版本不一致的情况，如果对上线要求较高的场景，那么就需要考虑如何做好兼容的问题。
+K8S 基于 Deployment 的 Rolling Update kubernetes 的 Deployment 是一个相比较早前 Replication Controller 以及现在的 Replica Set 更高级别的抽象。Deployment会创建一个Replica Set，用来保证Deployment中的Pod的副本数。要 rolling-update deployment 中的 Pod，只需要修改 Deployment 自己的yml 文件并应用即可。这个修改会创建一个新的 Replica Set，在增加这个新 RS 的 pod 数的同时，减少旧RS的pod，直至完全升级。而这一切都发生在 Server 端，并不需要 kubectl 参与。</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Sun, Apr 5, 2020</span>
+                        <a class="tag-yingchi" href="/tags/kubernetes/">kubernetes
+                                </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2020/4/kubernetes-arch.html">Kubernetes 架构浅析</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>前言 Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发布了 Kubernetes，这是振奋人心的，随后巨硬、IBM、RedHat 一些大佬企业也加入 Kubernetes 社区添砖加瓦，项目日益成熟，社区非常活跃，如今的 Kubernetes 项目也已经成为了开源项目中最耀眼的其中之一。
+Kubernetes 的成功在于它填补了大规模容器集群的编排调度管理平台的空白，在此之前，大家都仿佛在云时代中做着石器时代的活，费时费力地部署管理自己的应用，虽然容器概念已经流行，但是还是用着最原始的方式去使用它们，虽然有一些技术框架，如 Docker Swarm 尝试改变这一现状，但是反响并不好，直到 Kubernetes 的出现，人们都惊呆了，原来 Kubernetes 与 Docker 与 微服务可以这么有机地结合？难以置信，它们虽然是不同的项目不同的设计思想，但是当融合在一起的时候是如此的完美。
+因此，我们的确有必要去学习去了解优秀的 Kubernetes，当然，学习它的架构实现，从宏观角度理解它的运转机制就是必不可少的环节。
+架构概述 Kubernetes 系统架构整体采用的是 C/S 的架构，即 Master 作为 Server，各个 Worker 节点作为 Client，在一个面向生产环境的集群中，通常可以采用多个 Master 节点实现 HA。
+然后从 Master 与 Worker 两种不同的节点类型来概述一下它们的「职责」
+Master Node 主要职责：  管理集群所有的 Node； 调度集群的 Pod； 管理集群的运行状态；  主要组件：  kube-apiserver: 负责处理资源的 CRUD 请求，提供 REST API 接口； kube-scheduler: 负责集群中 Pod 资源的调度（哪个 Pod 运行在 哪个 Node 上）； kube-controller-manager: 控制器管理器，自动化地管理集群状态（如自动扩容、滚动更新）；  Worker Node 主要职责：  管理容器的生命周期，网络，存储等； 监控上报 Pod 的运行状态；  主要组件：  kubelet: 管理容器的生命周期，与 Master 节点进行通信，可理解为 Kubernetes 在 Worker 节点的 Agent； kube-proxy: 负责 Kubernetes Service 组件的通信，原理是为当前节点 Pod 动态地生成 iptables 或 ipvs 规则，并且与 kube-apiserver 保持通信，一旦发现某一个 Service 的后端 Pod 改变，需要将改变保存在 kube-apiserver 中； container engine: 负责接收 kubelet 指令，对容器进行基础地管理；  组件浅析 [Master] kube-apiserver 顾名思义，「apiserver」即本质是提供 API，而且是 REST API，我们提到 REST API 总是会想到「资源」这个概念，没错，这里的 kube-apiserver 就是为 Kubernetes 集群中的各种资源提供 CRUD 的 REST API。</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Sun, Apr 5, 2020</span>
+                        <a class="tag-yingchi" href="/tags/kubernetes/">kubernetes
+                                </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2020/4/kubeadm-flannel-mannul.html">记一次 Kubeadm 部署 k8s &#43; Flannel</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>以 master 节点的配置为例记录一下在 CentOS 7.0 上使用 kubeadm 部署 kubernetes 集群 + Flannel 插件的过程
+ 一、基础环境配置 安装 wget yum install -y wget 配置 YUM 软件源  配置阿里镜像源  wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo 配置 kubernetes 源  vi /etc/yum.repos.d/kubernetes.repo [kubernetes] name=Kubernetes baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64 enabled=1 gpgcheck=1 repo_gpgcheck=1 gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg yum clean all yum makecache fast 常用软件安装 yum install -y net-tools yum install -y vim 安装 Docker wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -O/etc/yum.repos.d/docker-ce.repo yum -y install docker-ce systemctl start docker systemctl enable docker 配置时间同步 不然后面 Flannel 安装时会出现证书错误</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Fri, Apr 3, 2020</span>
+                        <a class="tag-yingchi" href="/tags/kubernetes/">kubernetes
+                                </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+
+        <div class="post  animated fadeInDown ">
+            <div class="post-title">
+                <h3><a href="/posts/2020/3/go-goroutine.html">Goroutine 并发模型</a>
+                </h3>
+            </div>
+            <div class="post-content">
+                <div class="p_part"><p>并发基础 在学习 Goroutine 之前，如果对于 Linux 基本的并发模型不了解，那么可能会学的一头雾水，所以一切的一切之前，从 Linux 基本的并发知识说起，复习一下。
+并发与并行  并发（Concurrency）：指宏观上看起来两个程序在同时运行，比如说在单核cpu上的多任务。但是从微观上看两个程序的指令是交织着运行的，你的指令之间穿插着我的指令，我的指令之间穿插着你的，在单个周期内只运行了一个指令。这种并发并不能提高计算机的性能，只能提高效率； 并行（Parallelism）：提到并行时往往涉及到的概念就是分布式/多核/多机这种概念，即一定是指严格物理意义上的同时运行，比如多核cpu，两个程序分别运行在两个核上，两者之间互不影响，单个周期内每个程序都运行了自己的指令，也就是运行了两条指令。这样说来并行的确提高了计算机的效率。所以现在的cpu都是往多核方面发展。  进程与线程   定位：进程是资源分配的最小单位，线程是CPU调度的最小单位；
+  线程依赖于进程而存在，一个线程只能属于一个进程，而一个进程可以有多个线程，但至少有一个线程；
+  进程在执行过程中拥有独立的内存单元，而多个线程共享进程的内存资源；
+  创建和撤销开销： 进程的创建和撤销操作开销远大于线程创建和撤销的开销（系统都要为进程分配或回收资源，如内存空间等）；
+  切换开销：进程切换时，涉及到整个当前进程 CPU 环境的保存以及新被调度运行的进程的 CPU 环境的设置。而线程切换只须保存和设置少量寄存器的内容，并不涉及存储器管理方面的操作。即，进程切换的开销也远大于线程切换的开销；
+  通信：由于同一进程中的多个线程具有相同的地址空间，使它们之间的同步和通信的实现比较容易。进程间通信则是通过诸如管道、共享内存、信号、信号量、Socket、消息队列等实现；
+  进程编程调试简单可靠性高，但是创建销毁开销大；线程正相反，开销小，切换速度快，但是编程调试相对复杂；
+  进程间不会相互影响 ；线程一个线程挂掉将导致整个进程挂掉；
+  进程适应于多核、多机分布；线程适用于多核；
+  系统调用 &amp; 用户态内核态 &amp; 进程切换/调度 用户进程生存在用户空间中，无法直接操纵计算机的硬件，但是内核空间中的内核是可以做到的，因此内核会暴露出一些接口供用户进程使用，用户进程通过这些接口去使用内核的功能，进而操控计算机的硬件，这个用户空间与内核空间之间的桥梁，就叫做“系统调用(System call)”，与普通程序函数不同的是，内核调用会导致内核空间的数据存取和指令的执行，而普通函数只在用户空间中起作用，如果普通函数需要对内核空间进行访问，也是借助于系统调用相关函数实现的。
+然后说，用户态和内核态，这是为了保证操作系统安全而建立的一个特性，大部分时间里 CPU 处于用户态，此时 CPU 只能对用户空间进行访问，用户态下的用户进程是不允许访问内核空间的，当用户进程发出系统调用的时候，内核会把 CPU 从用户态切换到内核态，然后执行相关的内核函数，执行完毕后切换回用户态，并把执行结果返回给用户。
+最后说到进程，为了实现一开始说的操作系统并发特性，Linux 操作系统可以凭借 CPU 的强大性能在多个进程之间快速切换，这个过程从专业上讲我们称为进程间的上下文切换，通过这种快速的切换，营造了多个进程同时运行的假象，而每个进程也地以为自己独占 CPU，但是我们要知道的是，同一时刻正在运行的进程仅会有一个。最重要的是，进程的切换是需要付出代价的，就像一开始提到的，进程切换时，涉及到整个当前进程 CPU 环境的保存以及新被调度运行的进程的 CPU 环境的设置，即进程切换的开销是比较大的。此外，除了进程切换，为了使每个生存的进程都有运行的机会，内核还要考虑下次切换时运行哪个进程，何时进行切换，被换下的进程何时重新换上，这些类似的问题称为进程调度。</p></div>
+            </div>
+            <div class="post-footer">
+                <div class="meta">
+                    <div class="info"><em class="fas fa-calendar-day"></em><span
+                                class="date">Sat, Mar 14, 2020</span>
+                        <a class="tag-yingchi" href="/tags/golang/">golang
+                                </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+    <div class="pagination">
+        
+
+<ul class="pagination">
+    
+    <li class="page-item">
+        <a href="/" class="page-link" aria-label="First"><span aria-hidden="true">&laquo;&laquo;</span></a>
+    </li>
+    
+    <li class="page-item">
+    <a href="/" class="page-link" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a>
+    </li>
+    
+    
+    
+    
+    
+    
+    
+        
+        
+    
+    
+    <li class="page-item"><a class="page-link" href="/">1</a></li>
+    
+    
+    
+    
+    
+    
+        
+        
+    
+    
+    <li class="page-item active"><a class="page-link" href="/page/2.html">2</a></li>
+    
+    
+    
+    
+    
+    
+        
+        
+    
+    
+    <li class="page-item"><a class="page-link" href="/page/3.html">3</a></li>
+    
+    
+    <li class="page-item">
+    <a href="/page/3.html" class="page-link" aria-label="Next"><span aria-hidden="true">&raquo;</span></a>
+    </li>
+    
+    <li class="page-item">
+        <a href="/page/3.html" class="page-link" aria-label="Last"><span aria-hidden="true">&raquo;&raquo;</span></a>
+    </li>
+    
+</ul>
+
+
+    </div>
+
+
+
+
+
+
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/jquery.min.86b1e8f819ee2d9099a783e50b49dff24282545fc40773861f9126b921532e4c.js"
+        integrity="sha256-hrHo&#43;BnuLZCZp4PlC0nf8kKCVF/EB3OGH5EmuSFTLkw="
+        crossorigin="anonymous"></script>
+
+
+
+
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/bundle.min.0f9c74cb78f13d1f15f33daff4037c70354f98acfbb97a6f61708966675c3cae.js"
+        integrity="sha256-D5x0y3jxPR8V8z2v9AN8cDVPmKz7uXpvYXCJZmdcPK4="
+        crossorigin="anonymous"></script>
+
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/medium-zoom.min.92f21c856129f84aeb719459b3e6ac621a3032fd7b180a18c04e1d12083f8aba.js"
+        integrity="sha256-kvIchWEp&#43;ErrcZRZs&#43;asYhowMv17GAoYwE4dEgg/iro="
+        crossorigin="anonymous"></script>
+</body>
 
 </html>
-
-<style>
-  .custom-column{
-    justify-content: center;
-    width: 100%;
-    margin-top: 20px;
-  }
-
-  .top-tag-list{
-    width: 500px; 
-    margin: 0 auto; 
-    margin-top: 30px; 
-    margin-bottom: 10px;
-  }
-
-   
-@media screen and (max-width: 960px){
-  .top-tag-list{
-    width: 80%; 
-  }
-
-}
-
-
-</style>

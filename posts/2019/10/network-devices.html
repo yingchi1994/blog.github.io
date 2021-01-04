@@ -1,151 +1,262 @@
 <!DOCTYPE html>
-<html lang="en-us" dir="ltr" itemscope itemtype="http://schema.org/Article">
+<html lang="en" data-theme=""><head>
+    <title> Joey Jiang | 网络模型学习基础：各层网络设备概念 </title>
 
-  <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    
+    <meta charset="utf-8"><meta name="generator" content="Hugo 0.71.1" /><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="description" content="Infrastructure SRE / Golang / Python">
+    
+    <link rel="stylesheet"
+          href="https://blog.yingchi.io/css/style.min.8a9cc11a1afa7bd869914c587182281a374d06d6c3e09e330e86cfccf4908668.css"
+          integrity="sha256-ipzBGhr6e9hpkUxYcYIoGjdNBtbD4J4zDobPzPSQhmg="
+          crossorigin="anonymous"
+          type="text/css">
+    
+    <link rel="stylesheet"
+        href="https://blog.yingchi.io/css/markupHighlight.min.9755453ffb7bc4cd220f86ebb5922107b49f193cc62fc17e9785d27b33a8bf5b.css"
+        integrity="sha256-l1VFP/t7xM0iD4brtZIhB7SfGTzGL8F&#43;l4XSezOov1s="
+        crossorigin="anonymous"
+        type="text/css">
+    
+    <link rel="stylesheet" 
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" 
+    integrity="sha512-+4zCK9k+qNFUR5X+cKL9EIR+ZOhtIloNl9GIKS57V1MyNsYpYcUrUeQc9vNfzsWfV28IaLL3i96P9sdNyeRssA==" 
+    crossorigin="anonymous" />
 
-  <title>网络模型学习基础：各层网络设备概念</title>
-  <meta name="author" content="YINGCHI_Joey" />
-  <meta name="description"
-        content="
-在学习研究诸如 kubernetes 网络或 Docker 网络等各种开源网络模型时，会涉及到各种或实际或虚拟的网络设备概念，例如各种虚拟网桥。因此必须对这些网络设备有充分的认识才可以进行接下来的学习。
+    
+    <link rel="shortcut icon" href="https://blog.yingchi.io/favicons/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://blog.yingchi.io/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://blog.yingchi.io/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://blog.yingchi.io/favicons/favicon-16x16.png">
 
+    <link rel="canonical" href="https://blog.yingchi.io/posts/2019/10/network-devices.html">
 
-根据 OSI 参考模型，网络分为七层，根据之后的学习需要，这里主要针对 L1、L2、L3 层的设备进行学习认识
-
-L1：Hub（集线器/中继器）
-L1 层即“物理层”，作为网络的最底层，这一..."/>
-
-
-  <meta name="generator" content="Hugo 0.71.1" />
-
-  
-  <meta itemprop="name" content="网络模型学习基础：各层网络设备概念"/>
-  <meta itemprop="description"
-        content="
-在学习研究诸如 kubernetes 网络或 Docker 网络等各种开源网络模型时，会涉及到各种或实际或虚拟的网络设备概念，例如各种虚拟网桥。因此必须对这些网络设备有充分的认识才可以进行接下来的学习。
-
-
-根据 OSI 参考模型，网络分为七层，根据之后的学习需要，这里主要针对 L1、L2、L3 层的设备进行学习认识
-
-L1：Hub（集线器/中继器）
-L1 层即“物理层”，作为网络的最底层，这一..."/>
-  <meta itemprop="image"
-        content=""/>
-
-  
-  <meta property="og:title" content="网络模型学习基础：各层网络设备概念"/>
-  <meta property="og:type"
-        content="article"/>
-  <meta property="og:url" content="https://blog.yingchi.io/posts/2019/10/network-devices.html"/>
-  <meta property="og:image"
-        content=""/>
-  <meta property="og:description"
-        content="
-在学习研究诸如 kubernetes 网络或 Docker 网络等各种开源网络模型时，会涉及到各种或实际或虚拟的网络设备概念，例如各种虚拟网桥。因此必须对这些网络设备有充分的认识才可以进行接下来的学习。
+    
+    
+    
+    
+    <script type="text/javascript"
+            src="https://blog.yingchi.io/js/anatole-header.min.d8599ee07b7d3f11bafbac30657ccc591e8d7fd36a9f580cd4c09e24e0e4a971.js"
+            integrity="sha256-2Fme4Ht9PxG6&#43;6wwZXzMWR6Nf9Nqn1gM1MCeJODkqXE="
+            crossorigin="anonymous"></script>
 
 
-根据 OSI 参考模型，网络分为七层，根据之后的学习需要，这里主要针对 L1、L2、L3 层的设备进行学习认识
+    
+        
+        
+        <script type="text/javascript"
+                src="https://blog.yingchi.io/js/anatole-theme-switcher.min.e289e9ebb2a4e7a7f895859c8a2b0da2de1ec73f22cea58d8475aa0597023837.js"
+                integrity="sha256-4onp67Kk56f4lYWciisNot4exz8izqWNhHWqBZcCODc="
+                crossorigin="anonymous"></script>
+    
+    <meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://blog.yingchi.io/images/site-feature-image.png"/>
 
-L1：Hub（集线器/中继器）
-L1 层即“物理层”，作为网络的最底层，这一..."/>
-  <meta property="og:site_name" content="Yingchi Blog"/>
-  <meta property="article:published_time"
-        content="2019-10-27T00:29:30&#43;08:00"/>
-  <meta property="article:section" content="posts"/>
-  <meta property="article:tag" content="kubernetes"/>
-  <meta property="article:tag" content="docker"/>
-  <meta property="article:tag" content="network"/>
+<meta name="twitter:title" content="网络模型学习基础：各层网络设备概念"/>
+<meta name="twitter:description" content="在学习研究诸如 kubernetes 网络或 Docker 网络等各种开源网络模型时，会涉及到各种或实际或虚拟的网络设备概念，例如各种虚拟网桥。因此必须对这些网络设备有充分的认识才可以进行接下来的学习。
+  根据 OSI 参考模型，网络分为七层，根据之后的学习需要，这里主要针对 L1、L2、L3 层的设备进行学习认识
+ L1：Hub（集线器/中继器） L1 层即“物理层”，作为网络的最底层，这一层的网络设备所做的事情比较单调，主要的作用就是实现物理上的网络连通，如下图几个终端节点，
+想要实现这几个节点的互连互通，可以连接到叫做 Hub（集线器）的设备上，如下图，这个设备的主要任务仅仅是把接收到的信号整型放大，从其它各个端口转发出去，因此也称之为“中继器”。
+以 Node0 为例展示一下节点发送网络信号的过程。如下图，Node0 向连接的 Hub 发出网络信号，Hub 接收到信号后，将其整型放大，然后转发给了 Node1、Node2、Node3。这其实就是最简单的一种星型的局域网架构。
+这个过程要注意两点核心：
+ Hub 仅仅对信号进行物理上的整型放大操作 Hub 转发时采用的是广播方式，向其它端口节点转发信号，无选择  然后我们再来看一个复杂一点的例子，假如两个机房各有一组终端节点连接到了各自的 Hub 上，各自组成了局域网，如下图。
+我们现在想把两个房间的网络互连起来，应该如何做？按照上面的思想，我们是否可以加入一个更高层级的 Hub（称之为主干 Hub），把各个机房的网络连接起来？如图
+答案是可行的，在这种情况下，通过中间这个主干 Hub的转发，我们可以将一个机房发出的信号转发到另一个机房，如图
+但是，虽然可行，我们应该有这样的疑问，这样做真的好吗？虽然两个机房的网络互通了，但是是否又增加了这个网络的负担呢？我们举一个简单的例子就可以发现问题所在，假如 Node0 仅仅是想将信号发送给 Node1，尽管从网络拓扑中看到他们挨得很近，仅仅通过一个 Hub 就可以转发到，但是由于 Hub 只能采用广播的方式转发，因此这个信号不仅被传到了 Node2 上，还通过刚加入的总集线器被传递到了另一个机房的所有节点中，当然这些都是无用功。
+说到这里，我们还要认识两个概念 —— 冲突域和广播域。其实很好理解，所谓冲突域，很多地方也叫碰撞域，顾名思义，就是在当网络中有一个信号在流转时，此时若有另一个节点向网络中发送信号，会引起干扰，也就是冲突或碰撞，这个受波及的范围就是冲突域，我们可以认为，L1 网络中靠类似 Hub 这种设备连接起来的物理网段都是属于一个冲突域，Hub 是无法隔离冲突域的，在 L2、L3 网络中均有能力隔离冲突域；另一个概念，广播域，广播域就是接收同样广播消息的集合，我们一般认为，广播域其实就是同一个网络的代名词，我们如今所使用的互联网，其实是通过 Router 这种网际交换设备连接不同网络而产生的。
+结合上面这两个概念，我们重新分析通过主干 Hub 连接两个局域网的方式，就能明白为什么这样会严重影响网络性能了。
+那么，还是针对连接两个机房的场景，我们期望既可以实现两个网络的互通，又能提高通信的效率，有没有好的方式呢？
+L2：Bridge（网桥）、Switch(交换机/多端口网桥) 现在到网络模型的第2层，也就是数据链路层，看一下这一层的网络设备。继续讨论之前的场景，这次我们不再采用主干 Hub 的方案，而是加入一个叫做 Bridge（网桥）的设备，狭义上的网桥其实是二端口网桥，如图。所谓 Bridge，我们很容易就能明白这是一个桥接设备，桥接的核心是延长，是扩大，因此，我们可以在某种程度上把它看做为一个智能的、高级的 Hub，智能高级的原因是它是工作在第二层的，在进行它的工作原理介绍之前，重新看一下我之前 L1 层对于 Hub 工作原理的描述，网络中流转的信息我在第一层中是以“信号”称呼的，因为第一层只能操作物理电信号，无非就是对电流的整型放大复制转发。"/>
 
-  
-  
-  <meta name="twitter:card" content="summary"/>
-  <meta name="twitter:site"
-        content=""/>
-  <meta name="twitter:title" content="网络模型学习基础：各层网络设备概念"/>
-  <meta name="twitter:description"
-        content="
-在学习研究诸如 kubernetes 网络或 Docker 网络等各种开源网络模型时，会涉及到各种或实际或虚拟的网络设备概念，例如各种虚拟网桥。因此必须对这些网络设备有充分的认识才可以进行接下来的学习。
-
-
-根据 OSI 参考模型，网络分为七层，根据之后的学习需要，这里主要针对 L1、L2、L3 层的设备进行学习认识
-
-L1：Hub（集线器/中继器）
-L1 层即“物理层”，作为网络的最底层，这一..."/>
-  <meta name="twitter:creator"
-        content=""/>
-  <meta name="twitter:image:src"
-        content=""/>
-
-  
-
-  
-  <link rel="stylesheet" type="text/css" href="/css/capsule.min.css"/>
-  
-  
-
-  
-  
-  
-  
-  <script>
-  	var _mtac = {};
-  	(function() {
-  		var mta = document.createElement("script");
-  		mta.src = "//pingjs.qq.com/h5/stats.js?v2.0.4";
-  		mta.setAttribute("name", "MTAH5");
-  		mta.setAttribute("sid", "500724862");
-
-  		var s = document.getElementsByTagName("script")[0];
-  		s.parentNode.insertBefore(mta, s);
-  	})();
-</script>
 </head>
-
-
-  <body style="min-height:100vh;display:flex;flex-direction:column">
-
-    <section>
-  <nav style="text-align: center; margin-top: 30px;">
-    <div>
-        <a class="custom-title" href="/">
-          
-          <img class="logo" src="/logo.png"/>
-        </a>
+<body><div class="sidebar animated fadeInDown ">
+    <div class="logo-title">
+        <div class="title">
+            <img src="https://blog.yingchi.io/images/profile.jpg" alt="profile picture">
+            <h2 title=""><a href="/">Yingchi&#39;s Blog</a></h2>
+            <div class="description">
+                <p>Infrastructure SRE / Golang / Python</p>
+            </div>
+        </div>
     </div>
-  </nav>
-
-</section>
-
-<style>
-  .custom-title{
-    color: rgb(87, 87, 87);
-    font-size: 25px;
-    font-weight: bold;
-    text-decoration: none;
-  }
-
-  .logo{
-    width: 190px;
-  }
-</style>
-
-    <section class="section" style="flex:1">
-
-      
-      <div class="container">
+    <ul class="social-links">
         
-        <p class="title-custom">网络模型学习基础：各层网络设备概念</p>
-        <p class="subtitle-custom">Oct 27, 2019</p>
+            <li>
+                <a href="https://yingchi.io" rel="me" aria-label="Home">
+                    <i class="fa fa-home" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            <li>
+                <a href="https://github.com/yingchi1994" rel="me" aria-label="GitHub">
+                    <i class="fab fa-github" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            <li>
+                <a href="mailto:yingchi1994@gmail.com" rel="me" aria-label="e-mail">
+                    <i class="fas fa-envelope" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
+    <div class="tag-area">
+        
+<ul>
+  <li class="tag-list">
+    
+    <a href="/tags/cloud-native.html">
+      <span>
+        <span class="tag-yingchi">
+          Cloud Native
+          [<span style="color:rgb(255, 223, 79);">1</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/docker.html">
+      <span>
+        <span class="tag-yingchi">
+          Docker
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/golang.html">
+      <span>
+        <span class="tag-yingchi">
+          Golang
+          [<span style="color:rgb(255, 223, 79);">5</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/istio.html">
+      <span>
+        <span class="tag-yingchi">
+          Istio
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/kubernetes.html">
+      <span>
+        <span class="tag-yingchi">
+          Kubernetes
+          [<span style="color:rgb(255, 223, 79);">15</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/network.html">
+      <span>
+        <span class="tag-yingchi">
+          Network
+          [<span style="color:rgb(255, 223, 79);">4</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/note.html">
+      <span>
+        <span class="tag-yingchi">
+          Note
+          [<span style="color:rgb(255, 223, 79);">1</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/service-mesh.html">
+      <span>
+        <span class="tag-yingchi">
+          Service Mesh
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+</ul>
 
-        
+</div>
 
+
+
+
+    <div class="footer">
+        <div class="by_farbox">&copy; Joey Jiang  2021 </div>
+    </div>
+</div>
+<div class="main">
+    <div class="page-top  animated fadeInDown ">
+    <a role="button" class="navbar-burger" data-target="navMenu" aria-label="menu" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+    </a>
+    <ul class="nav" id="navMenu">
         
         
-        <div class="content-custom">
-          <blockquote>
+            
+            <li><a 
+                   href="/"
+                        
+                   title="">Home</a></li>
+        
+            
+            <li><a 
+                   href="/posts.html"
+                        
+                   title="">Posts</a></li>
+        
+            
+            <li><a 
+                   href="/tags.html"
+                        
+                   title="">Tags</a></li>
+        
+            
+            <li><a 
+                   href="/about.html"
+                        
+                   title="">About</a></li>
+        
+        
+        
+            <li class="theme-switch-item">
+                <a class="theme-switch" title="Switch Theme">
+                    <i class="fas fa-adjust fa-fw" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+    <div class="autopagerize_page_element">
+        <div class="content">
+    <div class="post  animated fadeInDown ">
+        <div class="post-content">
+            <div class="post-title">
+                <h3>网络模型学习基础：各层网络设备概念</h3>
+                
+            </div>
+
+            <blockquote>
 <p>在学习研究诸如 kubernetes 网络或 Docker 网络等各种开源网络模型时，会涉及到各种或实际或虚拟的网络设备概念，例如各种虚拟网桥。因此必须对这些网络设备有充分的认识才可以进行接下来的学习。</p>
 </blockquote>
 <blockquote>
@@ -201,263 +312,40 @@ L1 层即“物理层”，作为网络的最底层，这一..."/>
 <p><a href="https://geek-university.com/ccna/differences-between-a-switch-and-a-bridge/">Differences between a switch and a bridge</a></p>
 </li>
 </ol>
+</div>
+        <div class="post-footer">
+            <div class="info">
+                
+                <span class="separator"><a class="tag" href="/tags/kubernetes/">kubernetes</a><a class="tag" href="/tags/docker/">docker</a><a class="tag" href="/tags/network/">network</a></span>
 
+            </div>
         </div>
 
         
-
-        
-<br>
-<div class="heading">Tags:</div>
-<div class="field is-grouped is-grouped-multiline">
-  <div class="control">
-    <a href="/tags/kubernetes">
-      <span class="tag">Kubernetes</span>
-    </a>
-  </div>
-  <div class="control">
-    <a href="/tags/docker">
-      <span class="tag">Docker</span>
-    </a>
-  </div>
-  <div class="control">
-    <a href="/tags/network">
-      <span class="tag">Network</span>
-    </a>
-  </div>
-</div>
-
-      </div>
-
-    </section>
-
-    <section class="section">
-
-      
-      <script src="https://utteranc.es/client.js"
-        repo = "yingchi1994/HugoComments"
-        issue-term = "pathname"
-        theme = "github-light"
-        crossorigin="anonymous"
-        async>
-      </script>
-      <br>
-      
-      
-      <div class="container">
-  <div class="level">
-
-    <div class="level-left">
-      <div class="level-item">
-        <p class="control has-addons">
-          <a class="button" href="https://blog.yingchi.io/posts/2020/3/go-array-slice.html">
-            <span class="icon is-small"><i class="fa fa-chevron-left"></i></span>
-            <span class="is-hidden-touch is-hidden-desktop-only">
-              Go Array 与 Slice 原理
-            </span>
-            <span class="is-hidden-touch is-hidden-widescreen">
-              Go Array 与 Slice 原理
-            </span>
-            <span class="is-hidden-mobile is-hidden-desktop">
-              Go Array 与 Slice 原理
-            </span>
-            <span class="is-hidden-tablet">
-              Go Array 与 Slice 原理
-            </span>
-            
-          </a>
-        </p>
-      </div>
     </div>
 
-    <div class="level-right">
-      <div class="level-item">
-        <p class="control has-addons">
-          <a class="button" href="#" disabled>
-            <span>Oldest</span>
-            <span class="icon is-small"><i class="fa fa-chevron-right"></i></span>
-          </a>
-        </p>
-      </div>
-    </div>
 
-  </div>
+        </div>
+    </div>
 </div>
 
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/jquery.min.86b1e8f819ee2d9099a783e50b49dff24282545fc40773861f9126b921532e4c.js"
+        integrity="sha256-hrHo&#43;BnuLZCZp4PlC0nf8kKCVF/EB3OGH5EmuSFTLkw="
+        crossorigin="anonymous"></script>
 
-      <br>
 
-      
-      
 
-      <br>
-      
-      
-      
 
-    </section>
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/bundle.min.0f9c74cb78f13d1f15f33daff4037c70354f98acfbb97a6f61708966675c3cae.js"
+        integrity="sha256-D5x0y3jxPR8V8z2v9AN8cDVPmKz7uXpvYXCJZmdcPK4="
+        crossorigin="anonymous"></script>
 
-    <footer class="footer" 
-style="text-align: center; background-color: #ffffff;">
-  <div class="container">
-    <span style="font-size: small;">
-      <a href="https://yingchi.io/">yingchi.io</a>
-       © 2018-2020</span>
-    <span style="font-size: small;"> Joey.Jiang | 
-      <a href="https://gohugo.io/" style="text-decoration: none; color: rgb(61, 71, 131);">Hugo</a></span>
-  </div>
-</footer>
-
-  </body>
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/medium-zoom.min.92f21c856129f84aeb719459b3e6ac621a3032fd7b180a18c04e1d12083f8aba.js"
+        integrity="sha256-kvIchWEp&#43;ErrcZRZs&#43;asYhowMv17GAoYwE4dEgg/iro="
+        crossorigin="anonymous"></script>
+</body>
 
 </html>
-<style>
-
-body {
-  max-width: 1160px;
-  margin: 0 auto;
-}
-
-.container{
-  width: 800px;
-}
-
-.title-custom {
-  text-align: center;
-  margin-bottom: 10px;
-  font-size: 30px;
-  font-weight: bold;
-}
-
-.subtitle-custom {
-  text-align: center;
-  margin-bottom: 20px;
-  font-size: 18px;
-}
-
-.content-custom {
-    color: #000;
-    font-size: 16px;
-}
-
-.content-custom blockquote {
-    margin-bottom: 15px;
-    padding: 15px 0 15px 25px;
-    background: rgb(245, 246, 247);
-    border-left: 10px solid rgb(229, 232, 236);
-    border-radius: 5px;
-}
-
-.content-custom strong {
-    color: rgb(91, 127, 194);
-}
-
-.content-custom em {
-    font-style: normal;
-    font-weight: bold;
-}
-
-.content-custom p {
-    margin: 0 10px;
-}
-
-.content-custom ul{
-    margin: 25px;
-    padding: 10px 0;
-    background: rgb(245, 246, 247);
-    border-radius: 5px;
-    list-style-type: square;
-}
-
-.content-custom ul ul{
-    margin: 0px;
-    list-style-type: circle;
-    padding: 0;
-}
-
-.content-custom ol{
-    margin: 25px;
-    padding: 10px 0;
-    background: rgb(245, 246, 247);
-    border-radius: 5px;
-}
-
-.content-custom li {
-    margin: 5px 40px;
-}
-
-.content-custom img {
-    margin: 20px auto !important;
-    text-align: center;
-    clear: both;
-    display: block;
-    margin: auto;
-    width: 80%;
-}
-
-
-
-.content-custom pre{
-    color: rgb(224, 235, 247);
-    margin: 10px;
-    padding: 10px 20px;
-    border-radius: 5px;
-    box-shadow: 0px 0px 10px rgb(85, 94, 104);
-    background-color: rgb(85, 94, 104) !important;
-}
-
-.content-custom h1 {
-    font-size: 25px;
-    font-weight: bold;
-    margin: 20px 0 10px 0;
-    padding: 15px;
-     
-    border-bottom: 3px solid #555;
-}
-.content-custom h2 {
-    font-size: 20px;
-    font-weight: bold;
-    margin: 40px 0 20px 0;
-    padding: 10px;
-     
-    border-bottom: 2px solid #555;
-}
-.content-custom h3 {
-    font-size: 18px;
-    font-weight: bold;
-    margin: 16px 0 10px 0;
-    padding: 10px;
-     
-     
-}
-.content-custom h4 {
-    font-size: 16px;
-    font-weight: bold;
-    margin: 10px 0 10px 0;
-    padding: 10px;
-     
-     
-}
-
- 
-@media screen and (max-width: 960px){
-
-  body{
-    overflow-x: hidden;
-  }
-
-  .container{
-    width: 100%;
-  }
-
-  .content-custom img {
-    width: 100%;
-  }
-
-  .title-custom {
-    font-size: 22px;
-  }
-}
-
-
-</style>

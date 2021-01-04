@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en" data-theme=""><head>
+    <title> Joey Jiang | 理解 Golang Context 机制 </title>
+
+    
+    <meta charset="utf-8"><meta name="generator" content="Hugo 0.71.1" /><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="description" content="Infrastructure SRE / Golang / Python">
+    
+    <link rel="stylesheet"
+          href="https://blog.yingchi.io/css/style.min.8a9cc11a1afa7bd869914c587182281a374d06d6c3e09e330e86cfccf4908668.css"
+          integrity="sha256-ipzBGhr6e9hpkUxYcYIoGjdNBtbD4J4zDobPzPSQhmg="
+          crossorigin="anonymous"
+          type="text/css">
+    
+    <link rel="stylesheet"
+        href="https://blog.yingchi.io/css/markupHighlight.min.9755453ffb7bc4cd220f86ebb5922107b49f193cc62fc17e9785d27b33a8bf5b.css"
+        integrity="sha256-l1VFP/t7xM0iD4brtZIhB7SfGTzGL8F&#43;l4XSezOov1s="
+        crossorigin="anonymous"
+        type="text/css">
+    
+    <link rel="stylesheet" 
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" 
+    integrity="sha512-+4zCK9k+qNFUR5X+cKL9EIR+ZOhtIloNl9GIKS57V1MyNsYpYcUrUeQc9vNfzsWfV28IaLL3i96P9sdNyeRssA==" 
+    crossorigin="anonymous" />
+
+    
+    <link rel="shortcut icon" href="https://blog.yingchi.io/favicons/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://blog.yingchi.io/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://blog.yingchi.io/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://blog.yingchi.io/favicons/favicon-16x16.png">
+
+    <link rel="canonical" href="https://blog.yingchi.io/posts/2020/8/go-context.html">
+
+    
+    
+    
+    
+    <script type="text/javascript"
+            src="https://blog.yingchi.io/js/anatole-header.min.d8599ee07b7d3f11bafbac30657ccc591e8d7fd36a9f580cd4c09e24e0e4a971.js"
+            integrity="sha256-2Fme4Ht9PxG6&#43;6wwZXzMWR6Nf9Nqn1gM1MCeJODkqXE="
+            crossorigin="anonymous"></script>
+
+
+    
+        
+        
+        <script type="text/javascript"
+                src="https://blog.yingchi.io/js/anatole-theme-switcher.min.e289e9ebb2a4e7a7f895859c8a2b0da2de1ec73f22cea58d8475aa0597023837.js"
+                integrity="sha256-4onp67Kk56f4lYWciisNot4exz8izqWNhHWqBZcCODc="
+                crossorigin="anonymous"></script>
+    
+    <meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://blog.yingchi.io/images/site-feature-image.png"/>
+
+<meta name="twitter:title" content="理解 Golang Context 机制"/>
+<meta name="twitter:description" content="在使用 Golang 的一些框架的时候，比如 Gin，每一个请求的 Handler 方法总是需要传递进去一个 context 对象，然后很多请求数据，比如请求参数，路径变量等都可以从中读出来，其实在这个使用过程中已经大体理解了这个 context 是个什么东西，但是对于其中的一些细节包括具体的使用方式还是缺乏了解，因此本文就针对 golang 里面的 context 概念进行简单的探讨。"/>
+
+</head>
+<body><div class="sidebar animated fadeInDown ">
+    <div class="logo-title">
+        <div class="title">
+            <img src="https://blog.yingchi.io/images/profile.jpg" alt="profile picture">
+            <h2 title=""><a href="/">Yingchi&#39;s Blog</a></h2>
+            <div class="description">
+                <p>Infrastructure SRE / Golang / Python</p>
+            </div>
+        </div>
+    </div>
+    <ul class="social-links">
+        
+            <li>
+                <a href="https://yingchi.io" rel="me" aria-label="Home">
+                    <i class="fa fa-home" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            <li>
+                <a href="https://github.com/yingchi1994" rel="me" aria-label="GitHub">
+                    <i class="fab fa-github" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            <li>
+                <a href="mailto:yingchi1994@gmail.com" rel="me" aria-label="e-mail">
+                    <i class="fas fa-envelope" style="font-size:large;" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
+    <div class="tag-area">
+        
+<ul>
+  <li class="tag-list">
+    
+    <a href="/tags/cloud-native.html">
+      <span>
+        <span class="tag-yingchi">
+          Cloud Native
+          [<span style="color:rgb(255, 223, 79);">1</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/docker.html">
+      <span>
+        <span class="tag-yingchi">
+          Docker
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/golang.html">
+      <span>
+        <span class="tag-yingchi">
+          Golang
+          [<span style="color:rgb(255, 223, 79);">5</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/istio.html">
+      <span>
+        <span class="tag-yingchi">
+          Istio
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/kubernetes.html">
+      <span>
+        <span class="tag-yingchi">
+          Kubernetes
+          [<span style="color:rgb(255, 223, 79);">15</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/network.html">
+      <span>
+        <span class="tag-yingchi">
+          Network
+          [<span style="color:rgb(255, 223, 79);">4</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/note.html">
+      <span>
+        <span class="tag-yingchi">
+          Note
+          [<span style="color:rgb(255, 223, 79);">1</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+  <li class="tag-list">
+    
+    <a href="/tags/service-mesh.html">
+      <span>
+        <span class="tag-yingchi">
+          Service Mesh
+          [<span style="color:rgb(255, 223, 79);">2</span>]
+        </span>
+      </span>
+    </a>
+  </li>
+</ul>
+
+</div>
+
+
+
+
+    <div class="footer">
+        <div class="by_farbox">&copy; Joey Jiang  2021 </div>
+    </div>
+</div>
+<div class="main">
+    <div class="page-top  animated fadeInDown ">
+    <a role="button" class="navbar-burger" data-target="navMenu" aria-label="menu" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+    </a>
+    <ul class="nav" id="navMenu">
+        
+        
+            
+            <li><a 
+                   href="/"
+                        
+                   title="">Home</a></li>
+        
+            
+            <li><a 
+                   href="/posts.html"
+                        
+                   title="">Posts</a></li>
+        
+            
+            <li><a 
+                   href="/tags.html"
+                        
+                   title="">Tags</a></li>
+        
+            
+            <li><a 
+                   href="/about.html"
+                        
+                   title="">About</a></li>
+        
+        
+        
+            <li class="theme-switch-item">
+                <a class="theme-switch" title="Switch Theme">
+                    <i class="fas fa-adjust fa-fw" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+    <div class="autopagerize_page_element">
+        <div class="content">
+    <div class="post  animated fadeInDown ">
+        <div class="post-content">
+            <div class="post-title">
+                <h3>理解 Golang Context 机制</h3>
+                
+            </div>
+
+            <p>在使用 Golang 的一些框架的时候，比如 Gin，每一个请求的 Handler 方法总是需要传递进去一个 <strong>context</strong> 对象，然后很多请求数据，比如请求参数，路径变量等都可以从中读出来，其实在这个使用过程中已经大体理解了这个 context 是个什么东西，但是对于其中的一些细节包括具体的使用方式还是缺乏了解，因此本文就针对 golang 里面的 context 概念进行简单的探讨。</p>
+<h2 id="goroutine-并发控制的几种方式">Goroutine 并发控制的几种方式</h2>
+<p>我们知道 Golang 是一门擅长高并发的编程语言，可以通过 Goroutine 快速地创建并发任务，但是如何有效地管理这些执行的 Goroutine 是一个值得思考的问题。通常我们有下面几种方式实现 Goroutine 的控制：</p>
+<ul>
+<li>使用 <strong>WaitGroup</strong>，根 goroutine 通过 <code>add()</code> 来记录已经开启的 Goroutine 数量，通过 <code>wait()</code> 来等待执行任务的 goroutine 的 <code>done()</code>，实现同步的工作；</li>
+<li>使用 for/select + stop channel，通过向 stop channel 中传递 stop signal 实现 goroutine 的结束；</li>
+<li>使用 <strong>Context</strong>， 可以控制具有复杂层级关系的 goroutine 任务，此时使用前两种方式实现会比较复杂，使用 context 会更优雅；</li>
+</ul>
+<h2 id="context-原理概述">Context 原理概述</h2>
+<p>Goroutine 的创建和调用关系往往是有着层级关系的，顶部的 Goroutine 应有办法主动关闭其下属的 Goroutine 的执行。为了实现这种关系，Context 结构也应该像一棵树，叶子节点须总是由根节点衍生出来的。</p>
+<p>第一个创建 Context 的 goroutine 被称为 root 节点：root 节点负责创建一个实现 Context 接口的具体对象，并将该对象作为参数传递至新拉起的 goroutine 作为其上下文。下游 goroutine 继续封装该对象并以此类推向下传递。</p>
+<p>Context 可以安全的被多个 goroutine 使用。开发者可以把一个 Context 传递给任意多个 goroutine 然后 cancel 这个 context 的时候就能够通知到所有的 goroutine。</p>
+<p><strong>Context 接口源码</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#75715e">// A Context carries a deadline, cancelation signal, and request-scoped values
+</span><span style="color:#75715e">// across API boundaries. Its methods are safe for simultaneous use by multiple
+</span><span style="color:#75715e">// goroutines.
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">Context</span> <span style="color:#66d9ef">interface</span> {
+    <span style="color:#75715e">// Done returns a channel that is closed when this Context is canceled
+</span><span style="color:#75715e"></span>    <span style="color:#75715e">// or times out.
+</span><span style="color:#75715e"></span>    <span style="color:#a6e22e">Done</span>() <span style="color:#f92672">&lt;-</span><span style="color:#66d9ef">chan</span> <span style="color:#66d9ef">struct</span>{}
+
+    <span style="color:#75715e">// Err indicates why this context was canceled, after the Done channel
+</span><span style="color:#75715e"></span>    <span style="color:#75715e">// is closed.
+</span><span style="color:#75715e"></span>    <span style="color:#a6e22e">Err</span>() <span style="color:#66d9ef">error</span>
+
+    <span style="color:#75715e">// Deadline returns the time when this Context will be canceled, if any.
+</span><span style="color:#75715e"></span>    <span style="color:#a6e22e">Deadline</span>() (<span style="color:#a6e22e">deadline</span> <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Time</span>, <span style="color:#a6e22e">ok</span> <span style="color:#66d9ef">bool</span>)
+
+    <span style="color:#75715e">// Value returns the value associated with key or nil if none.
+</span><span style="color:#75715e"></span>    <span style="color:#a6e22e">Value</span>(<span style="color:#a6e22e">key</span> <span style="color:#66d9ef">interface</span>{}) <span style="color:#66d9ef">interface</span>{}
+}
+</code></pre></div><ul>
+<li>
+<p><strong>Done</strong> 方法在 Context 被取消或超时时返回一个 close 的 channel，close 的 channel 可以作为广播通知，告诉给 context 相关的函数要停止当前工作然后返回。</p>
+</li>
+<li>
+<p><strong>Err</strong> 方法返回 context 为什么被取消。</p>
+</li>
+<li>
+<p><strong>Deadline</strong> 返回 context 何时会超时。</p>
+</li>
+<li>
+<p><strong>Value</strong> 返回 context 相关的数据</p>
+</li>
+</ul>
+<h2 id="根-context-创建方法">根 Context 创建方法</h2>
+<p>顶部的Goroutine应有办法主动关闭其下属的Goroutine的执行（不然程序可能就失控了）。为了实现这种关系，Context结构也应该像一棵树，叶子节点须总是由根节点衍生出来的。</p>
+<p>有两种方式创建根 Context：</p>
+<ol>
+<li><code>context.Background()</code></li>
+<li><code>context.TODO()</code></li>
+</ol>
+<h3 id="contextbackground"><code>context.Background()</code></h3>
+<p>创建根 context 的第一种方式。</p>
+<p>在顶层 goroutine 中通过调用 <code>context.Background()</code> 可以返回一个空 Context，这个 Context 是 所有 Context 的 root，不能够被cancel。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">ctx</span>, <span style="color:#a6e22e">cancel</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">WithCancel</span>(<span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">Background</span>())
+</code></pre></div><h3 id="contexttodo"><code>context.TODO()</code></h3>
+<p>创建根 context 的第二种方式。</p>
+<p>一般情况使用 <code>Background()</code> 方法创建根 context。<code>TODO()</code> 用于当前不确定使用何种 context，留待以后调整。</p>
+<p>注意：不要传递 nil 的 context，在不确定使用何种 context 的时候应该使用 <strong>context.TODO()</strong></p>
+<h2 id="子-context-派生方法">子 Context 派生方法</h2>
+<p>父 context 被 cancel，那么它的派生 context 都会收到 cancel 信号，即 Done() 返回的 channel 读到数据。</p>
+<p>有四种方法派生 context ：</p>
+<ol>
+<li><code>func WithCancel(parent Context) (ctx Context, cancel CancelFunc)</code></li>
+<li><code>func WithValue(parent Context, key, val interface{}) Context</code></li>
+<li><code>func WithDeadline(parent Context, d time.Time) (Context, CancelFunc)</code></li>
+<li><code>func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc)</code></li>
+</ol>
+<h3 id="contextwithcancel"><code>context.WithCancel()</code></h3>
+<p>最常用的一种 context 派生方式，接收一个父 context（可以是 background context，或其它 Context），返回一个派生的 context 以及一个用于控制的 cancel 函数对象。</p>
+<p>WithCancel 返回一个继承的 context，这个 <strong>context 在父 context 的 Done 被关闭时关闭自己的 Done 通道，或者在自己被 Cancel 的时候关闭自己的 Done</strong>。（<strong>注意：读关闭的 channel 返回类型零值</strong>）</p>
+<p>WithCancel 同时还返回一个取消函数 cancel，这个 cancel 用于取消当前的 Context，在父任务执行 <code>cancel()</code> 时，接收 context 的所有 goroutine 会从 Done() 返回的通道中读取到值从而退出。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">job</span>() {
+    <span style="color:#a6e22e">ctx</span>, <span style="color:#a6e22e">cancel</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">WithCancel</span>(<span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">Background</span>())
+    <span style="color:#66d9ef">go</span> <span style="color:#a6e22e">doSomething</span>(<span style="color:#a6e22e">ctx</span>)
+
+    <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Sleep</span>(<span style="color:#ae81ff">5</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Second</span>)
+    <span style="color:#a6e22e">cancel</span>()
+}
+
+<span style="color:#66d9ef">func</span> <span style="color:#a6e22e">doSomething</span>(<span style="color:#a6e22e">ctx</span> <span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">Context</span>) {
+    <span style="color:#66d9ef">for</span> {
+        <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Sleep</span>(<span style="color:#ae81ff">1</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Second</span>)
+        <span style="color:#66d9ef">select</span> {
+        <span style="color:#66d9ef">case</span> <span style="color:#f92672">&lt;-</span><span style="color:#a6e22e">ctx</span>.<span style="color:#a6e22e">Done</span>():
+            <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;done&#34;</span>)
+            <span style="color:#66d9ef">return</span>
+        <span style="color:#66d9ef">default</span>:
+            <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;working&#34;</span>)
+        }
+    }
+}
+</code></pre></div><h3 id="contextwithvalue"><code>context.WithValue()</code></h3>
+<p>派生一个携带信息的 context 用于传递。</p>
+<p>比如在 Request 中携带认证信息，携带用户数据等。</p>
+<p><code>WithValue(parent Context, key, val interface{})</code> 方法的参数包含三个部分：</p>
+<ul>
+<li><strong>parent</strong>，用于派生子 context 的父 context；</li>
+<li><strong>key</strong>，携带信息的 key，interface{} 类型；</li>
+<li><strong>value</strong>，携带信息的 value，interface{} 类型，通常在接收到信息后通过断言（<code>.(T)</code>）将 value 转换成正确的类型使用；</li>
+</ul>
+<p>接收 context 携带的信息可以使用 <code>ctx.Value(K)</code> 接收到 value（<strong>interface{}类型</strong>）</p>
+<h3 id="contextwithtimeout"><code>context.WithTimeout()</code></h3>
+<p>派生一个带有超时机制的 context。</p>
+<p>达到 Timeout 时长后，该 context 以及该 context 的子 context 会收到 cancel 信号退出。</p>
+<p>当然，如果在 Timeout 时长内调用 cancel，则会提前发送 cancel 信号退出。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">ctx</span>, <span style="color:#a6e22e">cancel</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">WithTimeout</span>(<span style="color:#a6e22e">parentCtx</span>, <span style="color:#ae81ff">5</span><span style="color:#f92672">*</span><span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Second</span>)
+</code></pre></div><h3 id="contextwithdeadline"><code>context.WithDeadline()</code></h3>
+<p>派生一个带有绝对时限的 context，与 <code>WithTimeout()</code> 作用基本相同，仅仅是时间设定方式上不同。</p>
+<p>达到 deadline 设定的时间后，该 context 以及该 context 的子 context 会收到 cancel 信号退出。</p>
+<p>当然，如果在 deadline 之前调用 cancel，则会提前发送 cancel 信号退出。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">ctx</span>, <span style="color:#a6e22e">cancel</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">WithDeadline</span>(<span style="color:#a6e22e">parentCtx</span>, <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Now</span>().<span style="color:#a6e22e">Add</span>(<span style="color:#ae81ff">5</span><span style="color:#f92672">*</span><span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Second</span>))
+</code></pre></div><h2 id="层级-context-间的传递与控制">层级 Context 间的传递与控制</h2>
+<ul>
+<li><strong>生命周期</strong>：Context 对象的生命周期一般仅为一个请求的处理周期。即针对一个请求创建一个 Context 变量（它为 Context 树的根）；在请求处理结束后，撤销此 ctx 变量，释放资源。</li>
+<li><strong>传递方式</strong>：每次创建一个 Goroutine，要么将原有的 Context 传递给 Goroutine，要么创建一个子 Context 并传递给 Goroutine。</li>
+<li><strong>安全读写</strong>：Context能灵活地存储不同类型、不同数目的值，并且使多个 Goroutine 安全地读写其中的值。</li>
+<li><strong>控制权</strong>：当通过父 Context 对象创建子 Context 对象时，可同时获得子 Context 的一个 Cancel 函数对象，这样就获得了对子任务的控制权。</li>
+</ul>
+<h2 id="使用原则">使用原则</h2>
+<ul>
+<li>传递 Context 时，不应把 Context 放入 struct，而应该显式地传入函数，并且放在参数列表第一个位置，通常命名为 ctx；</li>
+<li>不要传递 nil 的 Context，在不确定的时候应该传递 <code>context.TODO()</code>；</li>
+<li>使用 context 的 Value 相关方法时只应该用于传递和请求相关的元数据，不要用它传递一些可选参数；</li>
+<li>同一个 context 可以传递到不同的 goroutine 中，且在多个 goroutine 可以安全访问；</li>
+</ul>
+<h2 id="参考">参考</h2>
+<ul>
+<li><a href="https://www.sohu.com/a/302713513_99930294">https://www.sohu.com/a/302713513_99930294</a></li>
+<li><a href="https://www.cnblogs.com/zhangboyu/p/7456606.html">https://www.cnblogs.com/zhangboyu/p/7456606.html</a></li>
+<li><a href="https://www.cnblogs.com/sunlong88/p/11272559.html">https://www.cnblogs.com/sunlong88/p/11272559.html</a></li>
+<li><a href="https://www.bbsmax.com/A/1O5E3Dg3z7/">https://www.bbsmax.com/A/1O5E3Dg3z7/</a></li>
+</ul></div>
+        <div class="post-footer">
+            <div class="info">
+                
+                <span class="separator"><a class="tag" href="/tags/golang/">golang</a></span>
+
+            </div>
+        </div>
+
+        
+    </div>
+
+
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/jquery.min.86b1e8f819ee2d9099a783e50b49dff24282545fc40773861f9126b921532e4c.js"
+        integrity="sha256-hrHo&#43;BnuLZCZp4PlC0nf8kKCVF/EB3OGH5EmuSFTLkw="
+        crossorigin="anonymous"></script>
+
+
+
+
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/bundle.min.0f9c74cb78f13d1f15f33daff4037c70354f98acfbb97a6f61708966675c3cae.js"
+        integrity="sha256-D5x0y3jxPR8V8z2v9AN8cDVPmKz7uXpvYXCJZmdcPK4="
+        crossorigin="anonymous"></script>
+
+<script type="text/javascript"
+        src="https://blog.yingchi.io/js/medium-zoom.min.92f21c856129f84aeb719459b3e6ac621a3032fd7b180a18c04e1d12083f8aba.js"
+        integrity="sha256-kvIchWEp&#43;ErrcZRZs&#43;asYhowMv17GAoYwE4dEgg/iro="
+        crossorigin="anonymous"></script>
+</body>
+
+</html>
