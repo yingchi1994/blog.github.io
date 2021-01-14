@@ -34,6 +34,25 @@ p code {
   background-color: #f8f8f8;
 }
 
+/* 移动端 */
+@media (max-width: 480px) {
+  #navbar {
+    padding: 32px;
+  }
+}
+
+/* 大于720px */
+@media (min-width: 720px) {
+  #tag-cloud  { 
+    display: block; 
+    top: 100px;
+    -webkit-transition: opacity .5s, visibility .5s;
+    transition: opacity .5s, visibility .5s;
+  }
+}
+
+
+
 #tag-cloud { max-width: 250px; }
 #contents-list>.toc-list { 
   max-width: 250px; 
@@ -41,16 +60,15 @@ p code {
   position: fixed;
   right: 2rem;
 }
+
+/* 移动端 & 平板 */
 @media (min-width: 1200px) {
-  #contents-list>.toc-list, #tag-cloud  { 
+  #contents-list>.toc-list { 
     display: block; 
     top: 100px;
   }
-  #tag-cloud {
-    -webkit-transition: opacity .5s, visibility .5s;
-    transition: opacity .5s, visibility .5s;
-  }
 }
+
 @media (min-width: 1330px) { #contents-list>.toc-list { max-width: 300px; right: 3rem;}}
 #contents-list ol { list-style: none; }
 

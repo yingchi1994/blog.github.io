@@ -58,7 +58,7 @@ type="image/x-icon"/>
 <body class="global-font">
   <nav class=" flex-ns justify-between border-box pa3 pl3-l pr2-l mt1 mt0-ns" id="navbar">
   <div class="flex">
-    <a class="f4 fw6 ttu no-underline dim bg-main-color pv1 ph2 br2" id="site-title" href='/' title="Home">Yingchi Blog</a>
+    <a class="f4 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" id="site-title" href='/' title="Home">Yingchi Blog</a>
   </div>
   
   <div class=" flex-ns mt2 mt0-ns pv1">
@@ -73,7 +73,41 @@ type="image/x-icon"/>
     
   </div>
   
+  
 </nav>
+
+
+<div 
+id="scroll-navbar" 
+class="scroll-navbar" 
+style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" 
+title="Test">
+<div>
+  <a 
+  class="f5 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2 mr3" 
+  id="site-title" 
+  href='/posts/2020/6/istio-sidecar-injection.html'
+  style="line-height: 40px;" 
+  title="Home">Yingchi Blog</a>
+</div>
+<div style="line-height: 20px;" onclick="topFunction()">
+  Istio Sidecar 注入机制
+</div>
+</div>
+
+
+<style>
+  .scroll-navbar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background-color: #fff;
+    color: #000;
+    text-align: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  }
+</style>
   
 <main class="center mv4 content-width ph3">
   <div class="f3 fw6 heading-color heading-font post-title">Istio Sidecar 注入机制</div>
@@ -284,7 +318,7 @@ Data
   </p>
 </div>
 
-  <footer class="content-width mt0 mt5-l mb4 f6 center ph3 gray tc tl-l">
+  <footer class="content-width mt0 mt5-l mb4 f6 center ph4 gray tc tl-l">
   <hr class="dn db-l ml0-l gray w3"><br>
   Powered by <a href="https://gohugo.io/" target="_blank" class="link gray dim">Hugo</a>, based on the <a href="https://github.com/lingxz/er" target="_blank" class="link gray dim">Er</a> theme. <br>
   © 2021 Joey.Jiang
@@ -317,8 +351,9 @@ window.onscroll = function() {
   }
   
 
+
   
-  if (document.body.scrollTop > 1000 || document.documentElement.scrollTop > 1000) {
+  if (document.body.scrollTop > 500 || document.documentElement.scrollTop > 500) {
       document.getElementById("scroll-to-top").style.display = "inline";
       document.getElementById("scroll-to-top").style.visibility = "visible";
       document.getElementById("scroll-to-top").style.opacity = "1";
@@ -327,14 +362,34 @@ window.onscroll = function() {
       document.getElementById("scroll-to-top").style.opacity = "0";
   }
   
+
+  
+  if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+      document.getElementById("scroll-navbar").style.display = "inline";
+      document.getElementById("scroll-navbar").style.visibility = "visible";
+      document.getElementById("scroll-navbar").style.opacity = "1";
+  } else {
+      document.getElementById("scroll-navbar").style.visibility = "hidden";
+      document.getElementById("scroll-navbar").style.opacity = "0";
+  }
+
   prevScrollpos = currentScrollPos;
+
 }
+
 
 
 function topFunction() {
   document.body.scrollTop = 0; 
   document.documentElement.scrollTop = 0; 
 }
+
+
+
+
+
+
+
 
 
 
