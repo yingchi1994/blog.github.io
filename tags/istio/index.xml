@@ -6,6 +6,7 @@
     <description>Recent content in istio on Yingchi Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
+    <copyright>© 2021 Joey.Jiang</copyright>
     <lastBuildDate>Mon, 22 Jun 2020 16:23:17 +0800</lastBuildDate>
     
 	<atom:link href="https://blog.yingchi.io/tags/istio/index.xml" rel="self" type="application/rss+xml" />

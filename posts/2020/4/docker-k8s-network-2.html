@@ -1,240 +1,90 @@
-<!DOCTYPE html>
-<html lang="en" data-theme=""><head>
-    <title> Joey Jiang | Kubernetes &amp; Docker 网络原理（二） </title>
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta content='text/html; charset=utf-8' http-equiv='content-type' />
 
-    
-    <meta charset="utf-8"><meta name="generator" content="Hugo 0.71.1" /><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <meta name="description" content="Infrastructure SRE / Golang / Python">
-    
-    <link rel="stylesheet"
-          href="https://blog.yingchi.io/css/style.min.6e0d9ffda91065e50deabfa54622d049fd42d3343eca4ed01eb515705f5dd317.css"
-          integrity="sha256-bg2f/akQZeUN6r&#43;lRiLQSf1C0zQ&#43;yk7QHrUVcF9d0xc="
-          crossorigin="anonymous"
-          type="text/css">
-    
-    <link rel="stylesheet"
-        href="https://blog.yingchi.io/css/markupHighlight.min.9755453ffb7bc4cd220f86ebb5922107b49f193cc62fc17e9785d27b33a8bf5b.css"
-        integrity="sha256-l1VFP/t7xM0iD4brtZIhB7SfGTzGL8F&#43;l4XSezOov1s="
-        crossorigin="anonymous"
-        type="text/css">
-    
-    <link rel="stylesheet" 
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" 
-    integrity="sha512-+4zCK9k+qNFUR5X+cKL9EIR+ZOhtIloNl9GIKS57V1MyNsYpYcUrUeQc9vNfzsWfV28IaLL3i96P9sdNyeRssA==" 
-    crossorigin="anonymous" />
-
-    
-    <link rel="shortcut icon" href="https://blog.yingchi.io/favicons/favicon.ico" type="image/x-icon">
-    <link rel="apple-touch-icon" sizes="180x180" href="https://blog.yingchi.io/favicons/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="https://blog.yingchi.io/favicons/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="https://blog.yingchi.io/favicons/favicon-16x16.png">
-
-    <link rel="canonical" href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-2.html">
-
-    
-    
-    
-    
-    <script type="text/javascript"
-            src="https://blog.yingchi.io/js/anatole-header.min.d8599ee07b7d3f11bafbac30657ccc591e8d7fd36a9f580cd4c09e24e0e4a971.js"
-            integrity="sha256-2Fme4Ht9PxG6&#43;6wwZXzMWR6Nf9Nqn1gM1MCeJODkqXE="
-            crossorigin="anonymous"></script>
+  <title>Kubernetes &amp; Docker 网络原理（二） - Yingchi Blog</title>
+  <meta content='Kubernetes &amp; Docker 网络原理（二） - Yingchi Blog' property='title' />
+  <meta content='Kubernetes &amp; Docker 网络原理（二） - Yingchi Blog' property='og:title' />
 
 
-    
-    <meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:image" content="https://blog.yingchi.io/images/site-feature-image.png"/>
-
-<meta name="twitter:title" content="Kubernetes &amp; Docker 网络原理（二）"/>
-<meta name="twitter:description" content="Kubernetes Pod 间通信 之前的文章中主要关于 Docker 的网络实现进行了介绍和探讨，对于 Docker 网络而言，其最大的局限性在于跨主机的容器通信方案上存在空白，而 Kubernetes 作为适合大规模分布式集群的容器编排平台，其在网络实现层面上主要解决的问题就包括了如下几点：
+<meta property="og:description" content="Kubernetes Pod 间通信 之前的文章中主要关于 Docker 的网络实现进行了介绍和探讨，对于 Docker 网络而言，其最大的局限性在于跨主机的容器通信方案上存在空白，而 Kubernetes 作为适合大规模分布式集群的容器编排平台，其在网络实现层面上主要解决的问题就包括了如下几点：
  容器间通信； Pod 间通信； Pod 与 Service 通信； 集群内外通信；  这篇博文主要针对 Kubernetes 的容器间通信和 Pod 间通信进行介绍和探讨，之后再通过单独一篇文章去探讨 Pod 与 Service 的通信，也就是 kube-proxy 工作原理和 Service 机制相关。
 容器间通信 学习 Kubernetes 的容器间通信方案之前要理解 Kubernetes 中的 Pod 概念，Pod 是 Kubernetes 中最基本的调度单位，而不是 Docker 容器，Pod 的本意是豆荚，可以将容器理解为豆荚中的豆子，一个 Pod 可以包含多个有关联关系的容器，之后讨论的 Pod 与 Service 的通信也是从 Pod 层面而言的。这是必须要提前认识的概念，但是在底层，还是涉及到容器之间的通信，毕竟 Pod 只是一个抽象概念。
 同一个 Pod 内的容器不会跨主机通信，它们共享同一个 Network Namesapce 空间，共享同一个 Linux 协议栈。所以对于网络的各类操作，因此可以把一个 Pod 视作一个独立的「主机」，内部的容器可以用 localhost 地址访问彼此的端口。这么做的结果是简单、安全和高效，也能减小将已经存在的程序从物理机或者虚拟机移植到容器下运行的难度。
-如图，Node 上运行着一个 Pod 实例，Pod 内部的容器共享同一个 Network Namespace，因此容器1和容器2之间的通信非常简单，就可以通过直接的本地 IPC 方式通信，对于网络应用，可以直接通过 localhost 访问指定端口通信。因此对于一些传统程序想要移植到 Pod 中，几乎不需要做太多的修改。"/>
+如图，Node 上运行着一个 Pod 实例，Pod 内部的容器共享同一个 Network Namespace，因此容器1和容器2之间的通信非常简单，就可以通过直接的本地 IPC 方式通信，对于网络应用，可以直接通过 localhost 访问指定端口通信。因此对于一些传统程序想要移植到 Pod 中，几乎不需要做太多的修改。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-2.html" />
 
+
+<meta property="article:published_time" content="2020-04-12T21:45:23&#43;08:00"/>
+
+<meta property="article:modified_time" content="2020-04-12T21:45:23&#43;08:00"/>
+
+<meta property="og:site_name" content="Yingchi&#39;s Blog" />
+
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.71.1" />
+
+<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600" rel="stylesheet">
+<style type="text/css">/*https://coolors.co/afd5aa-f0f2ef-a69f98-3d3d3d-8c6057*/
+:root {
+  --main-color: #8C6056; 
+  --secondary-color: #AFD5AA;
+  --logo-text-color: #fff;
+  --body-text-color: #3d3d3d;
+  --heading-text-color: #383838;
+  --background-color: #fff;
+}</style>
+<link href='/css/tachyons.min.css' rel="stylesheet">
+<link href='/css/styles.css' rel="stylesheet">
+
+
+<link rel="icon" 
+
+  href="/favicons/" 
+
+type="image/x-icon"/>
+
+<link href='/feed.xml' rel="alternate" type="application/atom+xml" title="Yingchi Blog" />
 </head>
-<body><div class="sidebar animated fadeInDown ">
-    <div class="logo-title">
-        <div class="title">
-            <img src="https://blog.yingchi.io/images/profile.jpg" alt="profile picture">
-            <h2 title=""><a href="/">Yingchi&#39;s Blog</a></h2>
-            <div class="description">
-                <p>Infrastructure SRE / Golang / Python</p>
-            </div>
-        </div>
-    </div>
-    <ul class="social-links">
-        
-            <li>
-                <a href="https://yingchi.io" rel="me" aria-label="Home">
-                    <i class="fa fa-home" style="font-size:large;" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-            <li>
-                <a href="https://github.com/yingchi1994" rel="me" aria-label="GitHub">
-                    <i class="fab fa-github" style="font-size:large;" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-            <li>
-                <a href="mailto:yingchi1994@gmail.com" rel="me" aria-label="e-mail">
-                    <i class="fas fa-envelope" style="font-size:large;" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-    </ul>
+<body class="global-font">
+  <nav class=" flex-ns justify-between border-box pa3 pl3-l pr2-l mt1 mt0-ns" id="navbar">
+  <div class="flex">
+    <a class="f4 fw6 ttu no-underline dim bg-main-color pv1 ph2 br2" id="site-title" href='/' title="Home">Yingchi Blog</a>
+  </div>
+  
+  <div class=" flex-ns mt2 mt0-ns pv1">
     
-    <div class="tag-area">
-        
-<ul>
-  <li class="tag-list">
+      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/' title="Home">Home</a>
     
-    <a href="/tags/cloud-native.html">
-      <span>
-        <span class="tag-yingchi">
-          Cloud Native
-          [<span>1</span>]
-        </span>
-      </span>
-    </a>
-  </li>
-  <li class="tag-list">
+      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/posts.html' title="Posts">Posts</a>
     
-    <a href="/tags/docker.html">
-      <span>
-        <span class="tag-yingchi">
-          Docker
-          [<span>2</span>]
-        </span>
-      </span>
-    </a>
-  </li>
-  <li class="tag-list">
+      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/tags.html' title="Tags">Tags</a>
     
-    <a href="/tags/golang.html">
-      <span>
-        <span class="tag-yingchi">
-          Golang
-          [<span>5</span>]
-        </span>
-      </span>
-    </a>
-  </li>
-  <li class="tag-list">
+      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/about.html' title="About">About</a>
     
-    <a href="/tags/istio.html">
-      <span>
-        <span class="tag-yingchi">
-          Istio
-          [<span>2</span>]
-        </span>
-      </span>
-    </a>
-  </li>
-  <li class="tag-list">
+  </div>
+  
+</nav>
+  
+<main class="center mv4 content-width ph3">
+  <div class="f3 fw6 heading-color heading-font post-title">Kubernetes &amp; Docker 网络原理（二）</div>
+  <p class="silver f6 mt1 mb4 post-meta">
+    <time>12 Apr 2020</time> 
+     | 
     
-    <a href="/tags/kubernetes.html">
-      <span>
-        <span class="tag-yingchi">
-          Kubernetes
-          [<span>15</span>]
-        </span>
-      </span>
-    </a>
-  </li>
-  <li class="tag-list">
     
-    <a href="/tags/network.html">
-      <span>
-        <span class="tag-yingchi">
-          Network
-          [<span>4</span>]
-        </span>
-      </span>
-    </a>
-  </li>
-  <li class="tag-list">
+    tags: [ <a href='/tags/kubernetes' class="link silver">kubernetes</a> <a href='/tags/network' class="link silver">network</a>  ]
     
-    <a href="/tags/note.html">
-      <span>
-        <span class="tag-yingchi">
-          Note
-          [<span>1</span>]
-        </span>
-      </span>
-    </a>
-  </li>
-  <li class="tag-list">
-    
-    <a href="/tags/service-mesh.html">
-      <span>
-        <span class="tag-yingchi">
-          Service Mesh
-          [<span>2</span>]
-        </span>
-      </span>
-    </a>
-  </li>
-</ul>
-
-</div>
-
-
-    <div class="footer">
-        <div class="by_farbox">&copy; Joey Jiang  2021 </div>
-    </div>
-</div>
-<div class="main">
-    <div class="page-top  animated fadeInDown ">
-    <div class="mobile-logo"><a href="/">Yingchi's Blog</a></div>
-    <a role="button" class="navbar-burger" data-target="navMenu" aria-label="menu" aria-expanded="false">
-        <span aria-hidden="true"></span>
-        <span aria-hidden="true"></span>
-        <span aria-hidden="true"></span>
-    </a>
-    <ul class="nav" id="navMenu">
-        
-        
-            
-            <li><a 
-                   href="/"
-                        
-                   title="">Home</a></li>
-        
-            
-            <li><a 
-                   href="/posts.html"
-                        
-                   title="">Posts</a></li>
-        
-            
-            <li><a 
-                   href="/tags.html"
-                        
-                   title="">Tags</a></li>
-        
-            
-            <li><a 
-                   href="/about.html"
-                        
-                   title="">About</a></li>
-        
-        
-        
-    </ul>
-</div>
-
-    <div class="autopagerize_page_element">
-        <div class="content">
-    <div class="post  animated fadeInDown ">
-        <div class="post-content">
-            <div class="post-title">
-                <h3>Kubernetes &amp; Docker 网络原理（二）</h3>
-                
-            </div>
-
-            <h1 id="kubernetes-pod-间通信">Kubernetes Pod 间通信</h1>
+  </p>
+  <div class="lh-copy post-content"><h1 id="kubernetes-pod-间通信">Kubernetes Pod 间通信</h1>
 <p>之前的文章中主要关于 Docker 的网络实现进行了介绍和探讨，对于 Docker 网络而言，其最大的局限性在于跨主机的容器通信方案上存在空白，而 Kubernetes 作为适合大规模分布式集群的容器编排平台，其在网络实现层面上主要解决的问题就包括了如下几点：</p>
 <ul>
 <li>容器间通信；</li>
@@ -273,39 +123,101 @@
 <p><img src="docker-k8s-network-2/image-20200712135259615.png" alt="image-20200712135259615"></p>
 <p>一些知名的云平台本身就设计实现 Pod 的 IP 管理，因此 Pod 的通信可以借助平台层的网络设计打通，但是在大部分情况下，尤其是一般企业自己维护的 Kubernetes 集群上，可能无法享受到这种机制，因此还需要自己进行相关的网络配置，让网络满足 Kuberntes 的要求之后才能实现 Pod 之前的正常通信，进而实现集群的正常运转，就像上面第一点中说的那样，好在 Kubernetes 的高可扩展性，通过 CNI 机制，一些网络增强组件（Flannel、Calico 等）实现了上面这些网络要求。但是基本的原理，基本的需求是上面描述的，这个是必须要理解的，但是对于其实际实现，每个增强组件都有自己的实现方案，这里没法一个一个去详细介绍，心有余而力不足，真有时间的话会好好研究并且撰写相关的博文与大家分享。</p>
 </div>
-        <div class="post-footer">
-            <div class="info">
-                
-                <span class="separator"><a class="tag" href="/tags/kubernetes/">kubernetes</a><a class="tag" href="/tags/network/">network</a></span>
-
-            </div>
-        </div>
-
-        
-    </div>
+</main>
+ 
 
 
-        </div>
-    </div>
+
+
+
+
+<div class="tl fixed list-pages lh-copy" id="contents-list"></div>
+
+
+
+<div class="pagination tc tr-l db fixed-l bottom-2-l right-2-l mb3 mb0-l">
+  
+<a id="scroll-to-top" class="f6 o-0 link br2 ph2 pv1 mb1 bg-main-color pointer" onclick="topFunction()" style="color: #fff; visibility: hidden; display: none; transition: opacity .5s, visibility .5s;" title="back to top">back to top</a>
+<br>
+  <p class="mb0 mt2">
+  <a href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-1.html">prev post</a>
+  <a href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-3.html">next post</a>
+  </p>
 </div>
 
-<script type="text/javascript"
-        src="https://blog.yingchi.io/js/jquery.min.86b1e8f819ee2d9099a783e50b49dff24282545fc40773861f9126b921532e4c.js"
-        integrity="sha256-hrHo&#43;BnuLZCZp4PlC0nf8kKCVF/EB3OGH5EmuSFTLkw="
-        crossorigin="anonymous"></script>
+  <footer class="content-width mt0 mt5-l mb4 f6 center ph3 gray tc tl-l">
+  <hr class="dn db-l ml0-l gray w3"><br>
+  Powered by <a href="https://gohugo.io/" target="_blank" class="link gray dim">Hugo</a>, based on the <a href="https://github.com/lingxz/er" target="_blank" class="link gray dim">Er</a> theme. <br>
+  © 2021 Joey.Jiang
+</footer>
+  
+
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.css">
+<style>.is-active-link::before { background-color: var(--secondary-color); }</style>
 
 
 
 
-<script type="text/javascript"
-        src="https://blog.yingchi.io/js/bundle.min.0f9c74cb78f13d1f15f33daff4037c70354f98acfbb97a6f61708966675c3cae.js"
-        integrity="sha256-D5x0y3jxPR8V8z2v9AN8cDVPmKz7uXpvYXCJZmdcPK4="
-        crossorigin="anonymous"></script>
+<script type="text/javascript">
+var prevScrollpos = window.pageYOffset;
+window.onscroll = function() {
+  var currentScrollPos = window.pageYOffset;
 
-<script type="text/javascript"
-        src="https://blog.yingchi.io/js/medium-zoom.min.92f21c856129f84aeb719459b3e6ac621a3032fd7b180a18c04e1d12083f8aba.js"
-        integrity="sha256-kvIchWEp&#43;ErrcZRZs&#43;asYhowMv17GAoYwE4dEgg/iro="
-        crossorigin="anonymous"></script>
+  
+  if (document.getElementById("tag-cloud") !== null) { 
+    if (prevScrollpos > currentScrollPos) { 
+      document.getElementById("tag-cloud").style.visibility = "visible";
+      document.getElementById("tag-cloud").style.opacity = "1";
+    } else {
+      document.getElementById("tag-cloud").style.visibility = "hidden";
+      document.getElementById("tag-cloud").style.opacity = "0";
+    }
+  }
+  
+
+  
+  if (document.body.scrollTop > 1000 || document.documentElement.scrollTop > 1000) {
+      document.getElementById("scroll-to-top").style.display = "inline";
+      document.getElementById("scroll-to-top").style.visibility = "visible";
+      document.getElementById("scroll-to-top").style.opacity = "1";
+  } else {
+      document.getElementById("scroll-to-top").style.visibility = "hidden";
+      document.getElementById("scroll-to-top").style.opacity = "0";
+  }
+  
+  prevScrollpos = currentScrollPos;
+}
+
+
+function topFunction() {
+  document.body.scrollTop = 0; 
+  document.documentElement.scrollTop = 0; 
+}
+
+
+
+
+
+
+if (document.getElementById("contents-list") !== null && document.getElementsByClassName("post-content").length !== 0) { 
+  tocbot.init({
+    
+    tocSelector: '#contents-list',
+    
+    contentSelector: '.post-content',
+    
+    headingSelector: 'h1, h2, h3',
+  });
+}
+
+
+</script>
+
+
+
+
 </body>
-
 </html>

@@ -6,6 +6,7 @@
     <description>Recent content in docker on Yingchi Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
+    <copyright>© 2021 Joey.Jiang</copyright>
     <lastBuildDate>Sat, 11 Apr 2020 22:14:12 +0800</lastBuildDate>
     
 	<atom:link href="https://blog.yingchi.io/tags/docker/index.xml" rel="self" type="application/rss+xml" />
