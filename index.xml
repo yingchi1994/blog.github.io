@@ -13,6 +13,24 @@
     
     
     <item>
+      <title></title>
+      <link>https://blog.yingchi.io/posts.html</link>
+      <pubDate>Thu, 14 Jan 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.yingchi.io/posts.html</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Contact</title>
+      <link>https://blog.yingchi.io/contact.html</link>
+      <pubDate>Thu, 14 Jan 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.yingchi.io/contact.html</guid>
+      <description></description>
+    </item>
+    
+    <item>
       <title>个人介绍</title>
       <link>https://blog.yingchi.io/about.html</link>
       <pubDate>Mon, 04 Jan 2021 00:00:00 +0000</pubDate>
@@ -347,15 +365,6 @@ L2：Bridge（网桥）、Switch(交换机/多端口网桥) 现在到网络模�
       <pubDate>Tue, 28 May 2019 00:00:00 +0000</pubDate>
       
       <guid>https://blog.yingchi.io/archives.html</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Contact</title>
-      <link>https://blog.yingchi.io/contact.html</link>
-      <pubDate>Fri, 08 Mar 2019 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.yingchi.io/contact.html</guid>
       <description></description>
     </item>
     

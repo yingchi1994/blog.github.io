@@ -37,7 +37,7 @@ p code {
 /* 移动端 */
 @media (max-width: 480px) {
   #navbar {
-    padding: 32px;
+    padding: 12px 0 0 32px;
   }
 }
 
