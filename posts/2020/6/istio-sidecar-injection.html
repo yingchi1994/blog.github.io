@@ -1,125 +1,363 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta content='text/html; charset=utf-8' http-equiv='content-type' />
-
-  <title>Istio Sidecar 注入机制 - Yingchi Blog</title>
-  <meta content='Istio Sidecar 注入机制 - Yingchi Blog' property='title' />
-  <meta content='Istio Sidecar 注入机制 - Yingchi Blog' property='og:title' />
+<!DOCTYPE html>
+<html lang="zh-cn" class="js csstransforms3d">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
 
 
-<meta property="og:description" content="Service Mesh 及 Sidecar 概念 在了解 Sidecar 的注入机制前还是先要明确是什么和为什么的问题。
-首先，Service Mesh 是什么？
-Service Mesh，或者翻译为「服务网格」，是一个可配置的低延迟的基础设施层，目的是通过API（应用程序编程接口）处理应用程序服务之间的大量基于网络的进程间通信。服务网络确保容器化的短暂存在的应用程序的基础结构服务之间的通信快速，可靠和安全。网格提供关键功能，包括服务发现，负载平衡，加密，可观察性，可追溯性，身份验证和授权，以及对断路器模式的支持。其实服务网格的目的说的最简单就是「接管和治理应用程序间的通信」，其中有个最为核心的要点就是，通信，基于 Service Mesh 的服务治理就是在服务的通信或者说调用过程中「做手脚」，离开这一点，Service Mesh 毫无意义，当然，这个应用程序似乎也没有意义了。如下图所示，就是典型的 Service Mesh 基础设施层架构。
-可以看到分为 Control Plane 和 Data Plane，Control Plane 的主要作用就是治理规则的控制与下发，而 Data Plane 的主要作用就是处理服务实例间的通信过程，实施指定的治理策略。Data Plane 中就可以看到今天的主角，也就是 Sidecar，正如图中标识的，Sidecar 最准确的表述应该是 「Sidecar Proxy」，它的本质是一个代理组件，这个组件会被直接注入到服务实例相同的 Network Namesapce 下，在 Kubernetes 中，就是注入到 Pod 里面，此时 Sidecar 与服务实例共享 Pod Network Namespace，可以通过 iptables 对流经实例的 inbound 和 outbound 流量进行相应的规则处理。
-本文主要基于 Istio 这个 Service Mesh 实现针对 Sidecar 的注入机制进行分析。
-Admission Controller 与 Admission Webhook Sidecar 的注入依赖于 Kubernetes 的几个概念，其中比较核心的就是 Admission Controller 和 Admission Webhook。" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://blog.yingchi.io/posts/2020/6/istio-sidecar-injection.html" />
+    
+    <title>Istio Sidecar 注入机制 :: Altinn digitalisering - Utvikling</title>
+    
+    <link rel="shortcut icon" href="/images/favicon.png" type="image/x-icon" />
+    <link href="/css/nucleus.css" rel="stylesheet">
+    <link href="/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/css/hybrid.css" rel="stylesheet">
+    <link href="/css/horsey.css" rel="stylesheet">
+    <link href="/css/fortawesome.css" rel="stylesheet">
+    <link href="/css/designsystem.css" rel="stylesheet">
+    
+    <link href="/css/theme.css" rel="stylesheet">
+    
+    
+    
+    <script src="/js/jquery-2.x.min.js"></script>
 
+    
+<link href="/css/altinndigitalisering.css" rel="stylesheet">
 
-<meta property="article:published_time" content="2020-06-21T21:31:42&#43;08:00"/>
+<link href="/css/altinn.css" rel="stylesheet">
 
-<meta property="article:modified_time" content="2020-06-21T21:31:42&#43;08:00"/>
+    <style>
+      :root #header + #content > #left > #rlblock_left {
+        display:none !important;
+      }
+    </style>
+  </head>
 
-<meta property="og:site_name" content="Yingchi&#39;s Blog" />
-
-
-
-
-
-
-
-<meta name="generator" content="Hugo 0.71.1" />
-
-<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600" rel="stylesheet">
-<style type="text/css">/*https://coolors.co/afd5aa-f0f2ef-a69f98-3d3d3d-8c6057*/
-:root {
-  --main-color: #8C6056; 
-  --secondary-color: #AFD5AA;
-  --logo-text-color: #fff;
-  --body-text-color: #3d3d3d;
-  --heading-text-color: #383838;
-  --background-color: #fff;
-}</style>
-<link href='/css/tachyons.min.css' rel="stylesheet">
-<link href='/css/styles.css' rel="stylesheet">
-
-
-<link rel="icon" 
-
-  href="/favicons/" 
-
-type="image/x-icon"/>
-
-<link href='/feed.xml' rel="alternate" type="application/atom+xml" title="Yingchi Blog" />
-</head>
-<body class="global-font">
-  <nav class=" flex-ns justify-between border-box pa3 pl3-l pr2-l mt1 mt0-ns" id="navbar">
-  <div class="flex">
-    <a class="f4 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" id="site-title" href='/' title="Home">Yingchi Blog</a>
-  </div>
   
-  <div class=" flex-ns mt2 mt0-ns pv1">
+
+  <body class="a-page" data-url="/posts/2020/6/istio-sidecar-injection.html">
     
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/' title="Home">Home</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/posts.html' title="Posts">Posts</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/tags.html' title="Tags">Tags</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/about.html' title="About">About</a>
-    
-  </div>
-  
-  
-</nav>
+<div class="mobile-navbar">
+  <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+    <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+      <i class="fa fa-bars"></i>
+      <span class="sr-only">Vis/skjul meny</span>
+    </a>
+  </span>
+  <a href="https://blog.yingchi.io/posts/2020/6/istio-sidecar-injection.html">Yingchi Blog</a>
+</div>
+
 
 
 <div 
 id="scroll-navbar" 
 class="scroll-navbar" 
-style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" 
-title="Test">
-<div>
-  <a 
-  class="f5 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" 
-  id="site-title" 
-  href='https://blog.yingchi.io/'
-  style="line-height: 40px;" 
-  title="Home">Yingchi Blog</a>
+style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" >
+<a href="https://blog.yingchi.io/posts/2020/6/istio-sidecar-injection.html" style="text-decoration: none; color:#fff">Istio Sidecar 注入机制</a>
 </div>
-<div class="fw5" style="line-height: 20px;" onclick="topFunction()">
-  Istio Sidecar 注入机制
-</div>
-</div>
+
+
+
+
+<script>
+  window.onscroll = function() {
+    var currentScrollPos = window.pageYOffset;
+    
+    
+    if (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) {
+        document.getElementById("scroll-navbar").style.display = "inline";
+        document.getElementById("scroll-navbar").style.visibility = "visible";
+        document.getElementById("scroll-navbar").style.opacity = "1";
+    } else {
+        document.getElementById("scroll-navbar").style.visibility = "hidden";
+        document.getElementById("scroll-navbar").style.opacity = "0";
+    }
+  
+    prevScrollpos = currentScrollPos;
+  
+  }
+</script>
 
 
 <style>
+  .mobile-navbar {
+    color: #fff;
+    background: #022f51;
+    text-align: center;
+    line-height: 50px;
+    font-size: 20px;
+  }
+
+  .mobile-navbar a {
+    text-decoration: none;
+    color:#fff;
+    padding: 3px 6px;
+    border: solid 1px #fff;
+    border-radius: 3px;
+  }
+
+  .mobile-navbar #sidebar-toggle {
+    border: none;
+    position: fixed;
+    background: none;
+    top: 0;
+    left: 20px;
+    z-index: 101;
+  }
+
   .scroll-navbar {
+    z-index: 100;
     position: fixed;
     top: 0;
     width: 100%;
-    background-color: #fff;
-    color: #000;
+    background: #022f51;
+    color: #fff !important;
     text-align: center;
     padding: 10px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.2);
   }
+
+  @media (min-width: 768px) {
+    .mobile-navbar {
+      display: none;
+    }
+
+    .scroll-navbar {
+      display: none !important;
+    }
+  }
 </style>
+
+
+
+
+    
+
+    <div class="container pt-2 pt-md-2 pt-lg-2">
+      <div class="adocs-scrollcontainer">
+        <div class="row">
+            <div class="col-sm-12">
+
+    <nav id="sidebar" class="">
+
+
+
+<div class="highlightable">
+
   
-<main class="center mv4 content-width ph3">
-  <div class="f3 fw6 heading-color heading-font post-title">Istio Sidecar 注入机制</div>
-  <p class="silver f6 mt1 mb4 post-meta">
-    <time>21 Jun 2020</time> 
-     | 
+  
+  <h1><a href="/">Yingchi Blog</a></h1>
+  <div>Infra / SRE / Cloud Native</div>
+  
+    <ul id="docsmenu" class="topics" style="overflow-y: hidden;">
+      
+      
+
+      <a href="/" style="padding: 2px;">
+        Home
+      </a>
+
+        
+        
+        
+          
+          
+
+
+
+ 
+  
     
+    <li data-nav-id="https://blog.yingchi.io/posts.html" class="dd-item 
+        parent
+        
+        ">
+      <a href="/posts.html">
+        
+        <span>Posts</span>
+
+        
+
+        
+        
+
+          
+            
+          
+
+        
+
+        
+      </a>
+      
+              
+    </li>
+  
+ 
+
+
+          
+          
+
+
+
+ 
+  
     
-    tags: [ <a href='/tags/service-mesh' class="link silver">service-mesh</a> <a href='/tags/istio' class="link silver">istio</a>  ]
-    
-  </p>
-  <div class="lh-copy post-content"><h2 id="service-mesh-及-sidecar-概念">Service Mesh 及 Sidecar 概念</h2>
+    <li data-nav-id="https://blog.yingchi.io/about.html" class="dd-item 
+        
+        
+        ">
+      <a href="/about.html">
+        
+        <span>About</span>
+
+        
+
+        
+        
+
+        
+      </a>
+              
+    </li>
+  
+ 
+
+
+          
+        
+
+        
+
+
+      
+        <li data-nav-id="/tags/cloud-native.html" class="dd-item
+
+        ">
+          <a href="/tags/cloud-native.html">cloud-native <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/docker.html" class="dd-item
+
+        ">
+          <a href="/tags/docker.html">docker <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/golang.html" class="dd-item
+
+        ">
+          <a href="/tags/golang.html">golang <span style="font-weight: bold;">(5)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/istio.html" class="dd-item
+
+        ">
+          <a href="/tags/istio.html">istio <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/kubernetes.html" class="dd-item
+
+        ">
+          <a href="/tags/kubernetes.html">kubernetes <span style="font-weight: bold;">(15)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/network.html" class="dd-item
+
+        ">
+          <a href="/tags/network.html">network <span style="font-weight: bold;">(4)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/note.html" class="dd-item
+
+        ">
+          <a href="/tags/note.html">note <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/service-mesh.html" class="dd-item
+
+        ">
+          <a href="/tags/service-mesh.html">service-mesh <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+
+
+    </ul>
+  </div>
+</nav>
+
+
+
+
+
+
+
+
+        <section id="body">
+          <div id="content" class="adocs-content js-moveChildrenTo">
+        <div id="overlay"></div>
+        <div class="a-text">
+        
+          <div id="top-bar">
+            <div id="breadcrumbs" itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb">
+                <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+                  <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+                    <i class="fa fa-bars"></i>
+                    <span class="sr-only">Vis/skjul meny</span>
+                  </a>
+                </span>
+                <span class="links">
+                  
+                  
+
+
+
+
+
+
+
+ <a href='/'>Yingchi Blog</a> <span class='adocs-breadcrumb-divider'> / </span> <a href='/posts.html'>Posts</a> <span class='adocs-breadcrumb-divider'> / </span> Istio Sidecar 注入机制
+
+ 
+
+ 
+
+
+                </span>
+            </div>
+          </div>
+        
+        <div id="body-inner">
+          
+            
+              <h1 class="a-fontBold">
+                Istio Sidecar 注入机制
+                
+              </h1>
+              <p class="a-leadText" id="leadText"></p>
+            
+          
+
+          
+
+
+
+
+
+
+
+
+<h2 id="service-mesh-及-sidecar-概念">Service Mesh 及 Sidecar 概念</h2>
 <p>在了解 Sidecar 的注入机制前还是先要明确是什么和为什么的问题。</p>
 <p>首先，Service Mesh 是什么？</p>
 <p>Service Mesh，或者翻译为「服务网格」，是一个可配置的低延迟的<strong>基础设施层</strong>，目的是<strong>通过API（应用程序编程接口）处理应用程序服务之间的大量基于网络的进程间通信</strong>。服务网络确保容器化的短暂存在的应用程序的基础结构服务之间的通信快速，可靠和安全。网格提供关键功能，包括服务发现，负载平衡，加密，可观察性，可追溯性，身份验证和授权，以及对断路器模式的支持。其实服务网格的目的说的最简单就是「<strong>接管和治理应用程序间的通信</strong>」，其中有个最为核心的要点就是，<strong>通信</strong>，基于 Service Mesh 的服务治理就是在服务的通信或者说调用过程中「做手脚」，离开这一点，Service Mesh 毫无意义，当然，这个应用程序似乎也没有意义了。如下图所示，就是典型的 Service Mesh 基础设施层架构。</p>
@@ -142,7 +380,7 @@ title="Test">
 <li>Validating：不允许修改请求内容，但可以根据请求的内容判断是继续执行该请求还是拒绝该请求；</li>
 </ul>
 <p>Kubernetes 提供了很多内置的 Admission Controller Plugin，一些常用的准入控制策略都能找到。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#75715e"># 支持的plugin 如下</span>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#6272a4"># 支持的plugin 如下</span>
 AlwaysAdmit, AlwaysDeny, AlwaysPullImages, 
 DefaultStorageClass, DefaultTolerationSeconds, DenyEscalatingExec, 
 DenyExecOnPrivileged, EventRateLimit, ExtendedResourceToleration, 
@@ -166,56 +404,56 @@ ServiceAccount, StorageObjectInUseProtection, ValidatingAdmissionWebhook.
 <p><img src="istio-sidecar-injection/image-20200720115242028.png" alt="image-20200720115242028"></p>
 <p>如图，Sidecar Injector 只在创建 Pod 时进行 Sidecar 容器注入，在 Pod 的创建请求到达 Kube-apiserver 后，首先进行认证鉴权，然后在准入控制阶段，Kube-apiserver 以 REST 的方式同步调用 Sidecar Injector Webhook 服务进行 init 与 istio-proxy 容器的注入，最后将Pod对象持久化存储到etcd中。</p>
 <p>还可以看一下 <strong>MutatingWebhookConfiguration</strong> 的配置：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">kubectl get MutatingWebhookConfiguration istio-sidecar-injector -n istio-system -o yaml
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">kubectl get MutatingWebhookConfiguration istio-sidecar-injector -n istio-system -o yaml
 </code></pre></div><p><strong>istio-sidecar-injector MutatingWebhookConfiguration</strong></p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">apiVersion</span>: admissionregistration.k8s.io/v1
-<span style="color:#66d9ef">kind</span>: MutatingWebhookConfiguration
-<span style="color:#66d9ef">metadata</span>:
-  <span style="color:#66d9ef">annotations</span>:
-    <span style="color:#66d9ef">kubectl.kubernetes.io/last-applied-configuration</span>: <span style="color:#e6db74">|
-</span><span style="color:#e6db74">      {&#34;apiVersion&#34;:&#34;admissionregistration.k8s.io/v1beta1&#34;,&#34;kind&#34;:&#34;MutatingWebhookConfiguration&#34;,&#34;metadata&#34;:{&#34;annotations&#34;:{},&#34;labels&#34;:{&#34;app&#34;:&#34;sidecar-injector&#34;,&#34;install.operator.istio.io/owning-resource&#34;:&#34;installed-state&#34;,&#34;istio.io/rev&#34;:&#34;default&#34;,&#34;operator.istio.io/component&#34;:&#34;Pilot&#34;,&#34;operator.istio.io/managed&#34;:&#34;Reconcile&#34;,&#34;operator.istio.io/version&#34;:&#34;1.6.2&#34;,&#34;release&#34;:&#34;istio&#34;},&#34;name&#34;:&#34;istio-sidecar-injector&#34;},&#34;webhooks&#34;:[{&#34;clientConfig&#34;:{&#34;caBundle&#34;:&#34;&#34;,&#34;service&#34;:{&#34;name&#34;:&#34;istiod&#34;,&#34;namespace&#34;:&#34;istio-system&#34;,&#34;path&#34;:&#34;/inject&#34;}},&#34;failurePolicy&#34;:&#34;Fail&#34;,&#34;name&#34;:&#34;sidecar-injector.istio.io&#34;,&#34;namespaceSelector&#34;:{&#34;matchLabels&#34;:{&#34;istio-injection&#34;:&#34;enabled&#34;}},&#34;rules&#34;:[{&#34;apiGroups&#34;:[&#34;&#34;],&#34;apiVersions&#34;:[&#34;v1&#34;],&#34;operations&#34;:[&#34;CREATE&#34;],&#34;resources&#34;:[&#34;pods&#34;]}],&#34;sideEffects&#34;:&#34;None&#34;}]}</span>
-  <span style="color:#66d9ef">creationTimestamp</span>: <span style="color:#e6db74">&#34;2020-06-16T06:47:00Z&#34;</span>
-  <span style="color:#66d9ef">generation</span>: <span style="color:#ae81ff">2</span>
-  <span style="color:#66d9ef">labels</span>:
-    <span style="color:#66d9ef">app</span>: sidecar-injector
-    <span style="color:#66d9ef">install.operator.istio.io/owning-resource</span>: installed-state
-    <span style="color:#66d9ef">istio.io/rev</span>: default
-    <span style="color:#66d9ef">operator.istio.io/component</span>: Pilot
-    <span style="color:#66d9ef">operator.istio.io/managed</span>: Reconcile
-    <span style="color:#66d9ef">operator.istio.io/version</span>: <span style="color:#ae81ff">1.6.2</span>
-    <span style="color:#66d9ef">release</span>: istio
-  <span style="color:#66d9ef">managedFields</span>:
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ff79c6">apiVersion</span>: admissionregistration.k8s.io/v1
+<span style="color:#ff79c6">kind</span>: MutatingWebhookConfiguration
+<span style="color:#ff79c6">metadata</span>:
+  <span style="color:#ff79c6">annotations</span>:
+    <span style="color:#ff79c6">kubectl.kubernetes.io/last-applied-configuration</span>: <span style="color:#f1fa8c">|
+</span><span style="color:#f1fa8c">      {&#34;apiVersion&#34;:&#34;admissionregistration.k8s.io/v1beta1&#34;,&#34;kind&#34;:&#34;MutatingWebhookConfiguration&#34;,&#34;metadata&#34;:{&#34;annotations&#34;:{},&#34;labels&#34;:{&#34;app&#34;:&#34;sidecar-injector&#34;,&#34;install.operator.istio.io/owning-resource&#34;:&#34;installed-state&#34;,&#34;istio.io/rev&#34;:&#34;default&#34;,&#34;operator.istio.io/component&#34;:&#34;Pilot&#34;,&#34;operator.istio.io/managed&#34;:&#34;Reconcile&#34;,&#34;operator.istio.io/version&#34;:&#34;1.6.2&#34;,&#34;release&#34;:&#34;istio&#34;},&#34;name&#34;:&#34;istio-sidecar-injector&#34;},&#34;webhooks&#34;:[{&#34;clientConfig&#34;:{&#34;caBundle&#34;:&#34;&#34;,&#34;service&#34;:{&#34;name&#34;:&#34;istiod&#34;,&#34;namespace&#34;:&#34;istio-system&#34;,&#34;path&#34;:&#34;/inject&#34;}},&#34;failurePolicy&#34;:&#34;Fail&#34;,&#34;name&#34;:&#34;sidecar-injector.istio.io&#34;,&#34;namespaceSelector&#34;:{&#34;matchLabels&#34;:{&#34;istio-injection&#34;:&#34;enabled&#34;}},&#34;rules&#34;:[{&#34;apiGroups&#34;:[&#34;&#34;],&#34;apiVersions&#34;:[&#34;v1&#34;],&#34;operations&#34;:[&#34;CREATE&#34;],&#34;resources&#34;:[&#34;pods&#34;]}],&#34;sideEffects&#34;:&#34;None&#34;}]}</span>
+  <span style="color:#ff79c6">creationTimestamp</span>: <span style="color:#f1fa8c">&#34;2020-06-16T06:47:00Z&#34;</span>
+  <span style="color:#ff79c6">generation</span>: <span style="color:#bd93f9">2</span>
+  <span style="color:#ff79c6">labels</span>:
+    <span style="color:#ff79c6">app</span>: sidecar-injector
+    <span style="color:#ff79c6">install.operator.istio.io/owning-resource</span>: installed-state
+    <span style="color:#ff79c6">istio.io/rev</span>: default
+    <span style="color:#ff79c6">operator.istio.io/component</span>: Pilot
+    <span style="color:#ff79c6">operator.istio.io/managed</span>: Reconcile
+    <span style="color:#ff79c6">operator.istio.io/version</span>: <span style="color:#bd93f9">1.6.2</span>
+    <span style="color:#ff79c6">release</span>: istio
+  <span style="color:#ff79c6">managedFields</span>:
 		...
-<span style="color:#66d9ef">webhooks</span>:
-- <span style="color:#66d9ef">admissionReviewVersions</span>:
+<span style="color:#ff79c6">webhooks</span>:
+- <span style="color:#ff79c6">admissionReviewVersions</span>:
   - v1beta1
-  <span style="color:#66d9ef">clientConfig</span>:
-    <span style="color:#66d9ef">caBundle</span>: LS0tLS1CRUdJTiBDRVJUSUZJQ...
-    <span style="color:#66d9ef">service</span>:
-      <span style="color:#66d9ef">name</span>: istiod
-      <span style="color:#66d9ef">namespace</span>: istio-system
-      <span style="color:#66d9ef">path</span>: /inject
-      <span style="color:#66d9ef">port</span>: <span style="color:#ae81ff">443</span>
-  <span style="color:#66d9ef">failurePolicy</span>: Fail
-  <span style="color:#66d9ef">matchPolicy</span>: Exact
-  <span style="color:#66d9ef">name</span>: sidecar-injector.istio.io
-  <span style="color:#66d9ef">namespaceSelector</span>:
-    <span style="color:#66d9ef">matchLabels</span>:
-      <span style="color:#66d9ef">istio-injection</span>: enabled
-  <span style="color:#66d9ef">objectSelector</span>: {}
-  <span style="color:#66d9ef">reinvocationPolicy</span>: Never
-  <span style="color:#66d9ef">rules</span>:
-  - <span style="color:#66d9ef">apiGroups</span>:
-    - <span style="color:#e6db74">&#34;&#34;</span>
-    <span style="color:#66d9ef">apiVersions</span>:
+  <span style="color:#ff79c6">clientConfig</span>:
+    <span style="color:#ff79c6">caBundle</span>: LS0tLS1CRUdJTiBDRVJUSUZJQ...
+    <span style="color:#ff79c6">service</span>:
+      <span style="color:#ff79c6">name</span>: istiod
+      <span style="color:#ff79c6">namespace</span>: istio-system
+      <span style="color:#ff79c6">path</span>: /inject
+      <span style="color:#ff79c6">port</span>: <span style="color:#bd93f9">443</span>
+  <span style="color:#ff79c6">failurePolicy</span>: Fail
+  <span style="color:#ff79c6">matchPolicy</span>: Exact
+  <span style="color:#ff79c6">name</span>: sidecar-injector.istio.io
+  <span style="color:#ff79c6">namespaceSelector</span>:
+    <span style="color:#ff79c6">matchLabels</span>:
+      <span style="color:#ff79c6">istio-injection</span>: enabled
+  <span style="color:#ff79c6">objectSelector</span>: {}
+  <span style="color:#ff79c6">reinvocationPolicy</span>: Never
+  <span style="color:#ff79c6">rules</span>:
+  - <span style="color:#ff79c6">apiGroups</span>:
+    - <span style="color:#f1fa8c">&#34;&#34;</span>
+    <span style="color:#ff79c6">apiVersions</span>:
     - v1
-    <span style="color:#66d9ef">operations</span>:
+    <span style="color:#ff79c6">operations</span>:
     - CREATE
-    <span style="color:#66d9ef">resources</span>:
+    <span style="color:#ff79c6">resources</span>:
     - pods
-    <span style="color:#66d9ef">scope</span>: <span style="color:#e6db74">&#39;*&#39;</span>
-  <span style="color:#66d9ef">sideEffects</span>: None
-  <span style="color:#66d9ef">timeoutSeconds</span>: <span style="color:#ae81ff">30</span>
+    <span style="color:#ff79c6">scope</span>: <span style="color:#f1fa8c">&#39;*&#39;</span>
+  <span style="color:#ff79c6">sideEffects</span>: None
+  <span style="color:#ff79c6">timeoutSeconds</span>: <span style="color:#bd93f9">30</span>
 </code></pre></div><p>Sidecar Injector 默认只对标签匹配 <code>istio-injection：enabled</code> 的命名空间下的Pod资源对象的创建生效。Webhook服务的访问路径为<code>/inject</code>，地址及访问凭证等都在clientConfig字段下进行配置。
 Istio Sidecar Injector组件是由sidecar-injector进程实现的。Sidecar Injector 的实现主要由两部分组成：</p>
 <ul>
@@ -237,47 +475,47 @@ Istio Sidecar Injector组件是由sidecar-injector进程实现的。Sidecar Inje
 <li>构造 AdmissionReview，在进行 JSON 编码后，将其发送给 HTTP 客户端即Kube-apiserver；</li>
 </ol>
 <p>可以查看注入的配置项 istio-sidecar-injector：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">kubectl describe configmap istio-sidecar-injector -n istio-system
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">kubectl describe configmap istio-sidecar-injector -n istio-system
 </code></pre></div><p><strong>istio-sidecar-injector configmap (简略版本)</strong></p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">Name</span>:         istio-sidecar-injector
-<span style="color:#66d9ef">Namespace</span>:    istio-system
-<span style="color:#66d9ef">Labels</span>:       install.operator.istio.io/owning-resource=installed-state
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ff79c6">Name</span>:         istio-sidecar-injector
+<span style="color:#ff79c6">Namespace</span>:    istio-system
+<span style="color:#ff79c6">Labels</span>:       install.operator.istio.io/owning-resource=installed-state
               istio.io/rev=default
               operator.istio.io/component=Pilot
               operator.istio.io/managed=Reconcile
-              operator.istio.io/version=<span style="color:#ae81ff">1.6.2</span>
+              operator.istio.io/version=<span style="color:#bd93f9">1.6.2</span>
               release=istio
-<span style="color:#66d9ef">Annotations</span>:
+<span style="color:#ff79c6">Annotations</span>:
 Data
 ====
-<span style="color:#66d9ef">config</span>:
+<span style="color:#ff79c6">config</span>:
 ----
-<span style="color:#66d9ef">policy</span>: enabled
+<span style="color:#ff79c6">policy</span>: enabled
 ...
-<span style="color:#66d9ef">template</span>: <span style="color:#e6db74">|
-</span><span style="color:#e6db74">  rewriteAppHTTPProbe: {{ valueOrDefault .Values.sidecarInjectorWebhook.rewriteAppHTTPProbe false }}</span>
-  <span style="color:#66d9ef">initContainers</span>:
+<span style="color:#ff79c6">template</span>: <span style="color:#f1fa8c">|
+</span><span style="color:#f1fa8c">  rewriteAppHTTPProbe: {{ valueOrDefault .Values.sidecarInjectorWebhook.rewriteAppHTTPProbe false }}</span>
+  <span style="color:#ff79c6">initContainers</span>:
   	...
-  - <span style="color:#66d9ef">name</span>: istio-validation
+  - <span style="color:#ff79c6">name</span>: istio-validation
   	...
-  - <span style="color:#66d9ef">name</span>: istio-init
+  - <span style="color:#ff79c6">name</span>: istio-init
 		...
-    <span style="color:#66d9ef">args</span>:
+    <span style="color:#ff79c6">args</span>:
     - istio-iptables
-    - <span style="color:#e6db74">&#34;-p&#34;</span>
-    - <span style="color:#ae81ff">15001</span>
+    - <span style="color:#f1fa8c">&#34;-p&#34;</span>
+    - <span style="color:#bd93f9">15001</span>
 		...
-  <span style="color:#66d9ef">containers</span>:
-  - <span style="color:#66d9ef">name</span>: istio-proxy
-    <span style="color:#66d9ef">ports</span>:
-    - <span style="color:#66d9ef">containerPort</span>: <span style="color:#ae81ff">15090</span>
-      <span style="color:#66d9ef">protocol</span>: TCP
-      <span style="color:#66d9ef">name</span>: http-envoy-prom
-    <span style="color:#66d9ef">args</span>:
+  <span style="color:#ff79c6">containers</span>:
+  - <span style="color:#ff79c6">name</span>: istio-proxy
+    <span style="color:#ff79c6">ports</span>:
+    - <span style="color:#ff79c6">containerPort</span>: <span style="color:#bd93f9">15090</span>
+      <span style="color:#ff79c6">protocol</span>: TCP
+      <span style="color:#ff79c6">name</span>: http-envoy-prom
+    <span style="color:#ff79c6">args</span>:
 		...
-    <span style="color:#66d9ef">env</span>:
-    - <span style="color:#66d9ef">name</span>: JWT_POLICY
-      <span style="color:#66d9ef">value</span>: {{ .Values.global.jwtPolicy }}
+    <span style="color:#ff79c6">env</span>:
+    - <span style="color:#ff79c6">name</span>: JWT_POLICY
+      <span style="color:#ff79c6">value</span>: {{ .Values.global.jwtPolicy }}
     ...
 </code></pre></div><p>ConfigMap 保存了默认注入策略（policy）和 sidecar 注入模板（template）。
 策略（policy）:</p>
@@ -295,123 +533,532 @@ Data
 <li><a href="https://developer.aliyun.com/article/620700">https://developer.aliyun.com/article/620700</a></li>
 <li>《云原生服务网格 Istio: 原理、实践、架构及源码解析》张超盟</li>
 </ul>
-</div>
-</main>
- 
 
 
-
-
-
-
-<div class="tl fixed list-pages lh-copy" id="contents-list"></div>
-
-
-
-<div class="pagination tc tr-l db fixed-l bottom-2-l right-2-l mb3 mb0-l">
-  
-<a id="scroll-to-top" class="f6 o-0 link br2 ph2 pv1 mb1 bg-main-color pointer" onclick="topFunction()" style="color: #fff; visibility: hidden; display: none; transition: opacity .5s, visibility .5s;" title="back to top">back to top</a>
-<br>
-  <p class="mb0 mt2">
-  <a href="https://blog.yingchi.io/posts/2020/5/what-is-cloud-native.html">prev post</a>
-  <a href="https://blog.yingchi.io/posts/2020/6/istio-sidecar-proxy.html">next post</a>
-  </p>
-</div>
-
-  <footer class="content-width mt0 mt5-l mb4 f6 center ph4 gray tc tl-l">
-  <hr class="dn db-l ml0-l gray w3"><br>
-  Powered by <a href="https://gohugo.io/" target="_blank" class="link gray dim">Hugo</a>, based on the <a href="https://github.com/lingxz/er" target="_blank" class="link gray dim">Er</a> theme. <br>
-  © 2021 Joey.Jiang
+<footer class=" footline" >
+	
 </footer>
-  
 
 
+</div>
+     </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.css">
-<style>.is-active-link::before { background-color: var(--secondary-color); }</style>
+              <div id="navigation">
+                  
+                  
+                  
+                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                                  
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                  
+                  
+          
+          
+                  
+                      <a class="nav nav-prev" href="/posts/2020/6/istio-sidecar-proxy.html" title="Istio Sidecar 流量拦截机制分析"> <i class="fa fa-angle-left"></i> Forrige side</a>
+                  
+                  
+                      <a class="nav nav-next" href="/posts/2020/5/what-is-cloud-native.html" title="Cloud Native 云原生 | 概念解读" style="margin-right: 0px;">Neste side <i class="fa fa-angle-right"></i></a>
+                  
+              </div>
 
 
+            </div>
+
+            
+              
+              
+              
+                <div id="top-github-link">
+                  <a class="" href="https://github.com/altinn/docs/blob/master/content/posts/2020/6/istio-sidecar-injection.md" target="blank">
+                    <i class="fa fa-code-fork"></i>
+                    
+                  </a>
+                </div>
+              
+            
+
+        </section>
 
 
-<script type="text/javascript">
-var prevScrollpos = window.pageYOffset;
-window.onscroll = function() {
-  var currentScrollPos = window.pageYOffset;
+        </div> 
+      </div> 
+    </div>
+    </div> 
 
-  
-  if (document.getElementById("tag-cloud") !== null) { 
-    if (prevScrollpos > currentScrollPos) { 
-      document.getElementById("tag-cloud").style.visibility = "visible";
-      document.getElementById("tag-cloud").style.opacity = "1";
-    } else {
-      document.getElementById("tag-cloud").style.visibility = "hidden";
-      document.getElementById("tag-cloud").style.opacity = "0";
+    <footer class="a-footer a-bgBlueDarker ">
+    <div class="container" style="margin: 5px 20px;">
+        <div class="row">
+            <div class="col-12">
+                <div>©2021 <a href="https://yingchi.io" style="text-decoration: none; color:#fff">yingchi.io</a></div>
+                <div>Infra / SRE / Cloud Native</div>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
+      <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
+    </div>
+    <script src="/js/clipboard.min.js"></script>
+    <script src="/js/html5shiv-printshiv.min.js"></script>
+    <script src="/js/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script src="/js/modernizr.custom.71422.js"></script>
+    
+    <script src="/js/altinninfoportal.js"></script>
+    <script src="/js/altinndocs.js"></script>
+    <script src="/js/altinndocs-learn.js"></script>
+
+    <script src="/js/stickysidebar/rAF.js"></script>
+    <script src="/js/stickysidebar/ResizeSensor.js"></script>
+    <script src="/js/stickysidebar/sticky-sidebar.js"></script>
+    
+    <script>
+      var a = new StickySidebar('#sidebar', {
+        topSpacing: 20,
+        bottomSpacing: 60,
+        containerSelector: '.adocs-scrollcontainer',
+        innerWrapperSelector: '.sidebar__inner',
+        minWidth: 768
+      });
+    </script>
+
+    <link href="/mermaid/mermaid.css" type="text/css" rel="stylesheet"/>
+    <script src="/mermaid/mermaid.js"></script>
+    <script>
+    if (typeof mermaidConfig === "undefined") {
+      mermaidConfig = {};
     }
-  }
-  
-
-
-  
-  if (document.body.scrollTop > 500 || document.documentElement.scrollTop > 500) {
-      document.getElementById("scroll-to-top").style.display = "inline";
-      document.getElementById("scroll-to-top").style.visibility = "visible";
-      document.getElementById("scroll-to-top").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-to-top").style.visibility = "hidden";
-      document.getElementById("scroll-to-top").style.opacity = "0";
-  }
-  
-
-  
-  if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
-      document.getElementById("scroll-navbar").style.display = "inline";
-      document.getElementById("scroll-navbar").style.visibility = "visible";
-      document.getElementById("scroll-navbar").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-navbar").style.visibility = "hidden";
-      document.getElementById("scroll-navbar").style.opacity = "0";
-  }
-
-  prevScrollpos = currentScrollPos;
-
-}
-
-
-
-function topFunction() {
-  document.body.scrollTop = 0; 
-  document.documentElement.scrollTop = 0; 
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-if (document.getElementById("contents-list") !== null && document.getElementsByClassName("post-content").length !== 0) { 
-  tocbot.init({
+    mermaidConfig.startOnLoad = true;
     
-    tocSelector: '#contents-list',
+    mermaid.initialize(mermaidConfig);
+    </script>
+
     
-    contentSelector: '.post-content',
-    
-    headingSelector: 'h1, h2, h3',
-  });
-}
 
 
-</script>
-
-
-
-
-</body>
+  </body>
 </html>

@@ -1,130 +1,363 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta content='text/html; charset=utf-8' http-equiv='content-type' />
-
-  <title>Linux Netfilter/iptables 学习 - Yingchi Blog</title>
-  <meta content='Linux Netfilter/iptables 学习 - Yingchi Blog' property='title' />
-  <meta content='Linux Netfilter/iptables 学习 - Yingchi Blog' property='og:title' />
+<!DOCTYPE html>
+<html lang="zh-cn" class="js csstransforms3d">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
 
 
-<meta property="og:description" content="Linux 网络协议栈非常高效，同时比较复杂。如果我们希望在数据的处理过程中对关心的数据进行一些操作，则该怎么做呢？Linux 提供了一套机制来为用户实现自定义的数据包处理过程。在 Linux 网络协议栈中有一组回调函数挂接点，通过这些挂接点挂接的钩子函数可以在 Linux 网络栈处理数据包的过程中对数据包进行一些操作，例如过滤、修改、丢弃等。整个挂接点技术叫作 Netfilter 和 iptables。
-Netfilter 与 iptables 不是两个独立的组件，Netfilter 是一个位于内核空间的防火墙框架，而 iptables 可以认为是一个位于用户空间的客户端。
-Netfilter 的核心功能就是数据包过滤、数据包修改、网络地址转换（NAT）
-基础概念 规则概念 iptables 最核心的概念是 Rules，即规则，一句话概括其工作逻辑就是“对于匹配到规则的数据包执行预先指定好的逻辑”。这里涉及到几个概念，首先是匹配，从字面上很好理解，匹配就是看对不对的上号，对于 iptables 而言，它面对的是数据包，因此它要匹配的自然是与数据包相关的信息，比如源地址、目的地址、传输协议、服务类型，只有当这些可以匹配的时候，才执行一些规则逻辑，比如放行、拒绝、丢弃等。
-五链 或许你对 iptables 具体是做什么的，怎么工作的并不熟悉，但是当你听到一个内行来讲 iptables 的时候，他一定会提到“四表五链”，那么什么是 iptables 的四表无链？他们又有什么作用呢？
-首先说“链”，这里的链指的是“规则链”，即在 iptables 的工作过程中，并不是只通过一条规则来处理数据包的，而是有许多规则，这些规则按照一定的顺序排列起来，报文经过 iptables 时就要对着一些规则一条一条进行匹配，执行相应的动作，我们把这种一系列的规则看作是一种串联，则称为是“链”。
-比如以其中一条称作 PREROUTING 的链来看，它的内部结构是这样的：
-数据包会在这条链里经过很多条的规则匹配，如果该数据包不符合链中任一条规则，iptables就会根据预先定义的默认策略来处理数据包。
-在 iptables 中存在着如下五条链：
- PREROUTING 链：路由选择前； INPUT 链：路由目的地为本机； FORWARD 链：路由目的地非本机，转发； OUTPUT 链：本机发出数据包； POSTROUTING 链：路由选择后；  四表 知道了五链之后，接下来看四表，如果说链是表现的是一系列规则的执行顺序关系，那么表则是表现的一系列规则的功能逻辑关系，我们把具有相同功能的规则集合称为“表”，因为我们会发现有时在不同的链上执行的规则它们之间是有内在关联的，或是对数据的过滤，或是对报文数据的修改等等，iptables 为我们提供了如下的规则分类：
- Filter 表：iptables 默认表，负责包过滤，防火墙功能； NAT 表：负责网络地址转换功能，对应内核模块； Mangle 表：主要负责修改数据包，对应内核模块； Raw 表：优先级最高，关闭 NAT 表启用的连接追踪机制；  注意这些表是有优先级之分的，优先级高到低：raw&ndash;&gt;mangle&ndash;&gt;nat&ndash;&gt;filter" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://blog.yingchi.io/posts/2020/5/linux-iptables.html" />
+    
+    <title>Linux Netfilter/iptables 学习 :: Altinn digitalisering - Utvikling</title>
+    
+    <link rel="shortcut icon" href="/images/favicon.png" type="image/x-icon" />
+    <link href="/css/nucleus.css" rel="stylesheet">
+    <link href="/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/css/hybrid.css" rel="stylesheet">
+    <link href="/css/horsey.css" rel="stylesheet">
+    <link href="/css/fortawesome.css" rel="stylesheet">
+    <link href="/css/designsystem.css" rel="stylesheet">
+    
+    <link href="/css/theme.css" rel="stylesheet">
+    
+    
+    
+    <script src="/js/jquery-2.x.min.js"></script>
 
+    
+<link href="/css/altinndigitalisering.css" rel="stylesheet">
 
-<meta property="article:published_time" content="2020-05-14T17:35:21&#43;08:00"/>
+<link href="/css/altinn.css" rel="stylesheet">
 
-<meta property="article:modified_time" content="2020-05-14T17:35:21&#43;08:00"/>
+    <style>
+      :root #header + #content > #left > #rlblock_left {
+        display:none !important;
+      }
+    </style>
+  </head>
 
-<meta property="og:site_name" content="Yingchi&#39;s Blog" />
-
-
-
-
-
-
-
-<meta name="generator" content="Hugo 0.71.1" />
-
-<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600" rel="stylesheet">
-<style type="text/css">/*https://coolors.co/afd5aa-f0f2ef-a69f98-3d3d3d-8c6057*/
-:root {
-  --main-color: #8C6056; 
-  --secondary-color: #AFD5AA;
-  --logo-text-color: #fff;
-  --body-text-color: #3d3d3d;
-  --heading-text-color: #383838;
-  --background-color: #fff;
-}</style>
-<link href='/css/tachyons.min.css' rel="stylesheet">
-<link href='/css/styles.css' rel="stylesheet">
-
-
-<link rel="icon" 
-
-  href="/favicons/" 
-
-type="image/x-icon"/>
-
-<link href='/feed.xml' rel="alternate" type="application/atom+xml" title="Yingchi Blog" />
-</head>
-<body class="global-font">
-  <nav class=" flex-ns justify-between border-box pa3 pl3-l pr2-l mt1 mt0-ns" id="navbar">
-  <div class="flex">
-    <a class="f4 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" id="site-title" href='/' title="Home">Yingchi Blog</a>
-  </div>
   
-  <div class=" flex-ns mt2 mt0-ns pv1">
+
+  <body class="a-page" data-url="/posts/2020/5/linux-iptables.html">
     
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/' title="Home">Home</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/posts.html' title="Posts">Posts</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/tags.html' title="Tags">Tags</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/about.html' title="About">About</a>
-    
-  </div>
-  
-  
-</nav>
+<div class="mobile-navbar">
+  <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+    <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+      <i class="fa fa-bars"></i>
+      <span class="sr-only">Vis/skjul meny</span>
+    </a>
+  </span>
+  <a href="https://blog.yingchi.io/posts/2020/5/linux-iptables.html">Yingchi Blog</a>
+</div>
+
 
 
 <div 
 id="scroll-navbar" 
 class="scroll-navbar" 
-style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" 
-title="Test">
-<div>
-  <a 
-  class="f5 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" 
-  id="site-title" 
-  href='https://blog.yingchi.io/'
-  style="line-height: 40px;" 
-  title="Home">Yingchi Blog</a>
+style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" >
+<a href="https://blog.yingchi.io/posts/2020/5/linux-iptables.html" style="text-decoration: none; color:#fff">Linux Netfilter/iptables 学习</a>
 </div>
-<div class="fw5" style="line-height: 20px;" onclick="topFunction()">
-  Linux Netfilter/iptables 学习
-</div>
-</div>
+
+
+
+
+<script>
+  window.onscroll = function() {
+    var currentScrollPos = window.pageYOffset;
+    
+    
+    if (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) {
+        document.getElementById("scroll-navbar").style.display = "inline";
+        document.getElementById("scroll-navbar").style.visibility = "visible";
+        document.getElementById("scroll-navbar").style.opacity = "1";
+    } else {
+        document.getElementById("scroll-navbar").style.visibility = "hidden";
+        document.getElementById("scroll-navbar").style.opacity = "0";
+    }
+  
+    prevScrollpos = currentScrollPos;
+  
+  }
+</script>
 
 
 <style>
+  .mobile-navbar {
+    color: #fff;
+    background: #022f51;
+    text-align: center;
+    line-height: 50px;
+    font-size: 20px;
+  }
+
+  .mobile-navbar a {
+    text-decoration: none;
+    color:#fff;
+    padding: 3px 6px;
+    border: solid 1px #fff;
+    border-radius: 3px;
+  }
+
+  .mobile-navbar #sidebar-toggle {
+    border: none;
+    position: fixed;
+    background: none;
+    top: 0;
+    left: 20px;
+    z-index: 101;
+  }
+
   .scroll-navbar {
+    z-index: 100;
     position: fixed;
     top: 0;
     width: 100%;
-    background-color: #fff;
-    color: #000;
+    background: #022f51;
+    color: #fff !important;
     text-align: center;
     padding: 10px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.2);
   }
+
+  @media (min-width: 768px) {
+    .mobile-navbar {
+      display: none;
+    }
+
+    .scroll-navbar {
+      display: none !important;
+    }
+  }
 </style>
+
+
+
+
+    
+
+    <div class="container pt-2 pt-md-2 pt-lg-2">
+      <div class="adocs-scrollcontainer">
+        <div class="row">
+            <div class="col-sm-12">
+
+    <nav id="sidebar" class="">
+
+
+
+<div class="highlightable">
+
   
-<main class="center mv4 content-width ph3">
-  <div class="f3 fw6 heading-color heading-font post-title">Linux Netfilter/iptables 学习</div>
-  <p class="silver f6 mt1 mb4 post-meta">
-    <time>14 May 2020</time> 
-     | 
+  
+  <h1><a href="/">Yingchi Blog</a></h1>
+  <div>Infra / SRE / Cloud Native</div>
+  
+    <ul id="docsmenu" class="topics" style="overflow-y: hidden;">
+      
+      
+
+      <a href="/" style="padding: 2px;">
+        Home
+      </a>
+
+        
+        
+        
+          
+          
+
+
+
+ 
+  
     
+    <li data-nav-id="https://blog.yingchi.io/posts.html" class="dd-item 
+        parent
+        
+        ">
+      <a href="/posts.html">
+        
+        <span>Posts</span>
+
+        
+
+        
+        
+
+          
+            
+          
+
+        
+
+        
+      </a>
+      
+              
+    </li>
+  
+ 
+
+
+          
+          
+
+
+
+ 
+  
     
-    tags: [ <a href='/tags/kubernetes' class="link silver">kubernetes</a>  ]
-    
-  </p>
-  <div class="lh-copy post-content"><p>Linux 网络协议栈非常高效，同时比较复杂。如果我们希望在数据的处理过程中对关心的数据进行一些操作，则该怎么做呢？Linux 提供了一套机制来为用户实现自定义的数据包处理过程。在 Linux 网络协议栈中有一组回调函数挂接点，通过这些挂接点挂接的钩子函数可以在 Linux 网络栈处理数据包的过程中对数据包进行一些操作，例如过滤、修改、丢弃等。整个挂接点技术叫作 Netfilter 和 iptables。</p>
+    <li data-nav-id="https://blog.yingchi.io/about.html" class="dd-item 
+        
+        
+        ">
+      <a href="/about.html">
+        
+        <span>About</span>
+
+        
+
+        
+        
+
+        
+      </a>
+              
+    </li>
+  
+ 
+
+
+          
+        
+
+        
+
+
+      
+        <li data-nav-id="/tags/cloud-native.html" class="dd-item
+
+        ">
+          <a href="/tags/cloud-native.html">cloud-native <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/docker.html" class="dd-item
+
+        ">
+          <a href="/tags/docker.html">docker <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/golang.html" class="dd-item
+
+        ">
+          <a href="/tags/golang.html">golang <span style="font-weight: bold;">(5)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/istio.html" class="dd-item
+
+        ">
+          <a href="/tags/istio.html">istio <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/kubernetes.html" class="dd-item
+
+        ">
+          <a href="/tags/kubernetes.html">kubernetes <span style="font-weight: bold;">(15)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/network.html" class="dd-item
+
+        ">
+          <a href="/tags/network.html">network <span style="font-weight: bold;">(4)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/note.html" class="dd-item
+
+        ">
+          <a href="/tags/note.html">note <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/service-mesh.html" class="dd-item
+
+        ">
+          <a href="/tags/service-mesh.html">service-mesh <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+
+
+    </ul>
+  </div>
+</nav>
+
+
+
+
+
+
+
+
+        <section id="body">
+          <div id="content" class="adocs-content js-moveChildrenTo">
+        <div id="overlay"></div>
+        <div class="a-text">
+        
+          <div id="top-bar">
+            <div id="breadcrumbs" itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb">
+                <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+                  <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+                    <i class="fa fa-bars"></i>
+                    <span class="sr-only">Vis/skjul meny</span>
+                  </a>
+                </span>
+                <span class="links">
+                  
+                  
+
+
+
+
+
+
+
+ <a href='/'>Yingchi Blog</a> <span class='adocs-breadcrumb-divider'> / </span> <a href='/posts.html'>Posts</a> <span class='adocs-breadcrumb-divider'> / </span> Linux Netfilter/iptables 学习
+
+ 
+
+ 
+
+
+                </span>
+            </div>
+          </div>
+        
+        <div id="body-inner">
+          
+            
+              <h1 class="a-fontBold">
+                Linux Netfilter/iptables 学习
+                
+              </h1>
+              <p class="a-leadText" id="leadText"></p>
+            
+          
+
+          
+
+
+
+
+
+
+
+
+<p>Linux 网络协议栈非常高效，同时比较复杂。如果我们希望在数据的处理过程中对关心的数据进行一些操作，则该怎么做呢？Linux 提供了一套机制来为用户实现自定义的数据包处理过程。在 Linux 网络协议栈中有一组回调函数挂接点，通过这些挂接点挂接的钩子函数可以在 Linux 网络栈处理数据包的过程中对数据包进行一些操作，例如过滤、修改、丢弃等。整个挂接点技术叫作 Netfilter 和 iptables。</p>
 <p>Netfilter 与 iptables 不是两个独立的组件，Netfilter 是一个位于内核空间的防火墙框架，而 iptables 可以认为是一个位于用户空间的客户端。</p>
 <p>Netfilter 的核心功能就是<strong>数据包过滤</strong>、<strong>数据包修改</strong>、<strong>网络地址转换（NAT）</strong></p>
 <h2 id="基础概念">基础概念</h2>
@@ -225,123 +458,532 @@ title="Test">
 <p><a href="https://blog.csdn.net/longbei9029/article/details/53056744">https://blog.csdn.net/longbei9029/article/details/53056744</a></p>
 </li>
 </ul>
-</div>
-</main>
- 
 
 
-
-
-
-
-<div class="tl fixed list-pages lh-copy" id="contents-list"></div>
-
-
-
-<div class="pagination tc tr-l db fixed-l bottom-2-l right-2-l mb3 mb0-l">
-  
-<a id="scroll-to-top" class="f6 o-0 link br2 ph2 pv1 mb1 bg-main-color pointer" onclick="topFunction()" style="color: #fff; visibility: hidden; display: none; transition: opacity .5s, visibility .5s;" title="back to top">back to top</a>
-<br>
-  <p class="mb0 mt2">
-  <a href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-3.html">prev post</a>
-  <a href="https://blog.yingchi.io/posts/2020/5/client-go.html">next post</a>
-  </p>
-</div>
-
-  <footer class="content-width mt0 mt5-l mb4 f6 center ph4 gray tc tl-l">
-  <hr class="dn db-l ml0-l gray w3"><br>
-  Powered by <a href="https://gohugo.io/" target="_blank" class="link gray dim">Hugo</a>, based on the <a href="https://github.com/lingxz/er" target="_blank" class="link gray dim">Er</a> theme. <br>
-  © 2021 Joey.Jiang
+<footer class=" footline" >
+	
 </footer>
-  
 
 
+</div>
+     </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.css">
-<style>.is-active-link::before { background-color: var(--secondary-color); }</style>
+              <div id="navigation">
+                  
+                  
+                  
+                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                                  
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                  
+                  
+          
+          
+                  
+                      <a class="nav nav-prev" href="/posts/2020/5/client-go.html" title="client-go 初步认识与实践"> <i class="fa fa-angle-left"></i> Forrige side</a>
+                  
+                  
+                      <a class="nav nav-next" href="/posts/2020/4/docker-k8s-network-3.html" title="Kubernetes &amp; Docker 网络原理（三）" style="margin-right: 0px;">Neste side <i class="fa fa-angle-right"></i></a>
+                  
+              </div>
 
 
+            </div>
+
+            
+              
+              
+              
+                <div id="top-github-link">
+                  <a class="" href="https://github.com/altinn/docs/blob/master/content/posts/2020/5/linux-iptables.md" target="blank">
+                    <i class="fa fa-code-fork"></i>
+                    
+                  </a>
+                </div>
+              
+            
+
+        </section>
 
 
-<script type="text/javascript">
-var prevScrollpos = window.pageYOffset;
-window.onscroll = function() {
-  var currentScrollPos = window.pageYOffset;
+        </div> 
+      </div> 
+    </div>
+    </div> 
 
-  
-  if (document.getElementById("tag-cloud") !== null) { 
-    if (prevScrollpos > currentScrollPos) { 
-      document.getElementById("tag-cloud").style.visibility = "visible";
-      document.getElementById("tag-cloud").style.opacity = "1";
-    } else {
-      document.getElementById("tag-cloud").style.visibility = "hidden";
-      document.getElementById("tag-cloud").style.opacity = "0";
+    <footer class="a-footer a-bgBlueDarker ">
+    <div class="container" style="margin: 5px 20px;">
+        <div class="row">
+            <div class="col-12">
+                <div>©2021 <a href="https://yingchi.io" style="text-decoration: none; color:#fff">yingchi.io</a></div>
+                <div>Infra / SRE / Cloud Native</div>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
+      <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
+    </div>
+    <script src="/js/clipboard.min.js"></script>
+    <script src="/js/html5shiv-printshiv.min.js"></script>
+    <script src="/js/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script src="/js/modernizr.custom.71422.js"></script>
+    
+    <script src="/js/altinninfoportal.js"></script>
+    <script src="/js/altinndocs.js"></script>
+    <script src="/js/altinndocs-learn.js"></script>
+
+    <script src="/js/stickysidebar/rAF.js"></script>
+    <script src="/js/stickysidebar/ResizeSensor.js"></script>
+    <script src="/js/stickysidebar/sticky-sidebar.js"></script>
+    
+    <script>
+      var a = new StickySidebar('#sidebar', {
+        topSpacing: 20,
+        bottomSpacing: 60,
+        containerSelector: '.adocs-scrollcontainer',
+        innerWrapperSelector: '.sidebar__inner',
+        minWidth: 768
+      });
+    </script>
+
+    <link href="/mermaid/mermaid.css" type="text/css" rel="stylesheet"/>
+    <script src="/mermaid/mermaid.js"></script>
+    <script>
+    if (typeof mermaidConfig === "undefined") {
+      mermaidConfig = {};
     }
-  }
-  
-
-
-  
-  if (document.body.scrollTop > 500 || document.documentElement.scrollTop > 500) {
-      document.getElementById("scroll-to-top").style.display = "inline";
-      document.getElementById("scroll-to-top").style.visibility = "visible";
-      document.getElementById("scroll-to-top").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-to-top").style.visibility = "hidden";
-      document.getElementById("scroll-to-top").style.opacity = "0";
-  }
-  
-
-  
-  if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
-      document.getElementById("scroll-navbar").style.display = "inline";
-      document.getElementById("scroll-navbar").style.visibility = "visible";
-      document.getElementById("scroll-navbar").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-navbar").style.visibility = "hidden";
-      document.getElementById("scroll-navbar").style.opacity = "0";
-  }
-
-  prevScrollpos = currentScrollPos;
-
-}
-
-
-
-function topFunction() {
-  document.body.scrollTop = 0; 
-  document.documentElement.scrollTop = 0; 
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-if (document.getElementById("contents-list") !== null && document.getElementsByClassName("post-content").length !== 0) { 
-  tocbot.init({
+    mermaidConfig.startOnLoad = true;
     
-    tocSelector: '#contents-list',
+    mermaid.initialize(mermaidConfig);
+    </script>
+
     
-    contentSelector: '.post-content',
-    
-    headingSelector: 'h1, h2, h3',
-  });
-}
 
 
-</script>
-
-
-
-
-</body>
+  </body>
 </html>

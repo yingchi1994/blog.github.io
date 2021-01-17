@@ -1,123 +1,363 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta content='text/html; charset=utf-8' http-equiv='content-type' />
-
-  <title>client-go 初步认识与实践 - Yingchi Blog</title>
-  <meta content='client-go 初步认识与实践 - Yingchi Blog' property='title' />
-  <meta content='client-go 初步认识与实践 - Yingchi Blog' property='og:title' />
+<!DOCTYPE html>
+<html lang="zh-cn" class="js csstransforms3d">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
 
 
-<meta property="og:description" content="最近本人的一个容器应用管理平台项目需要实现对接 Kubernetes 平台并进行一些相关资源的操作，查阅了官方文档、GitHub 以及相关技术文章，发现有个叫做 client-go 的 go 语言库是非常适合做 Kubernetes 二次开发的，于是就边实践，边学习，对 client-go 这个库有了一定程度的了解。对于其中比较复杂的设计，如 informer 部分，之后有时间的话会结合 kube-controller-manager 相关机制的研究学习过程加以介绍分享。
- client-go 是 Kubernetes 项目所采用的编程式交互客户端库，官方从2016年8月份开始，资源交互操作相关的核心源码，也就是 client-go 抽取出来，独立出来作为一个项目。也就是现在所用到的 Kubernetes 内部都是集成有 client-go 的，因此对于这个库的编码质量应该是值得放心的。
-client-go 所谓编程式交互客户端库说白了就是可以通过写一些 Go 代码实现对kubernetes集群中资源对象（包括deployment、service、ingress、replicaSet、pod、namespace、node等）的增删改查操作。
-源码简介 源码目录简述  discovery：通过Kubernetes API 进行服务发现； kubernetes：提供 ClientSet 客户端，可以对 Kubernetes 内置资源对象进行操作； dynamic：提供 DynamicClient 客户端，可以实现对任意 Kubernetes 资源对象操作； rest：提供 RESTClient 客户端，可以实现对 kube-apiserver 执行 REST 请求实现资源操作； scale：提供 ScaleClient 客户端，主要用于 Deployment 等资源的扩缩容； listers：为 Kubernetes 资源提供 Lister 功能，对 Get / List 请求提供只读的缓存数据； informers：提供每种 Kubernetes 资源的 Informer 实现； transport：用于提供安全的 TCP 连接； tools/cache：提供常用工具；提供 Client 查询和缓存机制，以缓解 kube-apiserver 压力； util：提供常用方法；  Client 对象 学习 client-go 进行 kubernetes 二次开发的很大一部分工作是学会熟练使用它的几种 client，client-go 有如下 4 种 client 客户端对象，通过 kubeconfig 配置信息连接到指定集群的 kube-apiserver 从而实现对于资源的相关操作。" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://blog.yingchi.io/posts/2020/5/client-go.html" />
+    
+    <title>client-go 初步认识与实践 :: Altinn digitalisering - Utvikling</title>
+    
+    <link rel="shortcut icon" href="/images/favicon.png" type="image/x-icon" />
+    <link href="/css/nucleus.css" rel="stylesheet">
+    <link href="/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/css/hybrid.css" rel="stylesheet">
+    <link href="/css/horsey.css" rel="stylesheet">
+    <link href="/css/fortawesome.css" rel="stylesheet">
+    <link href="/css/designsystem.css" rel="stylesheet">
+    
+    <link href="/css/theme.css" rel="stylesheet">
+    
+    
+    
+    <script src="/js/jquery-2.x.min.js"></script>
 
+    
+<link href="/css/altinndigitalisering.css" rel="stylesheet">
 
-<meta property="article:published_time" content="2020-05-23T12:21:08&#43;08:00"/>
+<link href="/css/altinn.css" rel="stylesheet">
 
-<meta property="article:modified_time" content="2020-05-23T12:21:08&#43;08:00"/>
+    <style>
+      :root #header + #content > #left > #rlblock_left {
+        display:none !important;
+      }
+    </style>
+  </head>
 
-<meta property="og:site_name" content="Yingchi&#39;s Blog" />
-
-
-
-
-
-
-
-<meta name="generator" content="Hugo 0.71.1" />
-
-<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600" rel="stylesheet">
-<style type="text/css">/*https://coolors.co/afd5aa-f0f2ef-a69f98-3d3d3d-8c6057*/
-:root {
-  --main-color: #8C6056; 
-  --secondary-color: #AFD5AA;
-  --logo-text-color: #fff;
-  --body-text-color: #3d3d3d;
-  --heading-text-color: #383838;
-  --background-color: #fff;
-}</style>
-<link href='/css/tachyons.min.css' rel="stylesheet">
-<link href='/css/styles.css' rel="stylesheet">
-
-
-<link rel="icon" 
-
-  href="/favicons/" 
-
-type="image/x-icon"/>
-
-<link href='/feed.xml' rel="alternate" type="application/atom+xml" title="Yingchi Blog" />
-</head>
-<body class="global-font">
-  <nav class=" flex-ns justify-between border-box pa3 pl3-l pr2-l mt1 mt0-ns" id="navbar">
-  <div class="flex">
-    <a class="f4 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" id="site-title" href='/' title="Home">Yingchi Blog</a>
-  </div>
   
-  <div class=" flex-ns mt2 mt0-ns pv1">
+
+  <body class="a-page" data-url="/posts/2020/5/client-go.html">
     
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/' title="Home">Home</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/posts.html' title="Posts">Posts</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/tags.html' title="Tags">Tags</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/about.html' title="About">About</a>
-    
-  </div>
-  
-  
-</nav>
+<div class="mobile-navbar">
+  <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+    <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+      <i class="fa fa-bars"></i>
+      <span class="sr-only">Vis/skjul meny</span>
+    </a>
+  </span>
+  <a href="https://blog.yingchi.io/posts/2020/5/client-go.html">Yingchi Blog</a>
+</div>
+
 
 
 <div 
 id="scroll-navbar" 
 class="scroll-navbar" 
-style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" 
-title="Test">
-<div>
-  <a 
-  class="f5 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" 
-  id="site-title" 
-  href='https://blog.yingchi.io/'
-  style="line-height: 40px;" 
-  title="Home">Yingchi Blog</a>
+style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" >
+<a href="https://blog.yingchi.io/posts/2020/5/client-go.html" style="text-decoration: none; color:#fff">client-go 初步认识与实践</a>
 </div>
-<div class="fw5" style="line-height: 20px;" onclick="topFunction()">
-  client-go 初步认识与实践
-</div>
-</div>
+
+
+
+
+<script>
+  window.onscroll = function() {
+    var currentScrollPos = window.pageYOffset;
+    
+    
+    if (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) {
+        document.getElementById("scroll-navbar").style.display = "inline";
+        document.getElementById("scroll-navbar").style.visibility = "visible";
+        document.getElementById("scroll-navbar").style.opacity = "1";
+    } else {
+        document.getElementById("scroll-navbar").style.visibility = "hidden";
+        document.getElementById("scroll-navbar").style.opacity = "0";
+    }
+  
+    prevScrollpos = currentScrollPos;
+  
+  }
+</script>
 
 
 <style>
+  .mobile-navbar {
+    color: #fff;
+    background: #022f51;
+    text-align: center;
+    line-height: 50px;
+    font-size: 20px;
+  }
+
+  .mobile-navbar a {
+    text-decoration: none;
+    color:#fff;
+    padding: 3px 6px;
+    border: solid 1px #fff;
+    border-radius: 3px;
+  }
+
+  .mobile-navbar #sidebar-toggle {
+    border: none;
+    position: fixed;
+    background: none;
+    top: 0;
+    left: 20px;
+    z-index: 101;
+  }
+
   .scroll-navbar {
+    z-index: 100;
     position: fixed;
     top: 0;
     width: 100%;
-    background-color: #fff;
-    color: #000;
+    background: #022f51;
+    color: #fff !important;
     text-align: center;
     padding: 10px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.2);
   }
+
+  @media (min-width: 768px) {
+    .mobile-navbar {
+      display: none;
+    }
+
+    .scroll-navbar {
+      display: none !important;
+    }
+  }
 </style>
+
+
+
+
+    
+
+    <div class="container pt-2 pt-md-2 pt-lg-2">
+      <div class="adocs-scrollcontainer">
+        <div class="row">
+            <div class="col-sm-12">
+
+    <nav id="sidebar" class="">
+
+
+
+<div class="highlightable">
+
   
-<main class="center mv4 content-width ph3">
-  <div class="f3 fw6 heading-color heading-font post-title">client-go 初步认识与实践</div>
-  <p class="silver f6 mt1 mb4 post-meta">
-    <time>23 May 2020</time> 
-     | 
+  
+  <h1><a href="/">Yingchi Blog</a></h1>
+  <div>Infra / SRE / Cloud Native</div>
+  
+    <ul id="docsmenu" class="topics" style="overflow-y: hidden;">
+      
+      
+
+      <a href="/" style="padding: 2px;">
+        Home
+      </a>
+
+        
+        
+        
+          
+          
+
+
+
+ 
+  
     
+    <li data-nav-id="https://blog.yingchi.io/posts.html" class="dd-item 
+        parent
+        
+        ">
+      <a href="/posts.html">
+        
+        <span>Posts</span>
+
+        
+
+        
+        
+
+          
+            
+          
+
+        
+
+        
+      </a>
+      
+              
+    </li>
+  
+ 
+
+
+          
+          
+
+
+
+ 
+  
     
-    tags: [ <a href='/tags/kubernetes' class="link silver">kubernetes</a>  ]
-    
-  </p>
-  <div class="lh-copy post-content"><blockquote>
+    <li data-nav-id="https://blog.yingchi.io/about.html" class="dd-item 
+        
+        
+        ">
+      <a href="/about.html">
+        
+        <span>About</span>
+
+        
+
+        
+        
+
+        
+      </a>
+              
+    </li>
+  
+ 
+
+
+          
+        
+
+        
+
+
+      
+        <li data-nav-id="/tags/cloud-native.html" class="dd-item
+
+        ">
+          <a href="/tags/cloud-native.html">cloud-native <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/docker.html" class="dd-item
+
+        ">
+          <a href="/tags/docker.html">docker <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/golang.html" class="dd-item
+
+        ">
+          <a href="/tags/golang.html">golang <span style="font-weight: bold;">(5)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/istio.html" class="dd-item
+
+        ">
+          <a href="/tags/istio.html">istio <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/kubernetes.html" class="dd-item
+
+        ">
+          <a href="/tags/kubernetes.html">kubernetes <span style="font-weight: bold;">(15)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/network.html" class="dd-item
+
+        ">
+          <a href="/tags/network.html">network <span style="font-weight: bold;">(4)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/note.html" class="dd-item
+
+        ">
+          <a href="/tags/note.html">note <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/service-mesh.html" class="dd-item
+
+        ">
+          <a href="/tags/service-mesh.html">service-mesh <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+
+
+    </ul>
+  </div>
+</nav>
+
+
+
+
+
+
+
+
+        <section id="body">
+          <div id="content" class="adocs-content js-moveChildrenTo">
+        <div id="overlay"></div>
+        <div class="a-text">
+        
+          <div id="top-bar">
+            <div id="breadcrumbs" itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb">
+                <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+                  <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+                    <i class="fa fa-bars"></i>
+                    <span class="sr-only">Vis/skjul meny</span>
+                  </a>
+                </span>
+                <span class="links">
+                  
+                  
+
+
+
+
+
+
+
+ <a href='/'>Yingchi Blog</a> <span class='adocs-breadcrumb-divider'> / </span> <a href='/posts.html'>Posts</a> <span class='adocs-breadcrumb-divider'> / </span> client-go 初步认识与实践
+
+ 
+
+ 
+
+
+                </span>
+            </div>
+          </div>
+        
+        <div id="body-inner">
+          
+            
+              <h1 class="a-fontBold">
+                client-go 初步认识与实践
+                
+              </h1>
+              <p class="a-leadText" id="leadText"></p>
+            
+          
+
+          
+
+
+
+
+
+
+
+
+<blockquote>
 <p>最近本人的一个容器应用管理平台项目需要实现对接 Kubernetes 平台并进行一些相关资源的操作，查阅了官方文档、GitHub 以及相关技术文章，发现有个叫做 client-go 的 go 语言库是非常适合做 Kubernetes 二次开发的，于是就边实践，边学习，对 client-go 这个库有了一定程度的了解。对于其中比较复杂的设计，如 informer 部分，之后有时间的话会结合 kube-controller-manager 相关机制的研究学习过程加以介绍分享。</p>
 </blockquote>
 <p>client-go 是 Kubernetes 项目所采用的编程式交互客户端库，官方从2016年8月份开始，资源交互操作相关的核心源码，也就是 client-go 抽取出来，独立出来作为一个项目。也就是现在所用到的 Kubernetes 内部都是集成有 client-go 的，因此对于这个库的编码质量应该是值得放心的。</p>
@@ -147,26 +387,26 @@ title="Test">
 <h2 id="client-go-客户端初始化">client-go 客户端初始化</h2>
 <h3 id="kubeconfig-配置信息">kubeconfig 配置信息</h3>
 <p>client-go 想要访问 kube-apiserver 进行交互操作，首先要配置相关的连接及身份认证等信息，配置信息由 kubeconfig 文件提供，默认情况下集群的 kubeconfig 文件存放路径在：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh">$HOME/.kube/config
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sh" data-lang="sh"><span style="color:#8be9fd;font-style:italic">$HOME</span>/.kube/config
 </code></pre></div><p>以本人的测试集群的 kubeconfig 文件为例：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-YAML" data-lang="YAML"><span style="color:#66d9ef">apiVersion</span>: v1
-<span style="color:#66d9ef">kind</span>: Config
-<span style="color:#66d9ef">clusters</span>:
-  - <span style="color:#66d9ef">cluster</span>:
-      <span style="color:#66d9ef">name</span>: kubernetes
-      <span style="color:#66d9ef">server</span>: https://node01:<span style="color:#ae81ff">6443</span>
-      <span style="color:#66d9ef">certificate-authority-data</span>: LS0tLS1CRUdJTiBDRVJUSUZJ...
-<span style="color:#66d9ef">contexts</span>:
-  - <span style="color:#66d9ef">context</span>:
-      <span style="color:#66d9ef">cluster</span>: kubernetes
-      <span style="color:#66d9ef">user</span>: kubernetes-admin
-      <span style="color:#66d9ef">name</span>: kubernetes-admin@kubernetes
-      <span style="color:#66d9ef">current-context</span>: kubernetes-admin@kubernetes
-<span style="color:#66d9ef">users</span>:
-  - <span style="color:#66d9ef">name</span>: kubernetes-admin
-    <span style="color:#66d9ef">user</span>:
-      <span style="color:#66d9ef">client-certificate-data</span>: LS0tLS1CRUdJTiBDM4akND...
-      <span style="color:#66d9ef">client-key-data</span>: LS0tLS1CFURSBLRVktLS0tLQpNS...
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-YAML" data-lang="YAML"><span style="color:#ff79c6">apiVersion</span>: v1
+<span style="color:#ff79c6">kind</span>: Config
+<span style="color:#ff79c6">clusters</span>:
+  - <span style="color:#ff79c6">cluster</span>:
+      <span style="color:#ff79c6">name</span>: kubernetes
+      <span style="color:#ff79c6">server</span>: https://node01:<span style="color:#bd93f9">6443</span>
+      <span style="color:#ff79c6">certificate-authority-data</span>: LS0tLS1CRUdJTiBDRVJUSUZJ...
+<span style="color:#ff79c6">contexts</span>:
+  - <span style="color:#ff79c6">context</span>:
+      <span style="color:#ff79c6">cluster</span>: kubernetes
+      <span style="color:#ff79c6">user</span>: kubernetes-admin
+      <span style="color:#ff79c6">name</span>: kubernetes-admin@kubernetes
+      <span style="color:#ff79c6">current-context</span>: kubernetes-admin@kubernetes
+<span style="color:#ff79c6">users</span>:
+  - <span style="color:#ff79c6">name</span>: kubernetes-admin
+    <span style="color:#ff79c6">user</span>:
+      <span style="color:#ff79c6">client-certificate-data</span>: LS0tLS1CRUdJTiBDM4akND...
+      <span style="color:#ff79c6">client-key-data</span>: LS0tLS1CFURSBLRVktLS0tLQpNS...
 </code></pre></div><p>其中主要包含了如下信息：</p>
 <ul>
 <li>apiVersion：配置文件资源的版本</li>
@@ -184,89 +424,89 @@ title="Test">
 <li>users：定义用户身份验证信息，客户端凭据；</li>
 </ul>
 <p>client-go 读取 kubeconfig 配置信息生成 config 对象：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#f92672">...</span>
-<span style="color:#a6e22e">config</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">clientcmd</span>.<span style="color:#a6e22e">BuildConfigFromFlags</span>(<span style="color:#e6db74">&#34;&#34;</span>,<span style="color:#e6db74">&#34;./configs/kubeconfig.conf&#34;</span>)
-<span style="color:#f92672">...</span>
-</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">kubeconfig</span>, <span style="color:#a6e22e">_</span> = <span style="color:#a6e22e">ioutil</span>.<span style="color:#a6e22e">ReadFile</span>(<span style="color:#e6db74">&#34;./configs/kubeconfig.conf&#34;</span>)
-<span style="color:#a6e22e">restConf</span>, <span style="color:#a6e22e">_</span> = <span style="color:#a6e22e">clientcmd</span>.<span style="color:#a6e22e">RESTConfigFromKubeConfig</span>(<span style="color:#a6e22e">kubeconfig</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#ff79c6">...</span>
+config, err <span style="color:#ff79c6">:=</span> clientcmd.<span style="color:#50fa7b">BuildConfigFromFlags</span>(<span style="color:#f1fa8c">&#34;&#34;</span>,<span style="color:#f1fa8c">&#34;./configs/kubeconfig.conf&#34;</span>)
+<span style="color:#ff79c6">...</span>
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">kubeconfig, _ = ioutil.<span style="color:#50fa7b">ReadFile</span>(<span style="color:#f1fa8c">&#34;./configs/kubeconfig.conf&#34;</span>)
+restConf, _ = clientcmd.<span style="color:#50fa7b">RESTConfigFromKubeConfig</span>(kubeconfig)
 </code></pre></div><p><strong>由 config 对象进一步生成需要的 client 对象，之后才能与 kube-apiserver 通信进行资源的交互操作</strong>，每种 client 对象都有自己的生成方式。</p>
 <h2 id="常用的-client-初始化及资源操作示例">常用的 Client 初始化及资源操作示例</h2>
 <p>介绍一下 RESTClient / ClientSet / DynamicClient 三种 Client 的用法，DiscoveryClient 暂不做介绍</p>
 <h3 id="restclient">RESTClient</h3>
 <p><strong>RESTClient 初始化</strong></p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">config</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">clientcmd</span>.<span style="color:#a6e22e">BuildConfigFromFlags</span>(<span style="color:#e6db74">&#34;&#34;</span>,<span style="color:#e6db74">&#34;./configs/kubeconfig.conf&#34;</span>)
-<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
-  panic(<span style="color:#a6e22e">err</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">config, err <span style="color:#ff79c6">:=</span> clientcmd.<span style="color:#50fa7b">BuildConfigFromFlags</span>(<span style="color:#f1fa8c">&#34;&#34;</span>,<span style="color:#f1fa8c">&#34;./configs/kubeconfig.conf&#34;</span>)
+<span style="color:#ff79c6">if</span> err <span style="color:#ff79c6">!=</span> <span style="color:#ff79c6">nil</span>{
+  <span style="color:#8be9fd;font-style:italic">panic</span>(err)
 }
 
-<span style="color:#a6e22e">config</span>.<span style="color:#a6e22e">APIPath</span> = <span style="color:#e6db74">&#34;api&#34;</span>
-<span style="color:#a6e22e">config</span>.<span style="color:#a6e22e">GroupVersion</span> = <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">corev1</span>.<span style="color:#a6e22e">SchemeGroupVersion</span>
-<span style="color:#a6e22e">config</span>.<span style="color:#a6e22e">NegotiatedSerializer</span> = <span style="color:#a6e22e">scheme</span>.<span style="color:#a6e22e">Codecs</span>
+config.APIPath = <span style="color:#f1fa8c">&#34;api&#34;</span>
+config.GroupVersion = <span style="color:#ff79c6">&amp;</span>corev1.SchemeGroupVersion
+config.NegotiatedSerializer = scheme.Codecs
 
-<span style="color:#a6e22e">restClient</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">rest</span>.<span style="color:#a6e22e">RESTClient</span>(<span style="color:#a6e22e">config</span>)
-<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
-  panic(<span style="color:#a6e22e">err</span>)
+restClient, err <span style="color:#ff79c6">:=</span> rest.<span style="color:#50fa7b">RESTClient</span>(config)
+<span style="color:#ff79c6">if</span> err <span style="color:#ff79c6">!=</span> <span style="color:#ff79c6">nil</span>{
+  <span style="color:#8be9fd;font-style:italic">panic</span>(err)
 }
 </code></pre></div><p><strong>RESTClient 资源操作示例</strong></p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">pods</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">corev1</span>.<span style="color:#a6e22e">PodList</span>{}
-<span style="color:#a6e22e">err</span> = <span style="color:#a6e22e">restClient</span>.<span style="color:#a6e22e">Get</span>()
-                .<span style="color:#a6e22e">Namespace</span>(<span style="color:#e6db74">&#34;yingchi&#34;</span>)
-                .<span style="color:#a6e22e">Resource</span>(<span style="color:#e6db74">&#34;pods&#34;</span>)
-								.<span style="color:#a6e22e">VersionedParams</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">metav1</span>.<span style="color:#a6e22e">ListOptions</span>{}, <span style="color:#a6e22e">scheme</span>.<span style="color:#a6e22e">ParameterCodec</span>)
-                .<span style="color:#a6e22e">Do</span>()
-                .<span style="color:#a6e22e">Into</span>(<span style="color:#a6e22e">pods</span>)
-<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
-  panic(<span style="color:#a6e22e">err</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">pods <span style="color:#ff79c6">:=</span> <span style="color:#ff79c6">&amp;</span>corev1.PodList{}
+err = restClient.<span style="color:#50fa7b">Get</span>()
+                .<span style="color:#50fa7b">Namespace</span>(<span style="color:#f1fa8c">&#34;yingchi&#34;</span>)
+                .<span style="color:#50fa7b">Resource</span>(<span style="color:#f1fa8c">&#34;pods&#34;</span>)
+								.<span style="color:#50fa7b">VersionedParams</span>(<span style="color:#ff79c6">&amp;</span>metav1.ListOptions{}, scheme.ParameterCodec)
+                .<span style="color:#50fa7b">Do</span>()
+                .<span style="color:#50fa7b">Into</span>(pods)
+<span style="color:#ff79c6">if</span> err <span style="color:#ff79c6">!=</span> <span style="color:#ff79c6">nil</span> {
+  <span style="color:#8be9fd;font-style:italic">panic</span>(err)
 }
 </code></pre></div><h3 id="clientset">ClientSet</h3>
 <p>client-go 中最常用的 client 对象，原因就是 ClientSet 相比 RESTClient 封装的更加易用，尤其是仅仅是去操作 Kubernetes 内置资源时，ClientSet 应该是首选 Client 对象。ClientSet 在 RESTClient 基础上封装了对 Version 和 Resource 的管理方法，每个 Resource 都可以理解为一个 client，这也是 ClientSet 名称的由来。</p>
 <p><strong>ClientSet 初始化</strong></p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">config</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">clientcmd</span>.<span style="color:#a6e22e">BuildConfigFromFlags</span>(<span style="color:#e6db74">&#34;&#34;</span>,<span style="color:#e6db74">&#34;./configs/kubeconfig.conf&#34;</span>)
-<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
-  panic(<span style="color:#a6e22e">err</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">config, err <span style="color:#ff79c6">:=</span> clientcmd.<span style="color:#50fa7b">BuildConfigFromFlags</span>(<span style="color:#f1fa8c">&#34;&#34;</span>,<span style="color:#f1fa8c">&#34;./configs/kubeconfig.conf&#34;</span>)
+<span style="color:#ff79c6">if</span> err <span style="color:#ff79c6">!=</span> <span style="color:#ff79c6">nil</span>{
+  <span style="color:#8be9fd;font-style:italic">panic</span>(err)
 }
 
-<span style="color:#a6e22e">clientSet</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">kubernetes</span>.<span style="color:#a6e22e">NewForConfig</span>(<span style="color:#a6e22e">config</span>)
-<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
-  panic(<span style="color:#a6e22e">err</span>)
+clientSet, err <span style="color:#ff79c6">:=</span> kubernetes.<span style="color:#50fa7b">NewForConfig</span>(config)
+<span style="color:#ff79c6">if</span> err <span style="color:#ff79c6">!=</span> <span style="color:#ff79c6">nil</span>{
+  <span style="color:#8be9fd;font-style:italic">panic</span>(err)
 }
 </code></pre></div><p><strong>ClientSet 资源操作示例</strong></p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">pods</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">clientSet</span>.<span style="color:#a6e22e">CoreV1</span>()
-                      .<span style="color:#a6e22e">Pods</span>(<span style="color:#e6db74">&#34;yingchi&#34;</span>)
-                      .<span style="color:#a6e22e">List</span>(<span style="color:#a6e22e">metav1</span>.<span style="color:#a6e22e">ListOptions</span>{})
-<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
-  panic(<span style="color:#a6e22e">err</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">pods, err <span style="color:#ff79c6">:=</span> clientSet.<span style="color:#50fa7b">CoreV1</span>()
+                      .<span style="color:#50fa7b">Pods</span>(<span style="color:#f1fa8c">&#34;yingchi&#34;</span>)
+                      .<span style="color:#50fa7b">List</span>(metav1.ListOptions{})
+<span style="color:#ff79c6">if</span> err <span style="color:#ff79c6">!=</span> <span style="color:#ff79c6">nil</span>{
+  <span style="color:#8be9fd;font-style:italic">panic</span>(err)
 }
 </code></pre></div><h3 id="dynamicclient">DynamicClient</h3>
 <p>DynamicClient 也是基于 RESTClient 封装的一种动态客户端，与 ClientSet 不同的是，<strong>DynamicClient 能处理包括 CRD 自定义资源在内的任意 kubernetes 资源</strong>。</p>
 <p>能处理 CRD 的原因是 DynamicClient 内部实现了 Unstructured，用于处理非结构化的或者说未知结构的数据结构，这是处理 CRD 类型资源的关键，而 ClientSet 内部的数据都是结构化的，即知道每种 Resource 和 Version 对应的具体资源数据类型。</p>
 <p>需要注意的是，DynamicClient 不是类型安全的，使用 DynamicClient 对资源进行交互时尤其要注意指针问题，操作不当可能会导致程序崩溃。</p>
 <p><strong>DynamicClient 初始化</strong></p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">config</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">clientcmd</span>.<span style="color:#a6e22e">BuildConfigFromFlags</span>(<span style="color:#e6db74">&#34;&#34;</span>, <span style="color:#e6db74">&#34;./configs/kubeconfig.conf&#34;</span>)
-<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
-  panic(<span style="color:#a6e22e">err</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">config, err <span style="color:#ff79c6">:=</span> clientcmd.<span style="color:#50fa7b">BuildConfigFromFlags</span>(<span style="color:#f1fa8c">&#34;&#34;</span>, <span style="color:#f1fa8c">&#34;./configs/kubeconfig.conf&#34;</span>)
+<span style="color:#ff79c6">if</span> err <span style="color:#ff79c6">!=</span> <span style="color:#ff79c6">nil</span>{
+  <span style="color:#8be9fd;font-style:italic">panic</span>(err)
 }
 
-<span style="color:#a6e22e">dynamicClient</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">dynamic</span>.<span style="color:#a6e22e">NewForConfig</span>(<span style="color:#a6e22e">config</span>)
-<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
-  panic(<span style="color:#a6e22e">err</span>)
+dynamicClient, err <span style="color:#ff79c6">:=</span> dynamic.<span style="color:#50fa7b">NewForConfig</span>(config)
+<span style="color:#ff79c6">if</span> err <span style="color:#ff79c6">!=</span> <span style="color:#ff79c6">nil</span>{
+  <span style="color:#8be9fd;font-style:italic">panic</span>(err)
 }
 </code></pre></div><p><strong>DynamicClient 资源操作示例</strong></p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">resource</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">schema</span>.<span style="color:#a6e22e">GroupVersionResource</span>{
-  <span style="color:#a6e22e">Version</span>: <span style="color:#e6db74">&#34;v1&#34;</span>,
-  <span style="color:#a6e22e">Resource</span>: <span style="color:#e6db74">&#34;pods&#34;</span>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">resource <span style="color:#ff79c6">:=</span> schema.GroupVersionResource{
+  Version: <span style="color:#f1fa8c">&#34;v1&#34;</span>,
+  Resource: <span style="color:#f1fa8c">&#34;pods&#34;</span>
 }
 
-<span style="color:#a6e22e">obj</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">dynamicClient</span>.<span style="color:#a6e22e">Resource</span>(<span style="color:#a6e22e">resource</span>)
-                        .<span style="color:#a6e22e">Namespace</span>(<span style="color:#e6db74">&#34;yingchi&#34;</span>)
-                        .<span style="color:#a6e22e">List</span>(<span style="color:#a6e22e">metav1</span>.<span style="color:#a6e22e">ListOptions</span>{})
-<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
-  panic(<span style="color:#a6e22e">err</span>)
+obj, err <span style="color:#ff79c6">:=</span> dynamicClient.<span style="color:#50fa7b">Resource</span>(resource)
+                        .<span style="color:#50fa7b">Namespace</span>(<span style="color:#f1fa8c">&#34;yingchi&#34;</span>)
+                        .<span style="color:#50fa7b">List</span>(metav1.ListOptions{})
+<span style="color:#ff79c6">if</span> err <span style="color:#ff79c6">!=</span> <span style="color:#ff79c6">nil</span>{
+  <span style="color:#8be9fd;font-style:italic">panic</span>(err)
 }
 
-<span style="color:#a6e22e">pods</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">corev1</span>.<span style="color:#a6e22e">PodList</span>{}
-<span style="color:#a6e22e">err</span> = <span style="color:#a6e22e">runtime</span>.<span style="color:#a6e22e">DefaultUnstructuredConverter</span>
-							.<span style="color:#a6e22e">FromUnstructured</span>(<span style="color:#a6e22e">obj</span>.<span style="color:#a6e22e">UnstructuredContent</span>(), <span style="color:#a6e22e">pods</span>)
+pods <span style="color:#ff79c6">:=</span> <span style="color:#ff79c6">&amp;</span>corev1.PodList{}
+err = runtime.DefaultUnstructuredConverter
+							.<span style="color:#50fa7b">FromUnstructured</span>(obj.<span style="color:#50fa7b">UnstructuredContent</span>(), pods)
 </code></pre></div><h2 id="informer-机制">Informer 机制</h2>
 <p>Client-go 包中一个相对较为高端的设计在于 Informer 的设计，如果想要资源交互更优雅的模式，就要用到 Informer 的机制。</p>
 <p>通过之前的例子我们知道可以直接通过 Kubernetes API 交互，但是考虑一点就是交互的形式，<strong>Informer设计为List/Watch 的方式</strong>。Informer 在初始化的时先通过 List 去从 Kubernetes API 中取出资源的全部 object 对象，并同时缓存，然后后面通过 Watch 的机制去监控资源，这样的话，通过 Informer 及其缓存，我们就可以直接和Informer 交互而不是每次都和 Kubernetes API 交互，避免了轮询 kube-apiserver 等方式对 apiserver 带来的访问压力。</p>
@@ -305,123 +545,532 @@ title="Test">
 <p><a href="https://links.jianshu.com/go?to=https%3A%2F%2Francher.com%2Fusing-kubernetes-api-go-kubecon-2017-session-recap%2F">Using Kubernetes API from Go</a></p>
 </li>
 </ul>
-</div>
-</main>
- 
 
 
-
-
-
-
-<div class="tl fixed list-pages lh-copy" id="contents-list"></div>
-
-
-
-<div class="pagination tc tr-l db fixed-l bottom-2-l right-2-l mb3 mb0-l">
-  
-<a id="scroll-to-top" class="f6 o-0 link br2 ph2 pv1 mb1 bg-main-color pointer" onclick="topFunction()" style="color: #fff; visibility: hidden; display: none; transition: opacity .5s, visibility .5s;" title="back to top">back to top</a>
-<br>
-  <p class="mb0 mt2">
-  <a href="https://blog.yingchi.io/posts/2020/5/linux-iptables.html">prev post</a>
-  <a href="https://blog.yingchi.io/posts/2020/5/what-is-cloud-native.html">next post</a>
-  </p>
-</div>
-
-  <footer class="content-width mt0 mt5-l mb4 f6 center ph4 gray tc tl-l">
-  <hr class="dn db-l ml0-l gray w3"><br>
-  Powered by <a href="https://gohugo.io/" target="_blank" class="link gray dim">Hugo</a>, based on the <a href="https://github.com/lingxz/er" target="_blank" class="link gray dim">Er</a> theme. <br>
-  © 2021 Joey.Jiang
+<footer class=" footline" >
+	
 </footer>
-  
 
 
+</div>
+     </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.css">
-<style>.is-active-link::before { background-color: var(--secondary-color); }</style>
+              <div id="navigation">
+                  
+                  
+                  
+                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                                  
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                  
+                  
+          
+          
+                  
+                      <a class="nav nav-prev" href="/posts/2020/5/what-is-cloud-native.html" title="Cloud Native 云原生 | 概念解读"> <i class="fa fa-angle-left"></i> Forrige side</a>
+                  
+                  
+                      <a class="nav nav-next" href="/posts/2020/5/linux-iptables.html" title="Linux Netfilter/iptables 学习" style="margin-right: 0px;">Neste side <i class="fa fa-angle-right"></i></a>
+                  
+              </div>
 
 
+            </div>
+
+            
+              
+              
+              
+                <div id="top-github-link">
+                  <a class="" href="https://github.com/altinn/docs/blob/master/content/posts/2020/5/client-go.md" target="blank">
+                    <i class="fa fa-code-fork"></i>
+                    
+                  </a>
+                </div>
+              
+            
+
+        </section>
 
 
-<script type="text/javascript">
-var prevScrollpos = window.pageYOffset;
-window.onscroll = function() {
-  var currentScrollPos = window.pageYOffset;
+        </div> 
+      </div> 
+    </div>
+    </div> 
 
-  
-  if (document.getElementById("tag-cloud") !== null) { 
-    if (prevScrollpos > currentScrollPos) { 
-      document.getElementById("tag-cloud").style.visibility = "visible";
-      document.getElementById("tag-cloud").style.opacity = "1";
-    } else {
-      document.getElementById("tag-cloud").style.visibility = "hidden";
-      document.getElementById("tag-cloud").style.opacity = "0";
+    <footer class="a-footer a-bgBlueDarker ">
+    <div class="container" style="margin: 5px 20px;">
+        <div class="row">
+            <div class="col-12">
+                <div>©2021 <a href="https://yingchi.io" style="text-decoration: none; color:#fff">yingchi.io</a></div>
+                <div>Infra / SRE / Cloud Native</div>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
+      <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
+    </div>
+    <script src="/js/clipboard.min.js"></script>
+    <script src="/js/html5shiv-printshiv.min.js"></script>
+    <script src="/js/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script src="/js/modernizr.custom.71422.js"></script>
+    
+    <script src="/js/altinninfoportal.js"></script>
+    <script src="/js/altinndocs.js"></script>
+    <script src="/js/altinndocs-learn.js"></script>
+
+    <script src="/js/stickysidebar/rAF.js"></script>
+    <script src="/js/stickysidebar/ResizeSensor.js"></script>
+    <script src="/js/stickysidebar/sticky-sidebar.js"></script>
+    
+    <script>
+      var a = new StickySidebar('#sidebar', {
+        topSpacing: 20,
+        bottomSpacing: 60,
+        containerSelector: '.adocs-scrollcontainer',
+        innerWrapperSelector: '.sidebar__inner',
+        minWidth: 768
+      });
+    </script>
+
+    <link href="/mermaid/mermaid.css" type="text/css" rel="stylesheet"/>
+    <script src="/mermaid/mermaid.js"></script>
+    <script>
+    if (typeof mermaidConfig === "undefined") {
+      mermaidConfig = {};
     }
-  }
-  
-
-
-  
-  if (document.body.scrollTop > 500 || document.documentElement.scrollTop > 500) {
-      document.getElementById("scroll-to-top").style.display = "inline";
-      document.getElementById("scroll-to-top").style.visibility = "visible";
-      document.getElementById("scroll-to-top").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-to-top").style.visibility = "hidden";
-      document.getElementById("scroll-to-top").style.opacity = "0";
-  }
-  
-
-  
-  if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
-      document.getElementById("scroll-navbar").style.display = "inline";
-      document.getElementById("scroll-navbar").style.visibility = "visible";
-      document.getElementById("scroll-navbar").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-navbar").style.visibility = "hidden";
-      document.getElementById("scroll-navbar").style.opacity = "0";
-  }
-
-  prevScrollpos = currentScrollPos;
-
-}
-
-
-
-function topFunction() {
-  document.body.scrollTop = 0; 
-  document.documentElement.scrollTop = 0; 
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-if (document.getElementById("contents-list") !== null && document.getElementsByClassName("post-content").length !== 0) { 
-  tocbot.init({
+    mermaidConfig.startOnLoad = true;
     
-    tocSelector: '#contents-list',
+    mermaid.initialize(mermaidConfig);
+    </script>
+
     
-    contentSelector: '.post-content',
-    
-    headingSelector: 'h1, h2, h3',
-  });
-}
 
 
-</script>
-
-
-
-
-</body>
+  </body>
 </html>

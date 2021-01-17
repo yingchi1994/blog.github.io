@@ -1,125 +1,363 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta content='text/html; charset=utf-8' http-equiv='content-type' />
-
-  <title>Kubernetes 架构浅析 - Yingchi Blog</title>
-  <meta content='Kubernetes 架构浅析 - Yingchi Blog' property='title' />
-  <meta content='Kubernetes 架构浅析 - Yingchi Blog' property='og:title' />
+<!DOCTYPE html>
+<html lang="zh-cn" class="js csstransforms3d">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
 
 
-<meta property="og:description" content="前言 Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发布了 Kubernetes，这是振奋人心的，随后巨硬、IBM、RedHat 一些大佬企业也加入 Kubernetes 社区添砖加瓦，项目日益成熟，社区非常活跃，如今的 Kubernetes 项目也已经成为了开源项目中最耀眼的其中之一。
-Kubernetes 的成功在于它填补了大规模容器集群的编排调度管理平台的空白，在此之前，大家都仿佛在云时代中做着石器时代的活，费时费力地部署管理自己的应用，虽然容器概念已经流行，但是还是用着最原始的方式去使用它们，虽然有一些技术框架，如 Docker Swarm 尝试改变这一现状，但是反响并不好，直到 Kubernetes 的出现，人们都惊呆了，原来 Kubernetes 与 Docker 与 微服务可以这么有机地结合？难以置信，它们虽然是不同的项目不同的设计思想，但是当融合在一起的时候是如此的完美。
-因此，我们的确有必要去学习去了解优秀的 Kubernetes，当然，学习它的架构实现，从宏观角度理解它的运转机制就是必不可少的环节。
-架构概述 Kubernetes 系统架构整体采用的是 C/S 的架构，即 Master 作为 Server，各个 Worker 节点作为 Client，在一个面向生产环境的集群中，通常可以采用多个 Master 节点实现 HA。
-然后从 Master 与 Worker 两种不同的节点类型来概述一下它们的「职责」
-Master Node 主要职责：  管理集群所有的 Node； 调度集群的 Pod； 管理集群的运行状态；  主要组件：  kube-apiserver: 负责处理资源的 CRUD 请求，提供 REST API 接口； kube-scheduler: 负责集群中 Pod 资源的调度（哪个 Pod 运行在 哪个 Node 上）； kube-controller-manager: 控制器管理器，自动化地管理集群状态（如自动扩容、滚动更新）；  Worker Node 主要职责：  管理容器的生命周期，网络，存储等； 监控上报 Pod 的运行状态；  主要组件：  kubelet: 管理容器的生命周期，与 Master 节点进行通信，可理解为 Kubernetes 在 Worker 节点的 Agent； kube-proxy: 负责 Kubernetes Service 组件的通信，原理是为当前节点 Pod 动态地生成 iptables 或 ipvs 规则，并且与 kube-apiserver 保持通信，一旦发现某一个 Service 的后端 Pod 改变，需要将改变保存在 kube-apiserver 中； container engine: 负责接收 kubelet 指令，对容器进行基础地管理；  组件浅析 [Master] kube-apiserver 顾名思义，「apiserver」即本质是提供 API，而且是 REST API，我们提到 REST API 总是会想到「资源」这个概念，没错，这里的 kube-apiserver 就是为 Kubernetes 集群中的各种资源提供 CRUD 的 REST API。" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html" />
+    
+    <title>Kubernetes 架构浅析 :: Altinn digitalisering - Utvikling</title>
+    
+    <link rel="shortcut icon" href="/images/favicon.png" type="image/x-icon" />
+    <link href="/css/nucleus.css" rel="stylesheet">
+    <link href="/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/css/hybrid.css" rel="stylesheet">
+    <link href="/css/horsey.css" rel="stylesheet">
+    <link href="/css/fortawesome.css" rel="stylesheet">
+    <link href="/css/designsystem.css" rel="stylesheet">
+    
+    <link href="/css/theme.css" rel="stylesheet">
+    
+    
+    
+    <script src="/js/jquery-2.x.min.js"></script>
 
+    
+<link href="/css/altinndigitalisering.css" rel="stylesheet">
 
-<meta property="article:published_time" content="2020-04-05T21:03:12&#43;08:00"/>
+<link href="/css/altinn.css" rel="stylesheet">
 
-<meta property="article:modified_time" content="2020-04-05T21:03:12&#43;08:00"/>
+    <style>
+      :root #header + #content > #left > #rlblock_left {
+        display:none !important;
+      }
+    </style>
+  </head>
 
-<meta property="og:site_name" content="Yingchi&#39;s Blog" />
-
-
-
-
-
-
-
-<meta name="generator" content="Hugo 0.71.1" />
-
-<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600" rel="stylesheet">
-<style type="text/css">/*https://coolors.co/afd5aa-f0f2ef-a69f98-3d3d3d-8c6057*/
-:root {
-  --main-color: #8C6056; 
-  --secondary-color: #AFD5AA;
-  --logo-text-color: #fff;
-  --body-text-color: #3d3d3d;
-  --heading-text-color: #383838;
-  --background-color: #fff;
-}</style>
-<link href='/css/tachyons.min.css' rel="stylesheet">
-<link href='/css/styles.css' rel="stylesheet">
-
-
-<link rel="icon" 
-
-  href="/favicons/" 
-
-type="image/x-icon"/>
-
-<link href='/feed.xml' rel="alternate" type="application/atom+xml" title="Yingchi Blog" />
-</head>
-<body class="global-font">
-  <nav class=" flex-ns justify-between border-box pa3 pl3-l pr2-l mt1 mt0-ns" id="navbar">
-  <div class="flex">
-    <a class="f4 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" id="site-title" href='/' title="Home">Yingchi Blog</a>
-  </div>
   
-  <div class=" flex-ns mt2 mt0-ns pv1">
+
+  <body class="a-page" data-url="/posts/2020/4/kubernetes-arch.html">
     
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/' title="Home">Home</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/posts.html' title="Posts">Posts</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/tags.html' title="Tags">Tags</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/about.html' title="About">About</a>
-    
-  </div>
-  
-  
-</nav>
+<div class="mobile-navbar">
+  <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+    <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+      <i class="fa fa-bars"></i>
+      <span class="sr-only">Vis/skjul meny</span>
+    </a>
+  </span>
+  <a href="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html">Yingchi Blog</a>
+</div>
+
 
 
 <div 
 id="scroll-navbar" 
 class="scroll-navbar" 
-style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" 
-title="Test">
-<div>
-  <a 
-  class="f5 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" 
-  id="site-title" 
-  href='https://blog.yingchi.io/'
-  style="line-height: 40px;" 
-  title="Home">Yingchi Blog</a>
+style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" >
+<a href="https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html" style="text-decoration: none; color:#fff">Kubernetes 架构浅析</a>
 </div>
-<div class="fw5" style="line-height: 20px;" onclick="topFunction()">
-  Kubernetes 架构浅析
-</div>
-</div>
+
+
+
+
+<script>
+  window.onscroll = function() {
+    var currentScrollPos = window.pageYOffset;
+    
+    
+    if (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) {
+        document.getElementById("scroll-navbar").style.display = "inline";
+        document.getElementById("scroll-navbar").style.visibility = "visible";
+        document.getElementById("scroll-navbar").style.opacity = "1";
+    } else {
+        document.getElementById("scroll-navbar").style.visibility = "hidden";
+        document.getElementById("scroll-navbar").style.opacity = "0";
+    }
+  
+    prevScrollpos = currentScrollPos;
+  
+  }
+</script>
 
 
 <style>
+  .mobile-navbar {
+    color: #fff;
+    background: #022f51;
+    text-align: center;
+    line-height: 50px;
+    font-size: 20px;
+  }
+
+  .mobile-navbar a {
+    text-decoration: none;
+    color:#fff;
+    padding: 3px 6px;
+    border: solid 1px #fff;
+    border-radius: 3px;
+  }
+
+  .mobile-navbar #sidebar-toggle {
+    border: none;
+    position: fixed;
+    background: none;
+    top: 0;
+    left: 20px;
+    z-index: 101;
+  }
+
   .scroll-navbar {
+    z-index: 100;
     position: fixed;
     top: 0;
     width: 100%;
-    background-color: #fff;
-    color: #000;
+    background: #022f51;
+    color: #fff !important;
     text-align: center;
     padding: 10px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.2);
   }
+
+  @media (min-width: 768px) {
+    .mobile-navbar {
+      display: none;
+    }
+
+    .scroll-navbar {
+      display: none !important;
+    }
+  }
 </style>
+
+
+
+
+    
+
+    <div class="container pt-2 pt-md-2 pt-lg-2">
+      <div class="adocs-scrollcontainer">
+        <div class="row">
+            <div class="col-sm-12">
+
+    <nav id="sidebar" class="">
+
+
+
+<div class="highlightable">
+
   
-<main class="center mv4 content-width ph3">
-  <div class="f3 fw6 heading-color heading-font post-title">Kubernetes 架构浅析</div>
-  <p class="silver f6 mt1 mb4 post-meta">
-    <time>05 Apr 2020</time> 
-     | 
+  
+  <h1><a href="/">Yingchi Blog</a></h1>
+  <div>Infra / SRE / Cloud Native</div>
+  
+    <ul id="docsmenu" class="topics" style="overflow-y: hidden;">
+      
+      
+
+      <a href="/" style="padding: 2px;">
+        Home
+      </a>
+
+        
+        
+        
+          
+          
+
+
+
+ 
+  
     
+    <li data-nav-id="https://blog.yingchi.io/posts.html" class="dd-item 
+        parent
+        
+        ">
+      <a href="/posts.html">
+        
+        <span>Posts</span>
+
+        
+
+        
+        
+
+          
+            
+          
+
+        
+
+        
+      </a>
+      
+              
+    </li>
+  
+ 
+
+
+          
+          
+
+
+
+ 
+  
     
-    tags: [ <a href='/tags/kubernetes' class="link silver">kubernetes</a>  ]
-    
-  </p>
-  <div class="lh-copy post-content"><h2 id="前言">前言</h2>
+    <li data-nav-id="https://blog.yingchi.io/about.html" class="dd-item 
+        
+        
+        ">
+      <a href="/about.html">
+        
+        <span>About</span>
+
+        
+
+        
+        
+
+        
+      </a>
+              
+    </li>
+  
+ 
+
+
+          
+        
+
+        
+
+
+      
+        <li data-nav-id="/tags/cloud-native.html" class="dd-item
+
+        ">
+          <a href="/tags/cloud-native.html">cloud-native <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/docker.html" class="dd-item
+
+        ">
+          <a href="/tags/docker.html">docker <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/golang.html" class="dd-item
+
+        ">
+          <a href="/tags/golang.html">golang <span style="font-weight: bold;">(5)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/istio.html" class="dd-item
+
+        ">
+          <a href="/tags/istio.html">istio <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/kubernetes.html" class="dd-item
+
+        ">
+          <a href="/tags/kubernetes.html">kubernetes <span style="font-weight: bold;">(15)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/network.html" class="dd-item
+
+        ">
+          <a href="/tags/network.html">network <span style="font-weight: bold;">(4)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/note.html" class="dd-item
+
+        ">
+          <a href="/tags/note.html">note <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/service-mesh.html" class="dd-item
+
+        ">
+          <a href="/tags/service-mesh.html">service-mesh <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+
+
+    </ul>
+  </div>
+</nav>
+
+
+
+
+
+
+
+
+        <section id="body">
+          <div id="content" class="adocs-content js-moveChildrenTo">
+        <div id="overlay"></div>
+        <div class="a-text">
+        
+          <div id="top-bar">
+            <div id="breadcrumbs" itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb">
+                <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+                  <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+                    <i class="fa fa-bars"></i>
+                    <span class="sr-only">Vis/skjul meny</span>
+                  </a>
+                </span>
+                <span class="links">
+                  
+                  
+
+
+
+
+
+
+
+ <a href='/'>Yingchi Blog</a> <span class='adocs-breadcrumb-divider'> / </span> <a href='/posts.html'>Posts</a> <span class='adocs-breadcrumb-divider'> / </span> Kubernetes 架构浅析
+
+ 
+
+ 
+
+
+                </span>
+            </div>
+          </div>
+        
+        <div id="body-inner">
+          
+            
+              <h1 class="a-fontBold">
+                Kubernetes 架构浅析
+                
+              </h1>
+              <p class="a-leadText" id="leadText"></p>
+            
+          
+
+          
+
+
+
+
+
+
+
+
+<h2 id="前言">前言</h2>
 <p>Kubernetes 就像它在英语中原意“舵手”一样，指挥，调度&hellip; 它的定位就是这么一个容器编排调度基础平台，来源于 Google 内部的容器集群管理平台 Borg，Borg 发布于 2003 年，从最初的一个小项目，到如今成为支撑起 Google 内部成千上万的应用程序和任务作业的内部集群管理系统，它的成功不言而喻。2014 年，Google 便以 Borg 开源版本的名义发布了 Kubernetes，这是振奋人心的，随后巨硬、IBM、RedHat 一些大佬企业也加入 Kubernetes 社区添砖加瓦，项目日益成熟，社区非常活跃，如今的 Kubernetes 项目也已经成为了开源项目中最耀眼的其中之一。</p>
 <p>Kubernetes 的成功在于它填补了大规模容器集群的编排调度管理平台的空白，在此之前，大家都仿佛在云时代中做着石器时代的活，费时费力地部署管理自己的应用，虽然容器概念已经流行，但是还是用着最原始的方式去使用它们，虽然有一些技术框架，如 Docker Swarm 尝试改变这一现状，但是反响并不好，直到 Kubernetes 的出现，人们都惊呆了，原来 Kubernetes 与 Docker 与 微服务可以这么有机地结合？难以置信，它们虽然是不同的项目不同的设计思想，但是当融合在一起的时候是如此的完美。</p>
 <p>因此，我们的确有必要去学习去了解优秀的 Kubernetes，当然，学习它的架构实现，从宏观角度理解它的运转机制就是必不可少的环节。</p>
@@ -242,123 +480,532 @@ title="Test">
 <p><a href="https://my.oschina.net/u/1000241/blog/3022714">https://my.oschina.net/u/1000241/blog/3022714</a></p>
 </li>
 </ul>
-</div>
-</main>
- 
 
 
-
-
-
-
-<div class="tl fixed list-pages lh-copy" id="contents-list"></div>
-
-
-
-<div class="pagination tc tr-l db fixed-l bottom-2-l right-2-l mb3 mb0-l">
-  
-<a id="scroll-to-top" class="f6 o-0 link br2 ph2 pv1 mb1 bg-main-color pointer" onclick="topFunction()" style="color: #fff; visibility: hidden; display: none; transition: opacity .5s, visibility .5s;" title="back to top">back to top</a>
-<br>
-  <p class="mb0 mt2">
-  <a href="https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html">prev post</a>
-  <a href="https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html">next post</a>
-  </p>
-</div>
-
-  <footer class="content-width mt0 mt5-l mb4 f6 center ph4 gray tc tl-l">
-  <hr class="dn db-l ml0-l gray w3"><br>
-  Powered by <a href="https://gohugo.io/" target="_blank" class="link gray dim">Hugo</a>, based on the <a href="https://github.com/lingxz/er" target="_blank" class="link gray dim">Er</a> theme. <br>
-  © 2021 Joey.Jiang
+<footer class=" footline" >
+	
 </footer>
-  
 
 
+</div>
+     </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.css">
-<style>.is-active-link::before { background-color: var(--secondary-color); }</style>
+              <div id="navigation">
+                  
+                  
+                  
+                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                                  
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                  
+                  
+          
+          
+                  
+                      <a class="nav nav-prev" href="/posts/2020/4/kubernetes-rolling-update.html" title="Kubernetes Rolling Update 滚动升级"> <i class="fa fa-angle-left"></i> Forrige side</a>
+                  
+                  
+                      <a class="nav nav-next" href="/posts/2020/4/kubeadm-flannel-mannul.html" title="记一次 Kubeadm 部署 k8s &#43; Flannel" style="margin-right: 0px;">Neste side <i class="fa fa-angle-right"></i></a>
+                  
+              </div>
 
 
+            </div>
+
+            
+              
+              
+              
+                <div id="top-github-link">
+                  <a class="" href="https://github.com/altinn/docs/blob/master/content/posts/2020/4/kubernetes-arch.md" target="blank">
+                    <i class="fa fa-code-fork"></i>
+                    
+                  </a>
+                </div>
+              
+            
+
+        </section>
 
 
-<script type="text/javascript">
-var prevScrollpos = window.pageYOffset;
-window.onscroll = function() {
-  var currentScrollPos = window.pageYOffset;
+        </div> 
+      </div> 
+    </div>
+    </div> 
 
-  
-  if (document.getElementById("tag-cloud") !== null) { 
-    if (prevScrollpos > currentScrollPos) { 
-      document.getElementById("tag-cloud").style.visibility = "visible";
-      document.getElementById("tag-cloud").style.opacity = "1";
-    } else {
-      document.getElementById("tag-cloud").style.visibility = "hidden";
-      document.getElementById("tag-cloud").style.opacity = "0";
+    <footer class="a-footer a-bgBlueDarker ">
+    <div class="container" style="margin: 5px 20px;">
+        <div class="row">
+            <div class="col-12">
+                <div>©2021 <a href="https://yingchi.io" style="text-decoration: none; color:#fff">yingchi.io</a></div>
+                <div>Infra / SRE / Cloud Native</div>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
+      <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
+    </div>
+    <script src="/js/clipboard.min.js"></script>
+    <script src="/js/html5shiv-printshiv.min.js"></script>
+    <script src="/js/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script src="/js/modernizr.custom.71422.js"></script>
+    
+    <script src="/js/altinninfoportal.js"></script>
+    <script src="/js/altinndocs.js"></script>
+    <script src="/js/altinndocs-learn.js"></script>
+
+    <script src="/js/stickysidebar/rAF.js"></script>
+    <script src="/js/stickysidebar/ResizeSensor.js"></script>
+    <script src="/js/stickysidebar/sticky-sidebar.js"></script>
+    
+    <script>
+      var a = new StickySidebar('#sidebar', {
+        topSpacing: 20,
+        bottomSpacing: 60,
+        containerSelector: '.adocs-scrollcontainer',
+        innerWrapperSelector: '.sidebar__inner',
+        minWidth: 768
+      });
+    </script>
+
+    <link href="/mermaid/mermaid.css" type="text/css" rel="stylesheet"/>
+    <script src="/mermaid/mermaid.js"></script>
+    <script>
+    if (typeof mermaidConfig === "undefined") {
+      mermaidConfig = {};
     }
-  }
-  
-
-
-  
-  if (document.body.scrollTop > 500 || document.documentElement.scrollTop > 500) {
-      document.getElementById("scroll-to-top").style.display = "inline";
-      document.getElementById("scroll-to-top").style.visibility = "visible";
-      document.getElementById("scroll-to-top").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-to-top").style.visibility = "hidden";
-      document.getElementById("scroll-to-top").style.opacity = "0";
-  }
-  
-
-  
-  if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
-      document.getElementById("scroll-navbar").style.display = "inline";
-      document.getElementById("scroll-navbar").style.visibility = "visible";
-      document.getElementById("scroll-navbar").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-navbar").style.visibility = "hidden";
-      document.getElementById("scroll-navbar").style.opacity = "0";
-  }
-
-  prevScrollpos = currentScrollPos;
-
-}
-
-
-
-function topFunction() {
-  document.body.scrollTop = 0; 
-  document.documentElement.scrollTop = 0; 
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-if (document.getElementById("contents-list") !== null && document.getElementsByClassName("post-content").length !== 0) { 
-  tocbot.init({
+    mermaidConfig.startOnLoad = true;
     
-    tocSelector: '#contents-list',
+    mermaid.initialize(mermaidConfig);
+    </script>
+
     
-    contentSelector: '.post-content',
-    
-    headingSelector: 'h1, h2, h3',
-  });
-}
 
 
-</script>
-
-
-
-
-</body>
+  </body>
 </html>

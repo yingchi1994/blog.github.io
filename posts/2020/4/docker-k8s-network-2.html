@@ -1,124 +1,363 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta content='text/html; charset=utf-8' http-equiv='content-type' />
-
-  <title>Kubernetes &amp; Docker 网络原理（二） - Yingchi Blog</title>
-  <meta content='Kubernetes &amp; Docker 网络原理（二） - Yingchi Blog' property='title' />
-  <meta content='Kubernetes &amp; Docker 网络原理（二） - Yingchi Blog' property='og:title' />
+<!DOCTYPE html>
+<html lang="zh-cn" class="js csstransforms3d">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
 
 
-<meta property="og:description" content="Kubernetes Pod 间通信 之前的文章中主要关于 Docker 的网络实现进行了介绍和探讨，对于 Docker 网络而言，其最大的局限性在于跨主机的容器通信方案上存在空白，而 Kubernetes 作为适合大规模分布式集群的容器编排平台，其在网络实现层面上主要解决的问题就包括了如下几点：
- 容器间通信； Pod 间通信； Pod 与 Service 通信； 集群内外通信；  这篇博文主要针对 Kubernetes 的容器间通信和 Pod 间通信进行介绍和探讨，之后再通过单独一篇文章去探讨 Pod 与 Service 的通信，也就是 kube-proxy 工作原理和 Service 机制相关。
-容器间通信 学习 Kubernetes 的容器间通信方案之前要理解 Kubernetes 中的 Pod 概念，Pod 是 Kubernetes 中最基本的调度单位，而不是 Docker 容器，Pod 的本意是豆荚，可以将容器理解为豆荚中的豆子，一个 Pod 可以包含多个有关联关系的容器，之后讨论的 Pod 与 Service 的通信也是从 Pod 层面而言的。这是必须要提前认识的概念，但是在底层，还是涉及到容器之间的通信，毕竟 Pod 只是一个抽象概念。
-同一个 Pod 内的容器不会跨主机通信，它们共享同一个 Network Namesapce 空间，共享同一个 Linux 协议栈。所以对于网络的各类操作，因此可以把一个 Pod 视作一个独立的「主机」，内部的容器可以用 localhost 地址访问彼此的端口。这么做的结果是简单、安全和高效，也能减小将已经存在的程序从物理机或者虚拟机移植到容器下运行的难度。
-如图，Node 上运行着一个 Pod 实例，Pod 内部的容器共享同一个 Network Namespace，因此容器1和容器2之间的通信非常简单，就可以通过直接的本地 IPC 方式通信，对于网络应用，可以直接通过 localhost 访问指定端口通信。因此对于一些传统程序想要移植到 Pod 中，几乎不需要做太多的修改。" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-2.html" />
+    
+    <title>Kubernetes &amp; Docker 网络原理（二） :: Altinn digitalisering - Utvikling</title>
+    
+    <link rel="shortcut icon" href="/images/favicon.png" type="image/x-icon" />
+    <link href="/css/nucleus.css" rel="stylesheet">
+    <link href="/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/css/hybrid.css" rel="stylesheet">
+    <link href="/css/horsey.css" rel="stylesheet">
+    <link href="/css/fortawesome.css" rel="stylesheet">
+    <link href="/css/designsystem.css" rel="stylesheet">
+    
+    <link href="/css/theme.css" rel="stylesheet">
+    
+    
+    
+    <script src="/js/jquery-2.x.min.js"></script>
 
+    
+<link href="/css/altinndigitalisering.css" rel="stylesheet">
 
-<meta property="article:published_time" content="2020-04-12T21:45:23&#43;08:00"/>
+<link href="/css/altinn.css" rel="stylesheet">
 
-<meta property="article:modified_time" content="2020-04-12T21:45:23&#43;08:00"/>
+    <style>
+      :root #header + #content > #left > #rlblock_left {
+        display:none !important;
+      }
+    </style>
+  </head>
 
-<meta property="og:site_name" content="Yingchi&#39;s Blog" />
-
-
-
-
-
-
-
-<meta name="generator" content="Hugo 0.71.1" />
-
-<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600" rel="stylesheet">
-<style type="text/css">/*https://coolors.co/afd5aa-f0f2ef-a69f98-3d3d3d-8c6057*/
-:root {
-  --main-color: #8C6056; 
-  --secondary-color: #AFD5AA;
-  --logo-text-color: #fff;
-  --body-text-color: #3d3d3d;
-  --heading-text-color: #383838;
-  --background-color: #fff;
-}</style>
-<link href='/css/tachyons.min.css' rel="stylesheet">
-<link href='/css/styles.css' rel="stylesheet">
-
-
-<link rel="icon" 
-
-  href="/favicons/" 
-
-type="image/x-icon"/>
-
-<link href='/feed.xml' rel="alternate" type="application/atom+xml" title="Yingchi Blog" />
-</head>
-<body class="global-font">
-  <nav class=" flex-ns justify-between border-box pa3 pl3-l pr2-l mt1 mt0-ns" id="navbar">
-  <div class="flex">
-    <a class="f4 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" id="site-title" href='/' title="Home">Yingchi Blog</a>
-  </div>
   
-  <div class=" flex-ns mt2 mt0-ns pv1">
+
+  <body class="a-page" data-url="/posts/2020/4/docker-k8s-network-2.html">
     
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/' title="Home">Home</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/posts.html' title="Posts">Posts</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/tags.html' title="Tags">Tags</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/about.html' title="About">About</a>
-    
-  </div>
-  
-  
-</nav>
+<div class="mobile-navbar">
+  <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+    <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+      <i class="fa fa-bars"></i>
+      <span class="sr-only">Vis/skjul meny</span>
+    </a>
+  </span>
+  <a href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-2.html">Yingchi Blog</a>
+</div>
+
 
 
 <div 
 id="scroll-navbar" 
 class="scroll-navbar" 
-style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" 
-title="Test">
-<div>
-  <a 
-  class="f5 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" 
-  id="site-title" 
-  href='https://blog.yingchi.io/'
-  style="line-height: 40px;" 
-  title="Home">Yingchi Blog</a>
+style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" >
+<a href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-2.html" style="text-decoration: none; color:#fff">Kubernetes &amp; Docker 网络原理（二）</a>
 </div>
-<div class="fw5" style="line-height: 20px;" onclick="topFunction()">
-  Kubernetes &amp; Docker 网络原理（二）
-</div>
-</div>
+
+
+
+
+<script>
+  window.onscroll = function() {
+    var currentScrollPos = window.pageYOffset;
+    
+    
+    if (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) {
+        document.getElementById("scroll-navbar").style.display = "inline";
+        document.getElementById("scroll-navbar").style.visibility = "visible";
+        document.getElementById("scroll-navbar").style.opacity = "1";
+    } else {
+        document.getElementById("scroll-navbar").style.visibility = "hidden";
+        document.getElementById("scroll-navbar").style.opacity = "0";
+    }
+  
+    prevScrollpos = currentScrollPos;
+  
+  }
+</script>
 
 
 <style>
+  .mobile-navbar {
+    color: #fff;
+    background: #022f51;
+    text-align: center;
+    line-height: 50px;
+    font-size: 20px;
+  }
+
+  .mobile-navbar a {
+    text-decoration: none;
+    color:#fff;
+    padding: 3px 6px;
+    border: solid 1px #fff;
+    border-radius: 3px;
+  }
+
+  .mobile-navbar #sidebar-toggle {
+    border: none;
+    position: fixed;
+    background: none;
+    top: 0;
+    left: 20px;
+    z-index: 101;
+  }
+
   .scroll-navbar {
+    z-index: 100;
     position: fixed;
     top: 0;
     width: 100%;
-    background-color: #fff;
-    color: #000;
+    background: #022f51;
+    color: #fff !important;
     text-align: center;
     padding: 10px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.2);
   }
+
+  @media (min-width: 768px) {
+    .mobile-navbar {
+      display: none;
+    }
+
+    .scroll-navbar {
+      display: none !important;
+    }
+  }
 </style>
+
+
+
+
+    
+
+    <div class="container pt-2 pt-md-2 pt-lg-2">
+      <div class="adocs-scrollcontainer">
+        <div class="row">
+            <div class="col-sm-12">
+
+    <nav id="sidebar" class="">
+
+
+
+<div class="highlightable">
+
   
-<main class="center mv4 content-width ph3">
-  <div class="f3 fw6 heading-color heading-font post-title">Kubernetes &amp; Docker 网络原理（二）</div>
-  <p class="silver f6 mt1 mb4 post-meta">
-    <time>12 Apr 2020</time> 
-     | 
+  
+  <h1><a href="/">Yingchi Blog</a></h1>
+  <div>Infra / SRE / Cloud Native</div>
+  
+    <ul id="docsmenu" class="topics" style="overflow-y: hidden;">
+      
+      
+
+      <a href="/" style="padding: 2px;">
+        Home
+      </a>
+
+        
+        
+        
+          
+          
+
+
+
+ 
+  
     
+    <li data-nav-id="https://blog.yingchi.io/posts.html" class="dd-item 
+        parent
+        
+        ">
+      <a href="/posts.html">
+        
+        <span>Posts</span>
+
+        
+
+        
+        
+
+          
+            
+          
+
+        
+
+        
+      </a>
+      
+              
+    </li>
+  
+ 
+
+
+          
+          
+
+
+
+ 
+  
     
-    tags: [ <a href='/tags/kubernetes' class="link silver">kubernetes</a> <a href='/tags/network' class="link silver">network</a>  ]
-    
-  </p>
-  <div class="lh-copy post-content"><h1 id="kubernetes-pod-间通信">Kubernetes Pod 间通信</h1>
+    <li data-nav-id="https://blog.yingchi.io/about.html" class="dd-item 
+        
+        
+        ">
+      <a href="/about.html">
+        
+        <span>About</span>
+
+        
+
+        
+        
+
+        
+      </a>
+              
+    </li>
+  
+ 
+
+
+          
+        
+
+        
+
+
+      
+        <li data-nav-id="/tags/cloud-native.html" class="dd-item
+
+        ">
+          <a href="/tags/cloud-native.html">cloud-native <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/docker.html" class="dd-item
+
+        ">
+          <a href="/tags/docker.html">docker <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/golang.html" class="dd-item
+
+        ">
+          <a href="/tags/golang.html">golang <span style="font-weight: bold;">(5)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/istio.html" class="dd-item
+
+        ">
+          <a href="/tags/istio.html">istio <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/kubernetes.html" class="dd-item
+
+        ">
+          <a href="/tags/kubernetes.html">kubernetes <span style="font-weight: bold;">(15)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/network.html" class="dd-item
+
+        ">
+          <a href="/tags/network.html">network <span style="font-weight: bold;">(4)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/note.html" class="dd-item
+
+        ">
+          <a href="/tags/note.html">note <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/service-mesh.html" class="dd-item
+
+        ">
+          <a href="/tags/service-mesh.html">service-mesh <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+
+
+    </ul>
+  </div>
+</nav>
+
+
+
+
+
+
+
+
+        <section id="body">
+          <div id="content" class="adocs-content js-moveChildrenTo">
+        <div id="overlay"></div>
+        <div class="a-text">
+        
+          <div id="top-bar">
+            <div id="breadcrumbs" itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb">
+                <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+                  <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+                    <i class="fa fa-bars"></i>
+                    <span class="sr-only">Vis/skjul meny</span>
+                  </a>
+                </span>
+                <span class="links">
+                  
+                  
+
+
+
+
+
+
+
+ <a href='/'>Yingchi Blog</a> <span class='adocs-breadcrumb-divider'> / </span> <a href='/posts.html'>Posts</a> <span class='adocs-breadcrumb-divider'> / </span> Kubernetes & Docker 网络原理（二）
+
+ 
+
+ 
+
+
+                </span>
+            </div>
+          </div>
+        
+        <div id="body-inner">
+          
+            
+              <h1 class="a-fontBold">
+                Kubernetes &amp; Docker 网络原理（二）
+                
+              </h1>
+              <p class="a-leadText" id="leadText"></p>
+            
+          
+
+          
+
+
+
+
+
+
+
+
+<h1 id="kubernetes-pod-间通信">Kubernetes Pod 间通信</h1>
 <p>之前的文章中主要关于 Docker 的网络实现进行了介绍和探讨，对于 Docker 网络而言，其最大的局限性在于跨主机的容器通信方案上存在空白，而 Kubernetes 作为适合大规模分布式集群的容器编排平台，其在网络实现层面上主要解决的问题就包括了如下几点：</p>
 <ul>
 <li>容器间通信；</li>
@@ -156,123 +395,532 @@ title="Test">
 <p>对于第二点，其核心目标就是实现 Pod IP 经由 Node IP 的寻址，也就是说需要有一个机制知道 Pod IP 具体在哪一个 Node 上，通过宿主机将数据转发到目标 Node 上，然后再由目标 Node 将数据转发到具体的本地 docker0 上，最后转发到目标 Pod 中，整个过程大致如图所示：</p>
 <p><img src="docker-k8s-network-2/image-20200712135259615.png" alt="image-20200712135259615"></p>
 <p>一些知名的云平台本身就设计实现 Pod 的 IP 管理，因此 Pod 的通信可以借助平台层的网络设计打通，但是在大部分情况下，尤其是一般企业自己维护的 Kubernetes 集群上，可能无法享受到这种机制，因此还需要自己进行相关的网络配置，让网络满足 Kuberntes 的要求之后才能实现 Pod 之前的正常通信，进而实现集群的正常运转，就像上面第一点中说的那样，好在 Kubernetes 的高可扩展性，通过 CNI 机制，一些网络增强组件（Flannel、Calico 等）实现了上面这些网络要求。但是基本的原理，基本的需求是上面描述的，这个是必须要理解的，但是对于其实际实现，每个增强组件都有自己的实现方案，这里没法一个一个去详细介绍，心有余而力不足，真有时间的话会好好研究并且撰写相关的博文与大家分享。</p>
-</div>
-</main>
- 
 
 
-
-
-
-
-<div class="tl fixed list-pages lh-copy" id="contents-list"></div>
-
-
-
-<div class="pagination tc tr-l db fixed-l bottom-2-l right-2-l mb3 mb0-l">
-  
-<a id="scroll-to-top" class="f6 o-0 link br2 ph2 pv1 mb1 bg-main-color pointer" onclick="topFunction()" style="color: #fff; visibility: hidden; display: none; transition: opacity .5s, visibility .5s;" title="back to top">back to top</a>
-<br>
-  <p class="mb0 mt2">
-  <a href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-1.html">prev post</a>
-  <a href="https://blog.yingchi.io/posts/2020/4/docker-k8s-network-3.html">next post</a>
-  </p>
-</div>
-
-  <footer class="content-width mt0 mt5-l mb4 f6 center ph4 gray tc tl-l">
-  <hr class="dn db-l ml0-l gray w3"><br>
-  Powered by <a href="https://gohugo.io/" target="_blank" class="link gray dim">Hugo</a>, based on the <a href="https://github.com/lingxz/er" target="_blank" class="link gray dim">Er</a> theme. <br>
-  © 2021 Joey.Jiang
+<footer class=" footline" >
+	
 </footer>
-  
 
 
+</div>
+     </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.css">
-<style>.is-active-link::before { background-color: var(--secondary-color); }</style>
+              <div id="navigation">
+                  
+                  
+                  
+                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                                  
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                  
+                  
+          
+          
+                  
+                      <a class="nav nav-prev" href="/posts/2020/4/docker-k8s-network-3.html" title="Kubernetes &amp; Docker 网络原理（三）"> <i class="fa fa-angle-left"></i> Forrige side</a>
+                  
+                  
+                      <a class="nav nav-next" href="/posts/2020/4/docker-k8s-network-1.html" title="Kubernetes &amp; Docker 网络原理（一）" style="margin-right: 0px;">Neste side <i class="fa fa-angle-right"></i></a>
+                  
+              </div>
 
 
+            </div>
+
+            
+              
+              
+              
+                <div id="top-github-link">
+                  <a class="" href="https://github.com/altinn/docs/blob/master/content/posts/2020/4/docker-k8s-network-2.md" target="blank">
+                    <i class="fa fa-code-fork"></i>
+                    
+                  </a>
+                </div>
+              
+            
+
+        </section>
 
 
-<script type="text/javascript">
-var prevScrollpos = window.pageYOffset;
-window.onscroll = function() {
-  var currentScrollPos = window.pageYOffset;
+        </div> 
+      </div> 
+    </div>
+    </div> 
 
-  
-  if (document.getElementById("tag-cloud") !== null) { 
-    if (prevScrollpos > currentScrollPos) { 
-      document.getElementById("tag-cloud").style.visibility = "visible";
-      document.getElementById("tag-cloud").style.opacity = "1";
-    } else {
-      document.getElementById("tag-cloud").style.visibility = "hidden";
-      document.getElementById("tag-cloud").style.opacity = "0";
+    <footer class="a-footer a-bgBlueDarker ">
+    <div class="container" style="margin: 5px 20px;">
+        <div class="row">
+            <div class="col-12">
+                <div>©2021 <a href="https://yingchi.io" style="text-decoration: none; color:#fff">yingchi.io</a></div>
+                <div>Infra / SRE / Cloud Native</div>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
+      <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
+    </div>
+    <script src="/js/clipboard.min.js"></script>
+    <script src="/js/html5shiv-printshiv.min.js"></script>
+    <script src="/js/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script src="/js/modernizr.custom.71422.js"></script>
+    
+    <script src="/js/altinninfoportal.js"></script>
+    <script src="/js/altinndocs.js"></script>
+    <script src="/js/altinndocs-learn.js"></script>
+
+    <script src="/js/stickysidebar/rAF.js"></script>
+    <script src="/js/stickysidebar/ResizeSensor.js"></script>
+    <script src="/js/stickysidebar/sticky-sidebar.js"></script>
+    
+    <script>
+      var a = new StickySidebar('#sidebar', {
+        topSpacing: 20,
+        bottomSpacing: 60,
+        containerSelector: '.adocs-scrollcontainer',
+        innerWrapperSelector: '.sidebar__inner',
+        minWidth: 768
+      });
+    </script>
+
+    <link href="/mermaid/mermaid.css" type="text/css" rel="stylesheet"/>
+    <script src="/mermaid/mermaid.js"></script>
+    <script>
+    if (typeof mermaidConfig === "undefined") {
+      mermaidConfig = {};
     }
-  }
-  
-
-
-  
-  if (document.body.scrollTop > 500 || document.documentElement.scrollTop > 500) {
-      document.getElementById("scroll-to-top").style.display = "inline";
-      document.getElementById("scroll-to-top").style.visibility = "visible";
-      document.getElementById("scroll-to-top").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-to-top").style.visibility = "hidden";
-      document.getElementById("scroll-to-top").style.opacity = "0";
-  }
-  
-
-  
-  if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
-      document.getElementById("scroll-navbar").style.display = "inline";
-      document.getElementById("scroll-navbar").style.visibility = "visible";
-      document.getElementById("scroll-navbar").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-navbar").style.visibility = "hidden";
-      document.getElementById("scroll-navbar").style.opacity = "0";
-  }
-
-  prevScrollpos = currentScrollPos;
-
-}
-
-
-
-function topFunction() {
-  document.body.scrollTop = 0; 
-  document.documentElement.scrollTop = 0; 
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-if (document.getElementById("contents-list") !== null && document.getElementsByClassName("post-content").length !== 0) { 
-  tocbot.init({
+    mermaidConfig.startOnLoad = true;
     
-    tocSelector: '#contents-list',
+    mermaid.initialize(mermaidConfig);
+    </script>
+
     
-    contentSelector: '.post-content',
-    
-    headingSelector: 'h1, h2, h3',
-  });
-}
 
 
-</script>
-
-
-
-
-</body>
+  </body>
 </html>

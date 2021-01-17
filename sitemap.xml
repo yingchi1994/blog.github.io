@@ -3,269 +3,178 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>https://blog.yingchi.io/posts.html</loc>
-    <lastmod>2021-01-14T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://blog.yingchi.io/contact.html</loc>
-    <lastmod>2021-01-14T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://blog.yingchi.io/about.html</loc>
-    <lastmod>2021-01-04T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://blog.yingchi.io/</loc>
-    <lastmod>2020-08-15T14:21:43+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
     <loc>https://blog.yingchi.io/tags/golang.html</loc>
     <lastmod>2020-08-15T14:21:43+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts.html</loc>
     <lastmod>2020-08-15T14:21:43+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/tags.html</loc>
     <lastmod>2020-08-15T14:21:43+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://blog.yingchi.io/</loc>
+    <lastmod>2020-08-15T14:21:43+08:00</lastmod>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/8/go-context.html</loc>
     <lastmod>2020-08-15T14:21:43+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/tags/kubernetes.html</loc>
     <lastmod>2020-08-12T21:55:13+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/8/k8s-flannel.html</loc>
     <lastmod>2020-08-12T21:55:13+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/7/k8s-cm-informer.html</loc>
     <lastmod>2020-07-24T23:41:26+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/7/k8s-rbac.html</loc>
     <lastmod>2020-07-23T21:15:06+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/7/k8s-authn-authz.html</loc>
     <lastmod>2020-07-19T19:54:22+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/6/cka-note.html</loc>
     <lastmod>2020-06-29T22:43:03+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/tags/note.html</loc>
     <lastmod>2020-06-29T22:43:03+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/6/concurrent-pattern.html</loc>
     <lastmod>2020-06-25T17:42:29+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/tags/istio.html</loc>
     <lastmod>2020-06-22T16:23:17+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/6/istio-sidecar-proxy.html</loc>
     <lastmod>2020-06-22T16:23:17+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/tags/service-mesh.html</loc>
     <lastmod>2020-06-22T16:23:17+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/6/istio-sidecar-injection.html</loc>
     <lastmod>2020-06-21T21:31:42+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/5/what-is-cloud-native.html</loc>
     <lastmod>2020-05-29T22:43:03+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/tags/cloud-native.html</loc>
     <lastmod>2020-05-29T22:43:03+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/5/client-go.html</loc>
     <lastmod>2020-05-23T12:21:08+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/5/linux-iptables.html</loc>
     <lastmod>2020-05-14T17:35:21+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/4/docker-k8s-network-3.html</loc>
     <lastmod>2020-04-13T20:26:41+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/tags/network.html</loc>
     <lastmod>2020-04-13T20:26:41+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/4/docker-k8s-network-2.html</loc>
     <lastmod>2020-04-12T21:45:23+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/tags/docker.html</loc>
     <lastmod>2020-04-11T22:14:12+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/4/docker-k8s-network-1.html</loc>
     <lastmod>2020-04-11T22:14:12+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/4/kubernetes-resources.html</loc>
     <lastmod>2020-04-07T15:34:33+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/4/kubernetes-rolling-update.html</loc>
     <lastmod>2020-04-05T21:03:12+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/4/kubernetes-arch.html</loc>
     <lastmod>2020-04-05T21:03:12+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/4/kubeadm-flannel-mannul.html</loc>
     <lastmod>2020-04-03T14:51:38+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/3/go-goroutine.html</loc>
     <lastmod>2020-03-14T11:53:31+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/3/go-map.html</loc>
     <lastmod>2020-03-10T11:23:08+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2020/3/go-array-slice.html</loc>
     <lastmod>2020-03-05T19:42:31+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://blog.yingchi.io/about.html</loc>
+    <lastmod>2020-01-26T04:15:05+09:00</lastmod>
   </url>
   
   <url>
     <loc>https://blog.yingchi.io/posts/2019/10/network-devices.html</loc>
     <lastmod>2019-10-27T00:29:30+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://blog.yingchi.io/archives.html</loc>
-    <lastmod>2019-05-28T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
   
 </urlset>

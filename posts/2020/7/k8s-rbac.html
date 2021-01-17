@@ -1,120 +1,363 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta content='text/html; charset=utf-8' http-equiv='content-type' />
-
-  <title>一文读懂 Kubernetes RBAC 机制 - Yingchi Blog</title>
-  <meta content='一文读懂 Kubernetes RBAC 机制 - Yingchi Blog' property='title' />
-  <meta content='一文读懂 Kubernetes RBAC 机制 - Yingchi Blog' property='og:title' />
+<!DOCTYPE html>
+<html lang="zh-cn" class="js csstransforms3d">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
 
 
-<meta property="og:description" content="之前在做 PaaS 平台开发时涉及到租户的权限管理，考虑到 Kubernetes 默认提供了 RBAC（基于角色的访问控制）机制，于是想如何利用好 Kubernetes 的 RBAC 来实现。但是开始学习这块儿知识的时候还是遇到了一些问题，比如 Role 和 ClusterRole，Role Binding 和 ClusterRoleBinding，很多概念是比较模糊的，随着后来深入的学习了解和实践才算理清它们之间的关系，这篇文章就是分享一下这期间学到的内容。" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://blog.yingchi.io/posts/2020/7/k8s-rbac.html" />
+    
+    <title>一文读懂 Kubernetes RBAC 机制 :: Altinn digitalisering - Utvikling</title>
+    
+    <link rel="shortcut icon" href="/images/favicon.png" type="image/x-icon" />
+    <link href="/css/nucleus.css" rel="stylesheet">
+    <link href="/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/css/hybrid.css" rel="stylesheet">
+    <link href="/css/horsey.css" rel="stylesheet">
+    <link href="/css/fortawesome.css" rel="stylesheet">
+    <link href="/css/designsystem.css" rel="stylesheet">
+    
+    <link href="/css/theme.css" rel="stylesheet">
+    
+    
+    
+    <script src="/js/jquery-2.x.min.js"></script>
 
+    
+<link href="/css/altinndigitalisering.css" rel="stylesheet">
 
-<meta property="article:published_time" content="2020-07-23T21:15:06&#43;08:00"/>
+<link href="/css/altinn.css" rel="stylesheet">
 
-<meta property="article:modified_time" content="2020-07-23T21:15:06&#43;08:00"/>
+    <style>
+      :root #header + #content > #left > #rlblock_left {
+        display:none !important;
+      }
+    </style>
+  </head>
 
-<meta property="og:site_name" content="Yingchi&#39;s Blog" />
-
-
-
-
-
-
-
-<meta name="generator" content="Hugo 0.71.1" />
-
-<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600" rel="stylesheet">
-<style type="text/css">/*https://coolors.co/afd5aa-f0f2ef-a69f98-3d3d3d-8c6057*/
-:root {
-  --main-color: #8C6056; 
-  --secondary-color: #AFD5AA;
-  --logo-text-color: #fff;
-  --body-text-color: #3d3d3d;
-  --heading-text-color: #383838;
-  --background-color: #fff;
-}</style>
-<link href='/css/tachyons.min.css' rel="stylesheet">
-<link href='/css/styles.css' rel="stylesheet">
-
-
-<link rel="icon" 
-
-  href="/favicons/" 
-
-type="image/x-icon"/>
-
-<link href='/feed.xml' rel="alternate" type="application/atom+xml" title="Yingchi Blog" />
-</head>
-<body class="global-font">
-  <nav class=" flex-ns justify-between border-box pa3 pl3-l pr2-l mt1 mt0-ns" id="navbar">
-  <div class="flex">
-    <a class="f4 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" id="site-title" href='/' title="Home">Yingchi Blog</a>
-  </div>
   
-  <div class=" flex-ns mt2 mt0-ns pv1">
+
+  <body class="a-page" data-url="/posts/2020/7/k8s-rbac.html">
     
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/' title="Home">Home</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/posts.html' title="Posts">Posts</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/tags.html' title="Tags">Tags</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/about.html' title="About">About</a>
-    
-  </div>
-  
-  
-</nav>
+<div class="mobile-navbar">
+  <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+    <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+      <i class="fa fa-bars"></i>
+      <span class="sr-only">Vis/skjul meny</span>
+    </a>
+  </span>
+  <a href="https://blog.yingchi.io/posts/2020/7/k8s-rbac.html">Yingchi Blog</a>
+</div>
+
 
 
 <div 
 id="scroll-navbar" 
 class="scroll-navbar" 
-style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" 
-title="Test">
-<div>
-  <a 
-  class="f5 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" 
-  id="site-title" 
-  href='https://blog.yingchi.io/'
-  style="line-height: 40px;" 
-  title="Home">Yingchi Blog</a>
+style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" >
+<a href="https://blog.yingchi.io/posts/2020/7/k8s-rbac.html" style="text-decoration: none; color:#fff">一文读懂 Kubernetes RBAC 机制</a>
 </div>
-<div class="fw5" style="line-height: 20px;" onclick="topFunction()">
-  一文读懂 Kubernetes RBAC 机制
-</div>
-</div>
+
+
+
+
+<script>
+  window.onscroll = function() {
+    var currentScrollPos = window.pageYOffset;
+    
+    
+    if (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) {
+        document.getElementById("scroll-navbar").style.display = "inline";
+        document.getElementById("scroll-navbar").style.visibility = "visible";
+        document.getElementById("scroll-navbar").style.opacity = "1";
+    } else {
+        document.getElementById("scroll-navbar").style.visibility = "hidden";
+        document.getElementById("scroll-navbar").style.opacity = "0";
+    }
+  
+    prevScrollpos = currentScrollPos;
+  
+  }
+</script>
 
 
 <style>
+  .mobile-navbar {
+    color: #fff;
+    background: #022f51;
+    text-align: center;
+    line-height: 50px;
+    font-size: 20px;
+  }
+
+  .mobile-navbar a {
+    text-decoration: none;
+    color:#fff;
+    padding: 3px 6px;
+    border: solid 1px #fff;
+    border-radius: 3px;
+  }
+
+  .mobile-navbar #sidebar-toggle {
+    border: none;
+    position: fixed;
+    background: none;
+    top: 0;
+    left: 20px;
+    z-index: 101;
+  }
+
   .scroll-navbar {
+    z-index: 100;
     position: fixed;
     top: 0;
     width: 100%;
-    background-color: #fff;
-    color: #000;
+    background: #022f51;
+    color: #fff !important;
     text-align: center;
     padding: 10px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.2);
   }
+
+  @media (min-width: 768px) {
+    .mobile-navbar {
+      display: none;
+    }
+
+    .scroll-navbar {
+      display: none !important;
+    }
+  }
 </style>
+
+
+
+
+    
+
+    <div class="container pt-2 pt-md-2 pt-lg-2">
+      <div class="adocs-scrollcontainer">
+        <div class="row">
+            <div class="col-sm-12">
+
+    <nav id="sidebar" class="">
+
+
+
+<div class="highlightable">
+
   
-<main class="center mv4 content-width ph3">
-  <div class="f3 fw6 heading-color heading-font post-title">一文读懂 Kubernetes RBAC 机制</div>
-  <p class="silver f6 mt1 mb4 post-meta">
-    <time>23 Jul 2020</time> 
-     | 
+  
+  <h1><a href="/">Yingchi Blog</a></h1>
+  <div>Infra / SRE / Cloud Native</div>
+  
+    <ul id="docsmenu" class="topics" style="overflow-y: hidden;">
+      
+      
+
+      <a href="/" style="padding: 2px;">
+        Home
+      </a>
+
+        
+        
+        
+          
+          
+
+
+
+ 
+  
     
+    <li data-nav-id="https://blog.yingchi.io/posts.html" class="dd-item 
+        parent
+        
+        ">
+      <a href="/posts.html">
+        
+        <span>Posts</span>
+
+        
+
+        
+        
+
+          
+            
+          
+
+        
+
+        
+      </a>
+      
+              
+    </li>
+  
+ 
+
+
+          
+          
+
+
+
+ 
+  
     
-    tags: [ <a href='/tags/kubernetes' class="link silver">kubernetes</a>  ]
-    
-  </p>
-  <div class="lh-copy post-content"><p>之前在做 PaaS 平台开发时涉及到租户的权限管理，考虑到 Kubernetes 默认提供了 RBAC（基于角色的访问控制）机制，于是想如何利用好 Kubernetes 的 RBAC 来实现。但是开始学习这块儿知识的时候还是遇到了一些问题，比如 Role 和 ClusterRole，Role Binding 和 ClusterRoleBinding，很多概念是比较模糊的，随着后来深入的学习了解和实践才算理清它们之间的关系，这篇文章就是分享一下这期间学到的内容。</p>
+    <li data-nav-id="https://blog.yingchi.io/about.html" class="dd-item 
+        
+        
+        ">
+      <a href="/about.html">
+        
+        <span>About</span>
+
+        
+
+        
+        
+
+        
+      </a>
+              
+    </li>
+  
+ 
+
+
+          
+        
+
+        
+
+
+      
+        <li data-nav-id="/tags/cloud-native.html" class="dd-item
+
+        ">
+          <a href="/tags/cloud-native.html">cloud-native <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/docker.html" class="dd-item
+
+        ">
+          <a href="/tags/docker.html">docker <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/golang.html" class="dd-item
+
+        ">
+          <a href="/tags/golang.html">golang <span style="font-weight: bold;">(5)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/istio.html" class="dd-item
+
+        ">
+          <a href="/tags/istio.html">istio <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/kubernetes.html" class="dd-item
+
+        ">
+          <a href="/tags/kubernetes.html">kubernetes <span style="font-weight: bold;">(15)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/network.html" class="dd-item
+
+        ">
+          <a href="/tags/network.html">network <span style="font-weight: bold;">(4)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/note.html" class="dd-item
+
+        ">
+          <a href="/tags/note.html">note <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/service-mesh.html" class="dd-item
+
+        ">
+          <a href="/tags/service-mesh.html">service-mesh <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+
+
+    </ul>
+  </div>
+</nav>
+
+
+
+
+
+
+
+
+        <section id="body">
+          <div id="content" class="adocs-content js-moveChildrenTo">
+        <div id="overlay"></div>
+        <div class="a-text">
+        
+          <div id="top-bar">
+            <div id="breadcrumbs" itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb">
+                <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+                  <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+                    <i class="fa fa-bars"></i>
+                    <span class="sr-only">Vis/skjul meny</span>
+                  </a>
+                </span>
+                <span class="links">
+                  
+                  
+
+
+
+
+
+
+
+ <a href='/'>Yingchi Blog</a> <span class='adocs-breadcrumb-divider'> / </span> <a href='/posts.html'>Posts</a> <span class='adocs-breadcrumb-divider'> / </span> 一文读懂 Kubernetes RBAC 机制
+
+ 
+
+ 
+
+
+                </span>
+            </div>
+          </div>
+        
+        <div id="body-inner">
+          
+            
+              <h1 class="a-fontBold">
+                一文读懂 Kubernetes RBAC 机制
+                
+              </h1>
+              <p class="a-leadText" id="leadText"></p>
+            
+          
+
+          
+
+
+
+
+
+
+
+
+<p>之前在做 PaaS 平台开发时涉及到租户的权限管理，考虑到 Kubernetes 默认提供了 RBAC（基于角色的访问控制）机制，于是想如何利用好 Kubernetes 的 RBAC 来实现。但是开始学习这块儿知识的时候还是遇到了一些问题，比如 Role 和 ClusterRole，Role Binding 和 ClusterRoleBinding，很多概念是比较模糊的，随着后来深入的学习了解和实践才算理清它们之间的关系，这篇文章就是分享一下这期间学到的内容。</p>
 <h2 id="什么是-rbac">什么是 RBAC？</h2>
 <h3 id="rbac基于角色的访问控制">RBAC（基于角色的访问控制）</h3>
 <p>RBAC，Role-Based Access Control，即<strong>基于角色的访问控制</strong>，通过自定义具有某些特定 Permission 的 Role，然后将 Role 和特定的 Subject（user，group，serviceaccounts&hellip;)关联起来已达到权限控制的目的。</p>
@@ -142,24 +385,24 @@ title="Test">
 <li>ClusterRole：集群角色，顾名思义，这种类型的 Role 是定义在整个 Cluster 下的，定义 Cluster Role 时不需要指定具体的 Namespace。</li>
 </ul>
 <p><strong>Role 示例</strong>：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">kind</span>: Role
-<span style="color:#66d9ef">apiVersion</span>: rbac.authorization.k8s.io/v1
-<span style="color:#66d9ef">metadata</span>:
-  <span style="color:#66d9ef">namespace</span>: ns-a  <span style="color:#75715e"># 定义于 namespace 下</span>
-  <span style="color:#66d9ef">name</span>: pod-reader
-<span style="color:#66d9ef">rules</span>:
-- <span style="color:#66d9ef">apiGroups</span>: [<span style="color:#e6db74">&#34;&#34;</span>]
-  <span style="color:#66d9ef">resources</span>: [<span style="color:#e6db74">&#34;pods&#34;</span>]
-  <span style="color:#66d9ef">verbs</span>: [<span style="color:#e6db74">&#34;get&#34;</span>, <span style="color:#e6db74">&#34;watch&#34;</span>, <span style="color:#e6db74">&#34;list&#34;</span>]
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ff79c6">kind</span>: Role
+<span style="color:#ff79c6">apiVersion</span>: rbac.authorization.k8s.io/v1
+<span style="color:#ff79c6">metadata</span>:
+  <span style="color:#ff79c6">namespace</span>: ns-a  <span style="color:#6272a4"># 定义于 namespace 下</span>
+  <span style="color:#ff79c6">name</span>: pod-reader
+<span style="color:#ff79c6">rules</span>:
+- <span style="color:#ff79c6">apiGroups</span>: [<span style="color:#f1fa8c">&#34;&#34;</span>]
+  <span style="color:#ff79c6">resources</span>: [<span style="color:#f1fa8c">&#34;pods&#34;</span>]
+  <span style="color:#ff79c6">verbs</span>: [<span style="color:#f1fa8c">&#34;get&#34;</span>, <span style="color:#f1fa8c">&#34;watch&#34;</span>, <span style="color:#f1fa8c">&#34;list&#34;</span>]
 </code></pre></div><p><strong>ClusterRole 示例</strong>：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">kind</span>: ClusterRole
-<span style="color:#66d9ef">apiVersion</span>: rbac.authorization.k8s.io/v1
-<span style="color:#66d9ef">metadata</span>:
-  <span style="color:#66d9ef">name</span>: pod-reader
-<span style="color:#66d9ef">rules</span>:
-- <span style="color:#66d9ef">apiGroups</span>: [<span style="color:#e6db74">&#34;&#34;</span>]
-  <span style="color:#66d9ef">resources</span>: [<span style="color:#e6db74">&#34;pods&#34;</span>]
-  <span style="color:#66d9ef">verbs</span>: [<span style="color:#e6db74">&#34;get&#34;</span>, <span style="color:#e6db74">&#34;watch&#34;</span>, <span style="color:#e6db74">&#34;list&#34;</span>]
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ff79c6">kind</span>: ClusterRole
+<span style="color:#ff79c6">apiVersion</span>: rbac.authorization.k8s.io/v1
+<span style="color:#ff79c6">metadata</span>:
+  <span style="color:#ff79c6">name</span>: pod-reader
+<span style="color:#ff79c6">rules</span>:
+- <span style="color:#ff79c6">apiGroups</span>: [<span style="color:#f1fa8c">&#34;&#34;</span>]
+  <span style="color:#ff79c6">resources</span>: [<span style="color:#f1fa8c">&#34;pods&#34;</span>]
+  <span style="color:#ff79c6">verbs</span>: [<span style="color:#f1fa8c">&#34;get&#34;</span>, <span style="color:#f1fa8c">&#34;watch&#34;</span>, <span style="color:#f1fa8c">&#34;list&#34;</span>]
 </code></pre></div><p>注意：ClusterRole 并不代表权限控制的范围是整个 Cluster，还与之后要讲的 Binding 类型有关系，这里的 ClusterRole 应该理解为一种全局量，可以作用于某个 Namespace 下（起到复用的作用），可以作用于 Cluster 范围下。</p>
 <p>每个 Role 在定义时关键的一步要指定该 Role 所具有的 rules，Kubernetes 中权限规则需要指定以下几点：</p>
 <ul>
@@ -181,37 +424,37 @@ title="Test">
 <p><img src="k8s-rbac/image-20200724152635068.png" alt="image-20200724152635068"></p>
 <p>如上图，这种方式是比较直观的，因为之前说过 Kubernetes 中的 Role 应该理解为 Namespace Role，它是定义在 Namespace 下面的，因此如果要实现 Namespace 范围内的 Subject 与 Role 的绑定，无非就是通过配置一个 RoleBinding 把两者联系起来。</p>
 <p><strong>配置示例</strong>：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">kind</span>: RoleBinding
-<span style="color:#66d9ef">apiVersion</span>: rbac.authorization.k8s.io/v1
-<span style="color:#66d9ef">metadata</span>:
-  <span style="color:#66d9ef">name</span>: pods-reader-binding
-  <span style="color:#66d9ef">namespace</span>: ns-a
-<span style="color:#66d9ef">subjects</span>:
-- <span style="color:#66d9ef">kind</span>: User
-  <span style="color:#66d9ef">name</span>: yingchi
-  <span style="color:#66d9ef">apiGroup</span>: rbac.authorization.k8s.io
-<span style="color:#66d9ef">roleRef</span>:
-  <span style="color:#66d9ef">kind</span>: Role
-  <span style="color:#66d9ef">name</span>: pod-reader
-  <span style="color:#66d9ef">apiGroup</span>: rbac.authorization.k8s.io
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ff79c6">kind</span>: RoleBinding
+<span style="color:#ff79c6">apiVersion</span>: rbac.authorization.k8s.io/v1
+<span style="color:#ff79c6">metadata</span>:
+  <span style="color:#ff79c6">name</span>: pods-reader-binding
+  <span style="color:#ff79c6">namespace</span>: ns-a
+<span style="color:#ff79c6">subjects</span>:
+- <span style="color:#ff79c6">kind</span>: User
+  <span style="color:#ff79c6">name</span>: yingchi
+  <span style="color:#ff79c6">apiGroup</span>: rbac.authorization.k8s.io
+<span style="color:#ff79c6">roleRef</span>:
+  <span style="color:#ff79c6">kind</span>: Role
+  <span style="color:#ff79c6">name</span>: pod-reader
+  <span style="color:#ff79c6">apiGroup</span>: rbac.authorization.k8s.io
 </code></pre></div><h4 id="方法2clusterrole--rolebinding-的组合推荐">方法2：ClusterRole + RoleBinding 的组合（推荐）</h4>
 <p><img src="k8s-rbac/image-20200724153218582.png" alt="image-20200724153218582"></p>
 <p>一听 ClusterRole，很多朋友会潜意识认为是关于集群范围下的权限控制，但是实际上，权限控制的范围和 Role 的类型没有直接的关系，ClusterRole，它的本质是一个定义在全局的角色，可以作用于 Namespace 下，可以被多个 Namespace 复用，也可以作用于 Cluster 下。</p>
 <p>我们现在需要实现 Namespace 范围内绑定 Subject &amp; Role，就是将 ClusterRole 的权限范围控制在 Namespace 层面，因此采用 RoleBinding 将 Subject 与 ClusterRole 即可实现。</p>
 <p><strong>配置示例</strong>：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">kind</span>: RoleBinding
-<span style="color:#66d9ef">apiVersion</span>: rbac.authorization.k8s.io/v1
-<span style="color:#66d9ef">metadata</span>:
-  <span style="color:#66d9ef">name</span>: pods-reader-binding
-  <span style="color:#66d9ef">namespace</span>: ns-a
-<span style="color:#66d9ef">subjects</span>:
-- <span style="color:#66d9ef">kind</span>: User
-  <span style="color:#66d9ef">name</span>: yingchi
-  <span style="color:#66d9ef">apiGroup</span>: rbac.authorization.k8s.io
-<span style="color:#66d9ef">roleRef</span>:
-  <span style="color:#66d9ef">kind</span>: ClusterRole
-  <span style="color:#66d9ef">name</span>: pod-reader
-  <span style="color:#66d9ef">apiGroup</span>: rbac.authorization.k8s.io
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ff79c6">kind</span>: RoleBinding
+<span style="color:#ff79c6">apiVersion</span>: rbac.authorization.k8s.io/v1
+<span style="color:#ff79c6">metadata</span>:
+  <span style="color:#ff79c6">name</span>: pods-reader-binding
+  <span style="color:#ff79c6">namespace</span>: ns-a
+<span style="color:#ff79c6">subjects</span>:
+- <span style="color:#ff79c6">kind</span>: User
+  <span style="color:#ff79c6">name</span>: yingchi
+  <span style="color:#ff79c6">apiGroup</span>: rbac.authorization.k8s.io
+<span style="color:#ff79c6">roleRef</span>:
+  <span style="color:#ff79c6">kind</span>: ClusterRole
+  <span style="color:#ff79c6">name</span>: pod-reader
+  <span style="color:#ff79c6">apiGroup</span>: rbac.authorization.k8s.io
 </code></pre></div><h4 id="方法分析">方法分析</h4>
 <p>为什么会推荐使用 ClusterRole + RoleBinding 的组合呢？</p>
 <p>思考一个问题，假如设计一个 PodReader Role，作用就是有 get/list/watch 当前 Namespace 下 Pod 的权限，如果两个 namespace 都需要这么一个 Role，那么应该怎么设计呢？</p>
@@ -227,18 +470,18 @@ title="Test">
 <p><img src="k8s-rbac/image-20200724161347135.png" alt="image-20200724161347135"></p>
 <p>注意我在图中画的 <strong>ClusterRoleBinding</strong> 的位置，之前在介绍 Binding 概念的时候就提到一句话：<strong>Kubernetes 中权限控制的范围（Namespace/Cluster）是由 Binding 的类型决定的，而不是根据 Role 和 ClusterRole 决定的</strong>。想要实现作用于集群范围的 RBAC，一定是通过 ClusterRoleBinding，并且要注意的是，通过 ClusterRoleBinding 方式进行绑定时，只允许绑定到 ClusterRole 角色，可以简单理解为全局方法只能去用 ClusterRole 这种全局量。</p>
 <p><strong>配置示例</strong>：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">kind</span>: ClusterRoleBinding
-<span style="color:#66d9ef">apiVersion</span>: rbac.authorization.k8s.io/v1
-<span style="color:#66d9ef">metadata</span>:
-  <span style="color:#66d9ef">name</span>: cluster-admin-biding
-<span style="color:#66d9ef">subjects</span>:
-- <span style="color:#66d9ef">kind</span>: User
-  <span style="color:#66d9ef">name</span>: yingchi
-  <span style="color:#66d9ef">apiGroup</span>: rbac.authorization.k8s.io
-<span style="color:#66d9ef">roleRef</span>:
-  <span style="color:#66d9ef">kind</span>: ClusterRole
-  <span style="color:#66d9ef">name</span>: cluster-admin
-  <span style="color:#66d9ef">apiGroup</span>: rbac.authorization.k8s.io
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ff79c6">kind</span>: ClusterRoleBinding
+<span style="color:#ff79c6">apiVersion</span>: rbac.authorization.k8s.io/v1
+<span style="color:#ff79c6">metadata</span>:
+  <span style="color:#ff79c6">name</span>: cluster-admin-biding
+<span style="color:#ff79c6">subjects</span>:
+- <span style="color:#ff79c6">kind</span>: User
+  <span style="color:#ff79c6">name</span>: yingchi
+  <span style="color:#ff79c6">apiGroup</span>: rbac.authorization.k8s.io
+<span style="color:#ff79c6">roleRef</span>:
+  <span style="color:#ff79c6">kind</span>: ClusterRole
+  <span style="color:#ff79c6">name</span>: cluster-admin
+  <span style="color:#ff79c6">apiGroup</span>: rbac.authorization.k8s.io
 </code></pre></div><h2 id="总结">总结</h2>
 <p>关于 Kubernetes RBAC 机制的学习，首先要从基本的 RBAC 概念出发，理解 RBAC 这种权限管理机制的本质思想，即<strong>主体-角色-权限</strong>三者的关系，在此基础上，针对 Kubernetes 对于 RBAC 的实现进行理解学习，核心是要理解 Role 和 ClusterRole 的本质概念与作用，比如为什么在复用角色时要使用 ClusterRole。然后，深刻理解 RoleBinding 和 ClusterRoleBinding 的区别，要记住，Kubernetes RBAC 中对于权限控制的范围不是由 Role 决定的，而是由 Binding 的类型决定的。</p>
 <h2 id="参考">参考</h2>
@@ -247,123 +490,532 @@ title="Test">
 <li><a href="https://www.cnblogs.com/panwenbin-logs/p/10046572.html">https://www.cnblogs.com/panwenbin-logs/p/10046572.html</a></li>
 <li><a href="https://blog.51cto.com/wzlinux/2334119">https://blog.51cto.com/wzlinux/2334119</a></li>
 <li><a href="https://www.cnblogs.com/peng-zone/p/11689017.html">https://www.cnblogs.com/peng-zone/p/11689017.html</a></li>
-</ul></div>
-</main>
- 
+</ul>
 
-
-
-
-
-
-<div class="tl fixed list-pages lh-copy" id="contents-list"></div>
-
-
-
-<div class="pagination tc tr-l db fixed-l bottom-2-l right-2-l mb3 mb0-l">
-  
-<a id="scroll-to-top" class="f6 o-0 link br2 ph2 pv1 mb1 bg-main-color pointer" onclick="topFunction()" style="color: #fff; visibility: hidden; display: none; transition: opacity .5s, visibility .5s;" title="back to top">back to top</a>
-<br>
-  <p class="mb0 mt2">
-  <a href="https://blog.yingchi.io/posts/2020/7/k8s-authn-authz.html">prev post</a>
-  <a href="https://blog.yingchi.io/posts/2020/7/k8s-cm-informer.html">next post</a>
-  </p>
-</div>
-
-  <footer class="content-width mt0 mt5-l mb4 f6 center ph4 gray tc tl-l">
-  <hr class="dn db-l ml0-l gray w3"><br>
-  Powered by <a href="https://gohugo.io/" target="_blank" class="link gray dim">Hugo</a>, based on the <a href="https://github.com/lingxz/er" target="_blank" class="link gray dim">Er</a> theme. <br>
-  © 2021 Joey.Jiang
+<footer class=" footline" >
+	
 </footer>
-  
 
 
+</div>
+     </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.css">
-<style>.is-active-link::before { background-color: var(--secondary-color); }</style>
+              <div id="navigation">
+                  
+                  
+                  
+                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                                  
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                  
+                  
+          
+          
+                  
+                      <a class="nav nav-prev" href="/posts/2020/7/k8s-cm-informer.html" title="解读 kubernetes Controller Manager 工作原理"> <i class="fa fa-angle-left"></i> Forrige side</a>
+                  
+                  
+                      <a class="nav nav-next" href="/posts/2020/7/k8s-authn-authz.html" title="Kubernetes API Server 认证与授权机制" style="margin-right: 0px;">Neste side <i class="fa fa-angle-right"></i></a>
+                  
+              </div>
 
 
+            </div>
+
+            
+              
+              
+              
+                <div id="top-github-link">
+                  <a class="" href="https://github.com/altinn/docs/blob/master/content/posts/2020/7/k8s-rbac.md" target="blank">
+                    <i class="fa fa-code-fork"></i>
+                    
+                  </a>
+                </div>
+              
+            
+
+        </section>
 
 
-<script type="text/javascript">
-var prevScrollpos = window.pageYOffset;
-window.onscroll = function() {
-  var currentScrollPos = window.pageYOffset;
+        </div> 
+      </div> 
+    </div>
+    </div> 
 
-  
-  if (document.getElementById("tag-cloud") !== null) { 
-    if (prevScrollpos > currentScrollPos) { 
-      document.getElementById("tag-cloud").style.visibility = "visible";
-      document.getElementById("tag-cloud").style.opacity = "1";
-    } else {
-      document.getElementById("tag-cloud").style.visibility = "hidden";
-      document.getElementById("tag-cloud").style.opacity = "0";
+    <footer class="a-footer a-bgBlueDarker ">
+    <div class="container" style="margin: 5px 20px;">
+        <div class="row">
+            <div class="col-12">
+                <div>©2021 <a href="https://yingchi.io" style="text-decoration: none; color:#fff">yingchi.io</a></div>
+                <div>Infra / SRE / Cloud Native</div>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
+      <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
+    </div>
+    <script src="/js/clipboard.min.js"></script>
+    <script src="/js/html5shiv-printshiv.min.js"></script>
+    <script src="/js/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script src="/js/modernizr.custom.71422.js"></script>
+    
+    <script src="/js/altinninfoportal.js"></script>
+    <script src="/js/altinndocs.js"></script>
+    <script src="/js/altinndocs-learn.js"></script>
+
+    <script src="/js/stickysidebar/rAF.js"></script>
+    <script src="/js/stickysidebar/ResizeSensor.js"></script>
+    <script src="/js/stickysidebar/sticky-sidebar.js"></script>
+    
+    <script>
+      var a = new StickySidebar('#sidebar', {
+        topSpacing: 20,
+        bottomSpacing: 60,
+        containerSelector: '.adocs-scrollcontainer',
+        innerWrapperSelector: '.sidebar__inner',
+        minWidth: 768
+      });
+    </script>
+
+    <link href="/mermaid/mermaid.css" type="text/css" rel="stylesheet"/>
+    <script src="/mermaid/mermaid.js"></script>
+    <script>
+    if (typeof mermaidConfig === "undefined") {
+      mermaidConfig = {};
     }
-  }
-  
-
-
-  
-  if (document.body.scrollTop > 500 || document.documentElement.scrollTop > 500) {
-      document.getElementById("scroll-to-top").style.display = "inline";
-      document.getElementById("scroll-to-top").style.visibility = "visible";
-      document.getElementById("scroll-to-top").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-to-top").style.visibility = "hidden";
-      document.getElementById("scroll-to-top").style.opacity = "0";
-  }
-  
-
-  
-  if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
-      document.getElementById("scroll-navbar").style.display = "inline";
-      document.getElementById("scroll-navbar").style.visibility = "visible";
-      document.getElementById("scroll-navbar").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-navbar").style.visibility = "hidden";
-      document.getElementById("scroll-navbar").style.opacity = "0";
-  }
-
-  prevScrollpos = currentScrollPos;
-
-}
-
-
-
-function topFunction() {
-  document.body.scrollTop = 0; 
-  document.documentElement.scrollTop = 0; 
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-if (document.getElementById("contents-list") !== null && document.getElementsByClassName("post-content").length !== 0) { 
-  tocbot.init({
+    mermaidConfig.startOnLoad = true;
     
-    tocSelector: '#contents-list',
+    mermaid.initialize(mermaidConfig);
+    </script>
+
     
-    contentSelector: '.post-content',
-    
-    headingSelector: 'h1, h2, h3',
-  });
-}
 
 
-</script>
-
-
-
-
-</body>
+  </body>
 </html>

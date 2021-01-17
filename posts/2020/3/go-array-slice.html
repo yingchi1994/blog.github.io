@@ -1,135 +1,370 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta content='text/html; charset=utf-8' http-equiv='content-type' />
-
-  <title>Go Array 与 Slice 原理 - Yingchi Blog</title>
-  <meta content='Go Array 与 Slice 原理 - Yingchi Blog' property='title' />
-  <meta content='Go Array 与 Slice 原理 - Yingchi Blog' property='og:title' />
+<!DOCTYPE html>
+<html lang="zh-cn" class="js csstransforms3d">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
 
 
-<meta property="og:description" content="数组 Array 几乎每个常见的编程语言都有数组这个概念，但是每个语言对于数组的定位都不一样，有的语言会把数组用作常用的基本的数据结构，比如 JavaScript，而 Golang 中的数组(Array)，更倾向定位于一种底层的数据结构，记录的是一段连续的内存空间数据。但是在 Go 语言中平时直接用数组的时候不多，大多数场景下我们都会直接选用更加灵活的切片(Slice)，我这里很谨慎地说“直接”用数组，因为里面有学问，稍后会说。在Go程序中经常看不到数组的一个很重要原因是，数组的大小是固定的&hellip; ，所以很多场景下我们无法直接给出数组的确定长度，因此才会选择长度“可变”的切片。变与不变是编程中一个恒久远的话题，牵扯到这个话题的往往是性能与灵活性两个关键词，这个话题很庞大，有机会会单独写一篇博客进行探讨。
-回到数组中，数组的声明形式：
-var arr [5]int var buffer [256]byte 初始化方式有两种，一种是显示声明长度，另一种是[...]T推断长度，注意，推断长度也是给出了长度，这个和之后 Slice 的[]T的声明方式是不一样的：
-arr1 := [3]int{0,1,2} arr2 := [...]string{&#34;Joey&#34;,&#34;Sophie&#34;} 第二种初始化属于语法糖，会经过编译器推导，得到数组长度，即最终转换成第一种，显然，两种方式在运行时是没有任何区别的。但是在编译期，Go 为不同类型不同结构的初始化方式进行了优化（不止是数组的初始化这一点上，其它一些代码同样如此），对于优化过程，可以简单概括为下面的话：
- 如果数组中元素的个数小于或者等于 4 个，那么所有的变量会直接在栈上初始化； 如果数组元素大于 4 个，变量就会在静态存储区初始化然后拷贝到栈上，这些转换后的代码才会继续进入中间代码生成和机器码生成两个阶段，最后生成可以执行的二进制文件。  数组虽然比较重要，但是的概念其实比较简单，还有一个非常需要注意的点是，当你用到 Go 数组的时候，一定要注意一个避不开的问题，一定不要越界访问
-切片 Slice 及其与 Array 的关系 刚接触 Go 的一些学习者们肯定会混淆 Array 与 Slice 的用法，我想主要原因是受其它语言影响比较大，比如国内用 Java 的比较多，如果突然换到 Go，一定会对这个 slice 概念一头雾水。
-很多人仅仅知道 Slice 与 Array 的区别是：Slice 长度可变，如果仅仅是知道这个的话其实是很危险的，平时有一些错误的用法会直接把你整的找不着北，我们需要从底层了解这个语言特性。
-学习 slice，或者说区别 Slice 与 Array 的首要关键是记住下面几点：
- Slice 不是 Array，它描述一个 Array； Slice 的本质是一个 Struct，携带一个数组指针，长度，容量，这是他长度可变的根本原因；  可以在 Go 源码中找到 sliceHeader 的定义：" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://blog.yingchi.io/posts/2020/3/go-array-slice.html" />
+    
+    <title>Go Array 与 Slice 原理 :: Altinn digitalisering - Utvikling</title>
+    
+    <link rel="shortcut icon" href="/images/favicon.png" type="image/x-icon" />
+    <link href="/css/nucleus.css" rel="stylesheet">
+    <link href="/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/css/hybrid.css" rel="stylesheet">
+    <link href="/css/horsey.css" rel="stylesheet">
+    <link href="/css/fortawesome.css" rel="stylesheet">
+    <link href="/css/designsystem.css" rel="stylesheet">
+    
+    <link href="/css/theme.css" rel="stylesheet">
+    
+    
+    
+    <script src="/js/jquery-2.x.min.js"></script>
 
+    
+<link href="/css/altinndigitalisering.css" rel="stylesheet">
 
-<meta property="article:published_time" content="2020-03-05T19:42:31&#43;08:00"/>
+<link href="/css/altinn.css" rel="stylesheet">
 
-<meta property="article:modified_time" content="2020-03-05T19:42:31&#43;08:00"/>
+    <style>
+      :root #header + #content > #left > #rlblock_left {
+        display:none !important;
+      }
+    </style>
+  </head>
 
-<meta property="og:site_name" content="Yingchi&#39;s Blog" />
-
-
-
-
-
-
-
-<meta name="generator" content="Hugo 0.71.1" />
-
-<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600" rel="stylesheet">
-<style type="text/css">/*https://coolors.co/afd5aa-f0f2ef-a69f98-3d3d3d-8c6057*/
-:root {
-  --main-color: #8C6056; 
-  --secondary-color: #AFD5AA;
-  --logo-text-color: #fff;
-  --body-text-color: #3d3d3d;
-  --heading-text-color: #383838;
-  --background-color: #fff;
-}</style>
-<link href='/css/tachyons.min.css' rel="stylesheet">
-<link href='/css/styles.css' rel="stylesheet">
-
-
-<link rel="icon" 
-
-  href="/favicons/" 
-
-type="image/x-icon"/>
-
-<link href='/feed.xml' rel="alternate" type="application/atom+xml" title="Yingchi Blog" />
-</head>
-<body class="global-font">
-  <nav class=" flex-ns justify-between border-box pa3 pl3-l pr2-l mt1 mt0-ns" id="navbar">
-  <div class="flex">
-    <a class="f4 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" id="site-title" href='/' title="Home">Yingchi Blog</a>
-  </div>
   
-  <div class=" flex-ns mt2 mt0-ns pv1">
+
+  <body class="a-page" data-url="/posts/2020/3/go-array-slice.html">
     
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/' title="Home">Home</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/posts.html' title="Posts">Posts</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/tags.html' title="Tags">Tags</a>
-    
-      <a class="link dim dark-gray f6 dib mr2 mr3-l ttu tracked" href='/about.html' title="About">About</a>
-    
-  </div>
-  
-  
-</nav>
+<div class="mobile-navbar">
+  <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+    <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+      <i class="fa fa-bars"></i>
+      <span class="sr-only">Vis/skjul meny</span>
+    </a>
+  </span>
+  <a href="https://blog.yingchi.io/posts/2020/3/go-array-slice.html">Yingchi Blog</a>
+</div>
+
 
 
 <div 
 id="scroll-navbar" 
 class="scroll-navbar" 
-style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" 
-title="Test">
-<div>
-  <a 
-  class="f5 fw4 ttu no-underline dim bg-main-color pv1 ph2 br2" 
-  id="site-title" 
-  href='https://blog.yingchi.io/'
-  style="line-height: 40px;" 
-  title="Home">Yingchi Blog</a>
+style="color: #000; visibility: hidden; transition: opacity .5s, visibility .5s;" >
+<a href="https://blog.yingchi.io/posts/2020/3/go-array-slice.html" style="text-decoration: none; color:#fff">Go Array 与 Slice 原理</a>
 </div>
-<div class="fw5" style="line-height: 20px;" onclick="topFunction()">
-  Go Array 与 Slice 原理
-</div>
-</div>
+
+
+
+
+<script>
+  window.onscroll = function() {
+    var currentScrollPos = window.pageYOffset;
+    
+    
+    if (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) {
+        document.getElementById("scroll-navbar").style.display = "inline";
+        document.getElementById("scroll-navbar").style.visibility = "visible";
+        document.getElementById("scroll-navbar").style.opacity = "1";
+    } else {
+        document.getElementById("scroll-navbar").style.visibility = "hidden";
+        document.getElementById("scroll-navbar").style.opacity = "0";
+    }
+  
+    prevScrollpos = currentScrollPos;
+  
+  }
+</script>
 
 
 <style>
+  .mobile-navbar {
+    color: #fff;
+    background: #022f51;
+    text-align: center;
+    line-height: 50px;
+    font-size: 20px;
+  }
+
+  .mobile-navbar a {
+    text-decoration: none;
+    color:#fff;
+    padding: 3px 6px;
+    border: solid 1px #fff;
+    border-radius: 3px;
+  }
+
+  .mobile-navbar #sidebar-toggle {
+    border: none;
+    position: fixed;
+    background: none;
+    top: 0;
+    left: 20px;
+    z-index: 101;
+  }
+
   .scroll-navbar {
+    z-index: 100;
     position: fixed;
     top: 0;
     width: 100%;
-    background-color: #fff;
-    color: #000;
+    background: #022f51;
+    color: #fff !important;
     text-align: center;
     padding: 10px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.2);
   }
+
+  @media (min-width: 768px) {
+    .mobile-navbar {
+      display: none;
+    }
+
+    .scroll-navbar {
+      display: none !important;
+    }
+  }
 </style>
+
+
+
+
+    
+
+    <div class="container pt-2 pt-md-2 pt-lg-2">
+      <div class="adocs-scrollcontainer">
+        <div class="row">
+            <div class="col-sm-12">
+
+    <nav id="sidebar" class="">
+
+
+
+<div class="highlightable">
+
   
-<main class="center mv4 content-width ph3">
-  <div class="f3 fw6 heading-color heading-font post-title">Go Array 与 Slice 原理</div>
-  <p class="silver f6 mt1 mb4 post-meta">
-    <time>05 Mar 2020</time> 
-     | 
+  
+  <h1><a href="/">Yingchi Blog</a></h1>
+  <div>Infra / SRE / Cloud Native</div>
+  
+    <ul id="docsmenu" class="topics" style="overflow-y: hidden;">
+      
+      
+
+      <a href="/" style="padding: 2px;">
+        Home
+      </a>
+
+        
+        
+        
+          
+          
+
+
+
+ 
+  
     
+    <li data-nav-id="https://blog.yingchi.io/posts.html" class="dd-item 
+        parent
+        
+        ">
+      <a href="/posts.html">
+        
+        <span>Posts</span>
+
+        
+
+        
+        
+
+          
+            
+          
+
+        
+
+        
+      </a>
+      
+              
+    </li>
+  
+ 
+
+
+          
+          
+
+
+
+ 
+  
     
-    tags: [ <a href='/tags/golang' class="link silver">golang</a>  ]
-    
-  </p>
-  <div class="lh-copy post-content"><h2 id="数组-array">数组 Array</h2>
+    <li data-nav-id="https://blog.yingchi.io/about.html" class="dd-item 
+        
+        
+        ">
+      <a href="/about.html">
+        
+        <span>About</span>
+
+        
+
+        
+        
+
+        
+      </a>
+              
+    </li>
+  
+ 
+
+
+          
+        
+
+        
+
+
+      
+        <li data-nav-id="/tags/cloud-native.html" class="dd-item
+
+        ">
+          <a href="/tags/cloud-native.html">cloud-native <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/docker.html" class="dd-item
+
+        ">
+          <a href="/tags/docker.html">docker <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/golang.html" class="dd-item
+
+        ">
+          <a href="/tags/golang.html">golang <span style="font-weight: bold;">(5)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/istio.html" class="dd-item
+
+        ">
+          <a href="/tags/istio.html">istio <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/kubernetes.html" class="dd-item
+
+        ">
+          <a href="/tags/kubernetes.html">kubernetes <span style="font-weight: bold;">(15)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/network.html" class="dd-item
+
+        ">
+          <a href="/tags/network.html">network <span style="font-weight: bold;">(4)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/note.html" class="dd-item
+
+        ">
+          <a href="/tags/note.html">note <span style="font-weight: bold;">(1)</span>
+            
+          </a>
+        </li>
+        <li data-nav-id="/tags/service-mesh.html" class="dd-item
+
+        ">
+          <a href="/tags/service-mesh.html">service-mesh <span style="font-weight: bold;">(2)</span>
+            
+          </a>
+        </li>
+
+
+    </ul>
+  </div>
+</nav>
+
+
+
+
+
+
+
+
+        <section id="body">
+          <div id="content" class="adocs-content js-moveChildrenTo">
+        <div id="overlay"></div>
+        <div class="a-text">
+        
+          <div id="top-bar">
+            <div id="breadcrumbs" itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb">
+                <span id="sidebar-toggle-span" class="adocs-sidebarToggle">
+                  <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+                    <i class="fa fa-bars"></i>
+                    <span class="sr-only">Vis/skjul meny</span>
+                  </a>
+                </span>
+                <span class="links">
+                  
+                  
+
+
+
+
+
+
+
+ <a href='/'>Yingchi Blog</a> <span class='adocs-breadcrumb-divider'> / </span> <a href='/posts.html'>Posts</a> <span class='adocs-breadcrumb-divider'> / </span> Go Array 与 Slice 原理
+
+ 
+
+ 
+
+
+                </span>
+            </div>
+          </div>
+        
+        <div id="body-inner">
+          
+            
+              <h1 class="a-fontBold">
+                Go Array 与 Slice 原理
+                
+              </h1>
+              <p class="a-leadText" id="leadText"></p>
+            
+          
+
+          
+
+
+
+
+
+
+
+
+<h2 id="数组-array">数组 Array</h2>
 <p>几乎每个常见的编程语言都有数组这个概念，但是每个语言对于数组的定位都不一样，有的语言会把数组用作常用的基本的数据结构，比如 JavaScript，而 Golang 中的<strong>数组(Array)</strong>，更倾向定位于一种底层的数据结构，记录的是<strong>一段连续的内存空间数据</strong>。但是在 Go 语言中平时<strong>直接</strong>用数组的时候不多，大多数场景下我们都会直接选用更加灵活的<strong>切片(Slice)</strong>，我这里很谨慎地说“直接”用数组，因为里面有学问，稍后会说。在Go程序中经常看不到数组的一个很重要原因是，<strong>数组的大小是固定的</strong>&hellip; ，所以很多场景下我们无法直接给出数组的确定长度，因此才会选择长度“可变”的切片。<strong>变与不变</strong>是编程中一个恒久远的话题，牵扯到这个话题的往往是<strong>性能</strong>与<strong>灵活性</strong>两个关键词，这个话题很庞大，有机会会单独写一篇博客进行探讨。</p>
 <p>回到数组中，数组的声明形式：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">arr</span> [<span style="color:#ae81ff">5</span>]<span style="color:#66d9ef">int</span>
-<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">buffer</span> [<span style="color:#ae81ff">256</span>]<span style="color:#66d9ef">byte</span>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#8be9fd;font-style:italic">var</span> arr [<span style="color:#bd93f9">5</span>]<span style="color:#8be9fd">int</span>
+<span style="color:#8be9fd;font-style:italic">var</span> buffer [<span style="color:#bd93f9">256</span>]<span style="color:#8be9fd">byte</span>
 </code></pre></div><p>初始化方式有两种，一种是显示声明长度，另一种是<strong><code>[...]T</code>推断长度</strong>，注意，推断长度也是给出了长度，这个和之后 Slice 的<code>[]T</code>的声明方式是不一样的：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">arr1</span> <span style="color:#f92672">:=</span> [<span style="color:#ae81ff">3</span>]<span style="color:#66d9ef">int</span>{<span style="color:#ae81ff">0</span>,<span style="color:#ae81ff">1</span>,<span style="color:#ae81ff">2</span>}
-<span style="color:#a6e22e">arr2</span> <span style="color:#f92672">:=</span> [<span style="color:#f92672">...</span>]<span style="color:#66d9ef">string</span>{<span style="color:#e6db74">&#34;Joey&#34;</span>,<span style="color:#e6db74">&#34;Sophie&#34;</span>}
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">arr1 <span style="color:#ff79c6">:=</span> [<span style="color:#bd93f9">3</span>]<span style="color:#8be9fd">int</span>{<span style="color:#bd93f9">0</span>,<span style="color:#bd93f9">1</span>,<span style="color:#bd93f9">2</span>}
+arr2 <span style="color:#ff79c6">:=</span> [<span style="color:#ff79c6">...</span>]<span style="color:#8be9fd">string</span>{<span style="color:#f1fa8c">&#34;Joey&#34;</span>,<span style="color:#f1fa8c">&#34;Sophie&#34;</span>}
 </code></pre></div><p>第二种初始化属于语法糖，会经过<strong>编译器推导</strong>，得到数组长度，即最终转换成第一种，显然，两种方式在运行时是没有任何区别的。但是在编译期，Go 为不同类型不同结构的初始化方式进行了优化（不止是数组的初始化这一点上，其它一些代码同样如此），对于优化过程，可以简单概括为下面的话：</p>
 <ul>
 <li>如果数组中元素的个数小于或者等于 4 个，那么所有的变量会直接在栈上初始化；</li>
@@ -145,15 +380,15 @@ title="Test">
 <li><strong>Slice 的本质是一个 Struct</strong>，携带一个数组指针，长度，容量，<strong>这是他长度可变的根本原因</strong>；</li>
 </ul>
 <p>可以在 Go 源码中找到 <code>sliceHeader</code> 的定义：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">sliceHeader</span> <span style="color:#66d9ef">struct</span> {
-    <span style="color:#a6e22e">Data</span> <span style="color:#a6e22e">unsafe</span>.<span style="color:#a6e22e">Pointer</span> <span style="color:#75715e">// 指向的数组
-</span><span style="color:#75715e"></span>    <span style="color:#a6e22e">Len</span>  <span style="color:#66d9ef">int</span>            <span style="color:#75715e">// 长度，即 Slice 截取 Data 的长度
-</span><span style="color:#75715e"></span>    <span style="color:#a6e22e">Cap</span>  <span style="color:#66d9ef">int</span>            <span style="color:#75715e">// 容量，即 Data 的大小，显然不会小于 Len
-</span><span style="color:#75715e"></span>}
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#8be9fd;font-style:italic">type</span> sliceHeader <span style="color:#8be9fd;font-style:italic">struct</span> {
+    Data unsafe.Pointer <span style="color:#6272a4">// 指向的数组
+</span><span style="color:#6272a4"></span>    Len  <span style="color:#8be9fd">int</span>            <span style="color:#6272a4">// 长度，即 Slice 截取 Data 的长度
+</span><span style="color:#6272a4"></span>    Cap  <span style="color:#8be9fd">int</span>            <span style="color:#6272a4">// 容量，即 Data 的大小，显然不会小于 Len
+</span><span style="color:#6272a4"></span>}
 </code></pre></div><p>Slice 的声明方式比较多，我们可以直接构建一个空 Slice 而不需要指定长度，我们也可以直接基于 Array 本身构建一个 Slice，亦可以基于 Slice 构建新的 Slice，我们以一个典型的场景去理解 Slice 与 Array 的关系：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">sli0</span> = make([]<span style="color:#66d9ef">int</span>) <span style="color:#75715e">// make([]T, Len, Cap)
-</span><span style="color:#75715e"></span><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">sli1</span> = <span style="color:#a6e22e">arr1</span>[<span style="color:#ae81ff">5</span>:<span style="color:#ae81ff">10</span>]
-<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">sli2</span> = <span style="color:#a6e22e">sli1</span>[<span style="color:#ae81ff">2</span>:]
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#8be9fd;font-style:italic">var</span> sli0 = <span style="color:#8be9fd;font-style:italic">make</span>([]<span style="color:#8be9fd">int</span>) <span style="color:#6272a4">// make([]T, Len, Cap)
+</span><span style="color:#6272a4"></span><span style="color:#8be9fd;font-style:italic">var</span> sli1 = arr1[<span style="color:#bd93f9">5</span>:<span style="color:#bd93f9">10</span>]
+<span style="color:#8be9fd;font-style:italic">var</span> sli2 = sli1[<span style="color:#bd93f9">2</span>:]
 </code></pre></div><p>sli1 在 arr1 的左闭右开索引区间 [5, 10) 上构建了切片，而 sli2 又在 sli1 的基础上构建了 [2, 5) 的切片，这里值得记住的一点是，切片结构体里保存的是底层数组的指针(引用)，因此他们指向的是同一块底层数组，我们可以知道，sli2[0]的元素就是sli1[2]对应的元素，指向的都是底层数组arr1的arr1[7]元素，此时如果修改 sli2[0] 的话，实际上就是修改的 arr1[7]，因此 sli1[2] 也是会变的，这个场景一定要理解。</p>
 <h3 id="函数传递-slice">函数传递 Slice</h3>
 <p>还是强调开始提到的：<strong>记住，Slice 是个结构体</strong>，只不过这个结构体里存有数组的指针。</p>
@@ -167,46 +402,46 @@ title="Test">
 <h3 id="容量与-append">容量与 append</h3>
 <p><code>sliceHeader</code>中还有一个 <code>Cap </code> 变量，这个变量存储了 Slice 的容量，<strong>准确的说应该是底层 Data 数组的长度</strong>，即记录数组实际使用了多少的空间，这也是 <code>Len</code> 能达到的最大值。</p>
 <p>Slice 的元素追加通过 <code>append</code> 操作实现，如：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">names</span> = append(<span style="color:#a6e22e">names</span>, <span style="color:#e6db74">&#34;Joey&#34;</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">names = <span style="color:#8be9fd;font-style:italic">append</span>(names, <span style="color:#f1fa8c">&#34;Joey&#34;</span>)
 </code></pre></div><p>注意 append 返回的是一个新的 slice，直接 append 而不赋值给原 slice 的话，原 slice 长度是不会改变的，只有把 append 后得到的新 slice 赋值回去才可以实现原 slice 基础上的元素追加。多说一句，从编译器层面，Go 在编译期针对于 append 后是否赋值给原 slice 实现了两种编译方式实现优化。</p>
 <p>还有，我这里没写 slice 的移除元素通过什么关键字，显然，不说的话就是同一个关键字，没错，移除的逻辑就很直白，也很反程序员：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#a6e22e">ages</span> = append(<span style="color:#a6e22e">ages</span>[:<span style="color:#ae81ff">5</span>], <span style="color:#a6e22e">ages</span>[<span style="color:#ae81ff">6</span>:])
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">ages = <span style="color:#8be9fd;font-style:italic">append</span>(ages[:<span style="color:#bd93f9">5</span>], ages[<span style="color:#bd93f9">6</span>:])
 </code></pre></div><p>明白了吧，别问，问就是 <strong>大道至简 less is more</strong>，我现在也不明白到底是谁 less 了谁 more 了，想想还挺心酸的。</p>
 <p><strong>划重点</strong></p>
 <p>关于容量需要记住的就是：<strong>当向 Slice 追加元素导致 <code>Len</code>大于 <code>Cap</code> 时，会触发扩容机制，创建一个Cap大于原数组的新数组（首元素地址不一致），并将值拷贝进新数组，之后再改变Slice元素值时改变的是新创建的数组（切断与原数组的引用关系）</strong>。是的，当触发扩容机制后，新的 Slice 底层数组已经不再是之前的数组了，对于 Slice 元素的修改都是基于新的底层数组进行。</p>
 <p>需要注意的是，涉及到 Copy 这个词，显然是一个影响效率的行为，因此我们如果真的关注性能这一块儿的话，一定要想办法避免频繁的触发扩容机制，比如当我们明确地知道 Slice 容量上限的时候，在声明时就应该通过 <code>make([]T, Len, Cap)</code> 给出明确的 <code>cap</code> 值。</p>
 <hr>
 <p><strong>最后，从一段简单的代码入手更直观地去理解</strong></p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#f92672">package</span> <span style="color:#a6e22e">main</span>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#ff79c6">package</span> main
 
-<span style="color:#f92672">import</span> <span style="color:#e6db74">&#34;fmt&#34;</span>
+<span style="color:#ff79c6">import</span> <span style="color:#f1fa8c">&#34;fmt&#34;</span>
 
-<span style="color:#66d9ef">var</span> (
-	<span style="color:#a6e22e">sli1</span>      = make([]<span style="color:#66d9ef">int</span>, <span style="color:#ae81ff">5</span>)
-	<span style="color:#a6e22e">sli2From1</span> = <span style="color:#a6e22e">sli1</span>[<span style="color:#ae81ff">2</span>:]
+<span style="color:#8be9fd;font-style:italic">var</span> (
+	sli1      = <span style="color:#8be9fd;font-style:italic">make</span>([]<span style="color:#8be9fd">int</span>, <span style="color:#bd93f9">5</span>)
+	sli2From1 = sli1[<span style="color:#bd93f9">2</span>:]
 )
 
-<span style="color:#66d9ef">func</span> <span style="color:#a6e22e">main</span>() {
-	<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;初始情况&#34;</span>)
-	<span style="color:#a6e22e">printSliLenCap</span>()
+<span style="color:#8be9fd;font-style:italic">func</span> <span style="color:#50fa7b">main</span>() {
+	fmt.<span style="color:#50fa7b">Println</span>(<span style="color:#f1fa8c">&#34;初始情况&#34;</span>)
+	<span style="color:#50fa7b">printSliLenCap</span>()
 
-	<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;修改 sli2&#34;</span>)
-	<span style="color:#a6e22e">sli2From1</span>[<span style="color:#ae81ff">0</span>] = <span style="color:#ae81ff">1</span>
-	<span style="color:#a6e22e">printSliLenCap</span>()
+	fmt.<span style="color:#50fa7b">Println</span>(<span style="color:#f1fa8c">&#34;修改 sli2&#34;</span>)
+	sli2From1[<span style="color:#bd93f9">0</span>] = <span style="color:#bd93f9">1</span>
+	<span style="color:#50fa7b">printSliLenCap</span>()
 
-	<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;sli2 追加元素&#34;</span>)
-	<span style="color:#a6e22e">sli2From1</span> = append(<span style="color:#a6e22e">sli2From1</span>, <span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">2</span>)
-	<span style="color:#a6e22e">printSliLenCap</span>()
+	fmt.<span style="color:#50fa7b">Println</span>(<span style="color:#f1fa8c">&#34;sli2 追加元素&#34;</span>)
+	sli2From1 = <span style="color:#8be9fd;font-style:italic">append</span>(sli2From1, <span style="color:#bd93f9">2</span>, <span style="color:#bd93f9">2</span>, <span style="color:#bd93f9">2</span>, <span style="color:#bd93f9">2</span>)
+	<span style="color:#50fa7b">printSliLenCap</span>()
 
-	<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;再次修改 sli2&#34;</span>)
-	<span style="color:#a6e22e">sli2From1</span>[<span style="color:#ae81ff">0</span>] = <span style="color:#ae81ff">3</span>
-	<span style="color:#a6e22e">printSliLenCap</span>()
+	fmt.<span style="color:#50fa7b">Println</span>(<span style="color:#f1fa8c">&#34;再次修改 sli2&#34;</span>)
+	sli2From1[<span style="color:#bd93f9">0</span>] = <span style="color:#bd93f9">3</span>
+	<span style="color:#50fa7b">printSliLenCap</span>()
 
 }
 
-<span style="color:#66d9ef">func</span> <span style="color:#a6e22e">printSliLenCap</span>() {
-	<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;sli1: %v, len: %d, cap: %d \n&#34;</span>, <span style="color:#a6e22e">sli1</span>, len(<span style="color:#a6e22e">sli1</span>), cap(<span style="color:#a6e22e">sli1</span>))
-	<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;sli2: %v, len: %d, cap: %d \n&#34;</span>, <span style="color:#a6e22e">sli2From1</span>, len(<span style="color:#a6e22e">sli2From1</span>), cap(<span style="color:#a6e22e">sli2From1</span>))
+<span style="color:#8be9fd;font-style:italic">func</span> <span style="color:#50fa7b">printSliLenCap</span>() {
+	fmt.<span style="color:#50fa7b">Printf</span>(<span style="color:#f1fa8c">&#34;sli1: %v, len: %d, cap: %d \n&#34;</span>, sli1, <span style="color:#8be9fd;font-style:italic">len</span>(sli1), <span style="color:#8be9fd;font-style:italic">cap</span>(sli1))
+	fmt.<span style="color:#50fa7b">Printf</span>(<span style="color:#f1fa8c">&#34;sli2: %v, len: %d, cap: %d \n&#34;</span>, sli2From1, <span style="color:#8be9fd;font-style:italic">len</span>(sli2From1), <span style="color:#8be9fd;font-style:italic">cap</span>(sli2From1))
 }
 
 </code></pre></div><p>输出结果：</p>
@@ -236,123 +471,532 @@ sli2: [3 0 0 2 2 2 2], len: 7, cap: 8
 <p>触发扩容机制后，新的 slice 底层数组改变，因此对其底层数组元素的修改不会影响到之前相关的 slice，因为两个 slice 的底层数组已经不是同一个。</p>
 </li>
 </ul>
-</div>
-</main>
- 
 
 
-
-
-
-
-<div class="tl fixed list-pages lh-copy" id="contents-list"></div>
-
-
-
-<div class="pagination tc tr-l db fixed-l bottom-2-l right-2-l mb3 mb0-l">
-  
-<a id="scroll-to-top" class="f6 o-0 link br2 ph2 pv1 mb1 bg-main-color pointer" onclick="topFunction()" style="color: #fff; visibility: hidden; display: none; transition: opacity .5s, visibility .5s;" title="back to top">back to top</a>
-<br>
-  <p class="mb0 mt2">
-  <a href="https://blog.yingchi.io/posts/2019/10/network-devices.html">prev post</a>
-  <a href="https://blog.yingchi.io/posts/2020/3/go-map.html">next post</a>
-  </p>
-</div>
-
-  <footer class="content-width mt0 mt5-l mb4 f6 center ph4 gray tc tl-l">
-  <hr class="dn db-l ml0-l gray w3"><br>
-  Powered by <a href="https://gohugo.io/" target="_blank" class="link gray dim">Hugo</a>, based on the <a href="https://github.com/lingxz/er" target="_blank" class="link gray dim">Er</a> theme. <br>
-  © 2021 Joey.Jiang
+<footer class=" footline" >
+	
 </footer>
-  
 
 
+</div>
+     </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.4.2/tocbot.css">
-<style>.is-active-link::before { background-color: var(--secondary-color); }</style>
+              <div id="navigation">
+                  
+                  
+                  
+                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                                  
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                                  
+                                  
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                              
+                                  
+                      
+                      
+                          
+                              
+                          
+                          
+          
+                              
+                              
+                              
+          
+                              
+                      
+                  
+                              
+                      
+                  
+                  
+                  
+          
+          
+                  
+                      <a class="nav nav-prev" href="/posts/2020/3/go-map.html" title="哈希表原理 &amp; Go Map 实现"> <i class="fa fa-angle-left"></i> Forrige side</a>
+                  
+                  
+                      <a class="nav nav-next" href="/posts/2019/10/network-devices.html" title="网络模型学习基础：各层网络设备概念" style="margin-right: 0px;">Neste side <i class="fa fa-angle-right"></i></a>
+                  
+              </div>
 
 
+            </div>
+
+            
+              
+              
+              
+                <div id="top-github-link">
+                  <a class="" href="https://github.com/altinn/docs/blob/master/content/posts/2020/3/go-array-slice.md" target="blank">
+                    <i class="fa fa-code-fork"></i>
+                    
+                  </a>
+                </div>
+              
+            
+
+        </section>
 
 
-<script type="text/javascript">
-var prevScrollpos = window.pageYOffset;
-window.onscroll = function() {
-  var currentScrollPos = window.pageYOffset;
+        </div> 
+      </div> 
+    </div>
+    </div> 
 
-  
-  if (document.getElementById("tag-cloud") !== null) { 
-    if (prevScrollpos > currentScrollPos) { 
-      document.getElementById("tag-cloud").style.visibility = "visible";
-      document.getElementById("tag-cloud").style.opacity = "1";
-    } else {
-      document.getElementById("tag-cloud").style.visibility = "hidden";
-      document.getElementById("tag-cloud").style.opacity = "0";
+    <footer class="a-footer a-bgBlueDarker ">
+    <div class="container" style="margin: 5px 20px;">
+        <div class="row">
+            <div class="col-12">
+                <div>©2021 <a href="https://yingchi.io" style="text-decoration: none; color:#fff">yingchi.io</a></div>
+                <div>Infra / SRE / Cloud Native</div>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
+      <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
+    </div>
+    <script src="/js/clipboard.min.js"></script>
+    <script src="/js/html5shiv-printshiv.min.js"></script>
+    <script src="/js/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script src="/js/modernizr.custom.71422.js"></script>
+    
+    <script src="/js/altinninfoportal.js"></script>
+    <script src="/js/altinndocs.js"></script>
+    <script src="/js/altinndocs-learn.js"></script>
+
+    <script src="/js/stickysidebar/rAF.js"></script>
+    <script src="/js/stickysidebar/ResizeSensor.js"></script>
+    <script src="/js/stickysidebar/sticky-sidebar.js"></script>
+    
+    <script>
+      var a = new StickySidebar('#sidebar', {
+        topSpacing: 20,
+        bottomSpacing: 60,
+        containerSelector: '.adocs-scrollcontainer',
+        innerWrapperSelector: '.sidebar__inner',
+        minWidth: 768
+      });
+    </script>
+
+    <link href="/mermaid/mermaid.css" type="text/css" rel="stylesheet"/>
+    <script src="/mermaid/mermaid.js"></script>
+    <script>
+    if (typeof mermaidConfig === "undefined") {
+      mermaidConfig = {};
     }
-  }
-  
-
-
-  
-  if (document.body.scrollTop > 500 || document.documentElement.scrollTop > 500) {
-      document.getElementById("scroll-to-top").style.display = "inline";
-      document.getElementById("scroll-to-top").style.visibility = "visible";
-      document.getElementById("scroll-to-top").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-to-top").style.visibility = "hidden";
-      document.getElementById("scroll-to-top").style.opacity = "0";
-  }
-  
-
-  
-  if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
-      document.getElementById("scroll-navbar").style.display = "inline";
-      document.getElementById("scroll-navbar").style.visibility = "visible";
-      document.getElementById("scroll-navbar").style.opacity = "1";
-  } else {
-      document.getElementById("scroll-navbar").style.visibility = "hidden";
-      document.getElementById("scroll-navbar").style.opacity = "0";
-  }
-
-  prevScrollpos = currentScrollPos;
-
-}
-
-
-
-function topFunction() {
-  document.body.scrollTop = 0; 
-  document.documentElement.scrollTop = 0; 
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-if (document.getElementById("contents-list") !== null && document.getElementsByClassName("post-content").length !== 0) { 
-  tocbot.init({
+    mermaidConfig.startOnLoad = true;
     
-    tocSelector: '#contents-list',
+    mermaid.initialize(mermaidConfig);
+    </script>
+
     
-    contentSelector: '.post-content',
-    
-    headingSelector: 'h1, h2, h3',
-  });
-}
 
 
-</script>
-
-
-
-
-</body>
+  </body>
 </html>

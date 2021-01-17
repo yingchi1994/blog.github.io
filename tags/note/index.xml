@@ -18,10 +18,7 @@
       <pubDate>Mon, 29 Jun 2020 22:43:03 +0800</pubDate>
       
       <guid>https://blog.yingchi.io/posts/2020/6/cka-note.html</guid>
-      <description>CKA (Certified Kubernetes Administrator)认证是由 CNCF 与 Linux Foundation 管理的与 Kubernetes 运维技能相关的一个认证，目前业内对于云原生这一块儿专门的认证还是比较少的。自己目前所做的大部分工作都与 Kubernetes 关系比较密切，因此就报名预约了 6 月份的认证，好好准备一段时间，最后成功通过了认证（证书详见文末）
- 考试大纲 CNCF 官网中找到 CKA 认证考试页面 https://www.cncf.io/certification/cka/ 可以看到基本的考试大纲，分值分配情况。
-The online exam consists of a set of performance-based items (problems) to be solved in a command line and candidates have 3 hours to complete the tasks.
-The Certification focuses on the skills required to be a successful Kubernetes Administrator in industry today. This includes these general domains and their weights on the exam:</description>
+      <description>CKA (Certified Kubernetes Administrator)认证是由 CNCF 与 Linux Foundation 管理的与 Kubernetes 运维技能相关的一个认证，目前业内对于云原生这一块儿专门的认证还是比较少的。自己目</description>
     </item>
     
   </channel>
