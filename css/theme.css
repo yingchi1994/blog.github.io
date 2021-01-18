@@ -263,7 +263,7 @@ textarea:focus, input[type="email"]:focus, input[type="number"]:focus, input[typ
 }
 @media only all and (max-width: 47.938em) {
     #sidebar-toggle-span {
-        display: inline;
+        display: inline; /* 移动端菜单按钮显示 */
     }
 }
 
@@ -271,7 +271,7 @@ textarea:focus, input[type="email"]:focus, input[type="number"]:focus, input[typ
 #sidebar {
     background-color: transparent;
     color: #000;
-    position: absolute;
+    position: fixed;
     top: 0;
     width: 270px;
     bottom: 0;
@@ -282,6 +282,12 @@ textarea:focus, input[type="email"]:focus, input[type="number"]:focus, input[typ
     -webkit-font-smoothing: antialiased;
     will-change: min-height;
     transition: all 0ms ease-out;
+}
+
+@media (max-width: 768px) {
+    #sidebar {
+        padding-top: 50px;
+    }
 }
 
 
@@ -527,6 +533,20 @@ textarea:focus, input[type="email"]:focus, input[type="number"]:focus, input[typ
     position: relative;
     margin-left: 0;
     min-height: 100%;
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+}
+
+.container {
+    flex: 1 0 auto;
 }
 
 @media only all and (min-width: 768px) {
@@ -1530,15 +1550,25 @@ ul.a-text.a-bullet-list:not(.connected-bullets):not(.no-decoration):not(.a-list)
     position: relative;
 }
 
-/* Footer */
 
-.a-footer {
+/* 固定底部 Footer */
+/* .a-footer {
     background-color: #022f51;
     width: 100%;
     position: fixed;
     bottom: 0;
     z-index: 999;
+} */
+
+/* Footer */
+.a-footer {
+    background-color: #022f51;
+    width: 100%;
+    display: block;
+    flex: 0 0 auto;
+    z-index: 999;
 }
+
 
 .a-footerExtraNav ul li a,
 .a-footerExtraNav ul li a:hover {
@@ -1720,11 +1750,16 @@ input[type="search"] {
     box-shadow: none !important;
 }
 
+pre code {
+    white-space: nowrap !important;
+}
+
 .adocs-content code {
     color: #008db6;
     background: none;
     border: none;
     font-size: 16px;
+    white-space: normal;
 }
 
 
